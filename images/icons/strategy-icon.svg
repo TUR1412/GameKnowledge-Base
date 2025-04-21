@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="300" height="200" viewBox="0 0 300 200" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="strategyGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1e3c72"/>
+      <stop offset="100%" stop-color="#2a5298"/>
+    </linearGradient>
+  </defs>
+  <rect width="300" height="200" fill="url(#strategyGradient)" rx="10" ry="10"/>
+  <g fill="#ffffff">
+    <!-- 棋盘格图案 -->
+    <rect x="100" y="60" width="100" height="100" fill="none" stroke="#ffffff" stroke-width="2"/>
+    <rect x="100" y="60" width="25" height="25" fill="#ffffff" opacity="0.6"/>
+    <rect x="150" y="60" width="25" height="25" fill="#ffffff" opacity="0.6"/>
+    <rect x="125" y="85" width="25" height="25" fill="#ffffff" opacity="0.6"/>
+    <rect x="175" y="85" width="25" height="25" fill="#ffffff" opacity="0.6"/>
+    <rect x="100" y="110" width="25" height="25" fill="#ffffff" opacity="0.6"/>
+    <rect x="150" y="110" width="25" height="25" fill="#ffffff" opacity="0.6"/>
+    <rect x="125" y="135" width="25" height="25" fill="#ffffff" opacity="0.6"/>
+    <rect x="175" y="135" width="25" height="25" fill="#ffffff" opacity="0.6"/>
+    
+    <!-- 几个棋子 -->
+    <circle cx="112" cy="72" r="8" fill="#ffffff"/>
+    <polygon points="163,72 156,85 170,85" fill="#ffffff"/>
+    <rect x="135" y="95" width="5" height="5" fill="#ffffff"/>
+  </g>
+  <text x="150" y="185" font-family="Arial, sans-serif" font-size="14" fill="white" text-anchor="middle">策略游戏</text>
+</svg> 

@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80" width="80" height="80">
+    <rect width="80" height="80" fill="#6a4c93" />
+    <path d="M20,30 L60,30 M20,40 L60,40 M20,50 L60,50" stroke="#f2cc8f" stroke-width="3" />
+    <circle cx="40" cy="20" r="10" fill="#f2cc8f" />
+    <title>连招与格挡技巧图标</title>
+</svg> 

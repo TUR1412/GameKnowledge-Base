@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 60" width="60" height="60">
+    <rect width="60" height="60" fill="#81b29a" />
+    <circle cx="30" cy="20" r="8" fill="#f4f1de" />
+    <rect x="20" y="32" width="20" height="20" fill="#f4f1de" />
+    <path d="M25,20 L35,20" stroke="#81b29a" stroke-width="1.5" />
+    <path d="M25,40 L35,40" stroke="#81b29a" stroke-width="1.5" />
+    <title>神秘海域图标</title>
+</svg> 

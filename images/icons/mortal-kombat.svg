@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 60" width="60" height="60">
+    <rect width="60" height="60" fill="#6a4c93" />
+    <circle cx="30" cy="20" r="10" fill="#f2cc8f" />
+    <path d="M15,35 L45,35 L30,55 Z" fill="#e07a5f" />
+    <path d="M25,20 L35,20" stroke="#6a4c93" stroke-width="1.5" />
+    <title>真人快打图标</title>
+</svg> 

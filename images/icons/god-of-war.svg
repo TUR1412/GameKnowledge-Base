@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 160" width="120" height="160">
+    <rect width="120" height="160" fill="#6a4c93" />
+    <circle cx="60" cy="50" r="20" fill="#f2cc8f" />
+    <rect x="40" y="80" width="40" height="60" fill="#f2cc8f" />
+    <line x1="40" y1="100" x2="20" y2="120" stroke="#f2cc8f" stroke-width="4" />
+    <line x1="80" y1="100" x2="100" y2="120" stroke="#f2cc8f" stroke-width="4" />
+    <path d="M50,50 L70,50" stroke="#6a4c93" stroke-width="2" />
+    <path d="M50,100 L70,100 M50,110 L70,110 M50,120 L70,120" stroke="#6a4c93" stroke-width="2" />
+    <title>战神4图标</title>
+</svg> 

@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>游戏攻略网 - 专业的游戏指南平台</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="icon" href="images/icons/favicon.svg" type="image/svg+xml">
+    <meta name="description" content="游戏攻略网是中国专业的游戏攻略平台，提供最新最全面的游戏攻略、新闻资讯、游戏评测与技巧分享。">
+</head>
+<body>
+    <div id="particles-background" class="floating-particles"></div>
+    <div class="overlay"></div>
+    
+    <header>
+        <div class="container">
+            <div class="logo-container">
+                <h1>游戏攻略网</h1>
+                <p>你的专业游戏指南</p>
+            </div>
+            <button class="mobile-nav-toggle" aria-label="切换导航菜单">☰</button>
+            <nav>
+                <ul>
+                    <li><a href="index.html" class="active">首页</a></li>
+                    <li><a href="rpg.html">角色扮演</a></li>
+                    <li><a href="strategy.html">策略</a></li>
+                    <li><a href="action.html">动作</a></li>
+                    <li><a href="community.html">社区交流</a></li>
+                    <li><a href="all-games.html">所有游戏</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <div class="hero-banner">
+        <div class="banner-content">
+            <h1 class="fade-in-up">探索游戏世界的无限可能</h1>
+            <p class="fade-in-up delay-1">从新手到专家，我们提供专业、全面的游戏攻略和资讯</p>
+            <div class="banner-buttons fade-in-up delay-2">
+                <a href="all-games.html" class="btn">浏览所有游戏</a>
+                <a href="community.html" class="btn btn-secondary">加入社区</a>
+            </div>
+        </div>
+    </div>
+
+    <main>
+        <section class="section-container">
+            <div class="section-title">
+                <h2>精选游戏攻略</h2>
+                <p>这些攻略是我们精心挑选的，包含最详尽的游戏指南和技巧</p>
+            </div>
+            
+            <div class="games-grid">
+                <div class="game-card fade-in-up">
+                    <div class="game-card-image">
+                        <img src="images/icons/baldurs-gate.svg" alt="博德之门3">
+                        <span class="game-card-badge">热门</span>
+                    </div>
+                    <div class="game-card-content">
+                        <h3 class="game-card-title">博德之门3</h3>
+                        <p class="game-card-description">Larian Studios开发的回合制RPG，基于龙与地下城规则，提供高度自由的游戏体验。</p>
+                        <div class="game-card-meta">
+                            <div class="game-card-tag">
+                                <svg viewBox="0 0 24 24" width="16" height="16">
+                                    <path fill="currentColor" d="M20 5H4v14l9-5l7 5V5zm0-2c1.1 0 2 .9 2 2v18l-9-6l-9 6V5c0-1.1.9-2 2-2h14z"/>
+                                </svg>
+                                角色扮演
+                            </div>
+                            <div class="game-card-rating">
+                                <svg viewBox="0 0 24 24" width="16" height="16">
+                                    <path fill="currentColor" d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/>
+                                </svg>
+                                9.7
+                            </div>
+                        </div>
+                        <a href="baldurs-gate3.html" class="btn btn-small">查看攻略</a>
+                    </div>
+                </div>
+                
+                <div class="game-card fade-in-up delay-1">
+                    <div class="game-card-image">
+                        <img src="images/icons/elden-ring.svg" alt="艾尔登法环">
+                        <span class="game-card-badge popular">热门</span>
+                    </div>
+                    <div class="game-card-content">
+                        <h3 class="game-card-title">艾尔登法环</h3>
+                        <p class="game-card-description">FromSoftware开发的开放世界动作RPG，以其极高的难度和精妙的世界设计而著称。</p>
+                        <div class="game-card-meta">
+                            <div class="game-card-tag">
+                                <svg viewBox="0 0 24 24" width="16" height="16">
+                                    <path fill="currentColor" d="M7 6v12l10-6z"/>
+                                </svg>
+                                动作角色
+                            </div>
+                            <div class="game-card-rating">
+                                <svg viewBox="0 0 24 24" width="16" height="16">
+                                    <path fill="currentColor" d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/>
+                                </svg>
+                                9.8
+                            </div>
+                        </div>
+                        <a href="elden-ring.html" class="btn btn-small">查看攻略</a>
+                    </div>
+                </div>
+                
+                <div class="game-card fade-in-up delay-2">
+                    <div class="game-card-image">
+                        <img src="images/icons/starlight-miracle.svg" alt="星光奇迹">
+                        <span class="game-card-badge new">新发布</span>
+                    </div>
+                    <div class="game-card-content">
+                        <h3 class="game-card-title">星光奇迹</h3>
+                        <p class="game-card-description">一款融合东方幻想与现代科技的开放世界角色扮演游戏。</p>
+                        <div class="game-card-meta">
+                            <div class="game-card-tag">
+                                <svg viewBox="0 0 24 24" width="16" height="16">
+                                    <path fill="currentColor" d="M20 5H4v14l9-5l7 5V5zm0-2c1.1 0 2 .9 2 2v18l-9-6l-9 6V5c0-1.1.9-2 2-2h14z"/>
+                                </svg>
+                                角色扮演
+                            </div>
+                            <div class="game-card-rating">
+                                <svg viewBox="0 0 24 24" width="16" height="16">
+                                    <path fill="currentColor" d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/>
+                                </svg>
+                                9.4
+                            </div>
+                        </div>
+                        <a href="starlight-miracle.html" class="btn btn-small">查看攻略</a>
+                    </div>
+                </div>
+                
+                <div class="game-card fade-in-up delay-3">
+                    <div class="game-card-image">
+                        <img src="images/icons/zelda-totk.svg" alt="塞尔达传说：王国之泪">
+                    </div>
+                    <div class="game-card-content">
+                        <h3 class="game-card-title">塞尔达传说：王国之泪</h3>
+                        <p class="game-card-description">任天堂开发的开放世界动作冒险游戏，旷野之息的正统续作。</p>
+                        <div class="game-card-meta">
+                            <div class="game-card-tag">
+                                <svg viewBox="0 0 24 24" width="16" height="16">
+                                    <path fill="currentColor" d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 15.5h-5v-2h5v2zm0-4.5h-5v-2h5v2zm0-4.5h-5v-2h5v2zm9 9h-3v-10h3v10z"/>
+                                </svg>
+                                动作冒险
+                            </div>
+                            <div class="game-card-rating">
+                                <svg viewBox="0 0 24 24" width="16" height="16">
+                                    <path fill="currentColor" d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/>
+                                </svg>
+                                9.6
+                            </div>
+                        </div>
+                        <a href="zelda-totk.html" class="btn btn-small">查看攻略</a>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="text-center">
+                <a href="all-games.html" class="btn">查看更多游戏</a>
+            </div>
+        </section>
+        
+        <section class="section-container bg-light">
+            <div class="section-title">
+                <h2>游戏分类</h2>
+                <p>探索不同类型的游戏，找到你感兴趣的攻略</p>
+            </div>
+            
+            <div class="category-games">
+                <a href="rpg.html" class="small-game-card fade-in-up">
+                    <img src="images/icons/rpg-icon.svg" alt="角色扮演">
+                    <h4>角色扮演</h4>
+                    <span>查看攻略</span>
+                </a>
+                
+                <a href="strategy.html" class="small-game-card fade-in-up delay-1">
+                    <img src="images/icons/strategy-icon.svg" alt="策略">
+                    <h4>策略</h4>
+                    <span>查看攻略</span>
+                </a>
+                
+                <a href="action.html" class="small-game-card fade-in-up delay-2">
+                    <img src="images/icons/action-icon.svg" alt="动作">
+                    <h4>动作</h4>
+                    <span>查看攻略</span>
+                </a>
+                
+                <a href="adventure.html" class="small-game-card fade-in-up delay-3">
+                    <img src="images/icons/adventure-icon.svg" alt="冒险">
+                    <h4>冒险</h4>
+                    <span>查看攻略</span>
+                </a>
+                
+                <a href="simulation.html" class="small-game-card fade-in-up delay-4">
+                    <img src="images/icons/simulation-icon.svg" alt="模拟">
+                    <h4>模拟</h4>
+                    <span>查看攻略</span>
+                </a>
+                
+                <a href="all-games.html" class="small-game-card fade-in-up delay-5">
+                    <img src="images/icons/all-games-icon.svg" alt="所有游戏">
+                    <h4>查看全部</h4>
+                    <span>所有分类</span>
+                </a>
+            </div>
+        </section>
+        
+        <section class="section-container">
+            <div class="section-title">
+                <h2>最新攻略</h2>
+                <p>查看我们最新发布的游戏攻略和技巧</p>
+            </div>
+            
+            <div class="guide-articles">
+                <article class="guide-article fade-in-up">
+                    <img src="images/icons/guide-bg3.svg" alt="博德之门3最佳职业搭配指南">
+                    <div class="article-content">
+                        <h3>博德之门3最佳职业搭配指南</h3>
+                        <p>详细解析博德之门3中各职业特点及最优组合搭配，帮助玩家构建强力队伍。</p>
+                        <a href="guide-detail.html?id=bg3-build" class="btn btn-small">阅读全文</a>
+                    </div>
+                </article>
+                
+                <article class="guide-article fade-in-up delay-1">
+                    <img src="images/icons/guide-civ6.svg" alt="文明6：科技胜利的终极战略">
+                    <div class="article-content">
+                        <h3>文明6：科技胜利的终极战略</h3>
+                        <p>分析文明6中科技胜利路线的最佳选择，包括文明领袖推荐、城市规划和科技树路线。</p>
+                        <a href="guide-detail.html?id=civ6-science" class="btn btn-small">阅读全文</a>
+                    </div>
+                </article>
+                
+                <article class="guide-article fade-in-up delay-2">
+                    <img src="images/icons/guide-dmc5.svg" alt="鬼泣5：但丁全武器连招指南">
+                    <div class="article-content">
+                        <h3>鬼泣5：但丁全武器连招指南</h3>
+                        <p>详解鬼泣5中但丁角色的所有武器特性及高伤害连招技巧，让你轻松获得SSS评分。</p>
+                        <a href="guide-detail.html?id=dmc5-combo" class="btn btn-small">阅读全文</a>
+                    </div>
+                </article>
+            </div>
+            
+            <div class="text-center">
+                <a href="all-guides.html" class="btn">查看更多攻略</a>
+            </div>
+        </section>
+        
+        <section class="community-section">
+            <div class="container">
+                <div class="section-title">
+                    <h2 class="centered-title">玩家讨论</h2>
+                    <p>加入热门话题讨论，分享你的游戏体验</p>
+                </div>
+                
+                <div class="discussion-topics">
+                    <div class="topic fade-in-up">
+                        <h3>博德之门3最强派对组合</h3>
+                        <p class="topic-meta">由 <span class="user">战术大师</span> 发起 · 156条回复</p>
+                        <a href="forum-topic.html?id=bg3-party" class="btn btn-small">加入讨论</a>
+                    </div>
+                    
+                    <div class="topic fade-in-up delay-1">
+                        <h3>艾尔登法环最难BOSS排名</h3>
+                        <p class="topic-meta">由 <span class="user">不死队长</span> 发起 · 213条回复</p>
+                        <a href="forum-topic.html?id=elden-boss" class="btn btn-small">加入讨论</a>
+                    </div>
+                    
+                    <div class="topic fade-in-up delay-2">
+                        <h3>2023年最值得期待的游戏</h3>
+                        <p class="topic-meta">由 <span class="user">游戏预言家</span> 发起 · 189条回复</p>
+                        <a href="forum-topic.html?id=upcoming-games" class="btn btn-small">加入讨论</a>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <div class="newsletter">
+            <div class="container">
+                <div class="newsletter-content">
+                    <h2>订阅最新游戏攻略</h2>
+                    <p>第一时间获取最新游戏资讯、专业攻略和独家内容</p>
+                    <form class="newsletter-form">
+                        <input type="email" placeholder="输入您的邮箱" required>
+                        <button type="submit" class="btn">订阅</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h3>关于我们</h3>
+                    <p>游戏攻略网致力于为广大游戏玩家提供高质量的游戏攻略和资讯。</p>
+                </div>
+                <div class="footer-section">
+                    <h3>联系方式</h3>
+                    <p>邮箱：contact@gameguides.com</p>
+                    <p>微信公众号：游戏攻略网</p>
+                </div>
+                <div class="footer-section">
+                    <h3>关注我们</h3>
+                    <div class="social-icons">
+                        <a href="#" class="social-icon">
+                            <svg viewBox="0 0 24 24" width="24" height="24">
+                                <path fill="currentColor" d="M20.962 7.257c-.746.3-1.546.5-2.385.59.858-.515 1.514-1.33 1.82-2.302-.8.47-1.68.82-2.618 1.005C16.88 5.55 15.868 5 14.78 5c-2.12 0-3.833 1.73-3.833 3.85 0 .3.038.6.096.88-3.18-.16-6.003-1.7-7.893-4.02-.33.57-.52 1.23-.52 1.93 0 1.34.674 2.52 1.702 3.2-.63-.02-1.22-.2-1.74-.5v.05c0 1.87 1.33 3.43 3.094 3.78-.323.09-.66.14-1.01.14-.25 0-.49-.02-.73-.07.49 1.53 1.9 2.64 3.58 2.67-1.31 1.03-2.96 1.64-4.76 1.64-.31 0-.61-.02-.91-.05C5.12 19.84 7.15 20.5 9.34 20.5c6.41 0 9.91-5.31 9.91-9.92 0-.15 0-.3-.01-.45.67-.49 1.26-1.1 1.73-1.8z"/>
+                            </svg>
+                        </a>
+                        <a href="#" class="social-icon">
+                            <svg viewBox="0 0 24 24" width="24" height="24">
+                                <path fill="currentColor" d="M23.5 12c0 6.46-5.04 11.5-11.5 11.5S.5 18.46.5 12 5.54.5 12 .5 23.5 5.54 23.5 12zm-5 0c0-3.54-2.96-6.5-6.5-6.5S5.5 8.46 5.5 12s2.96 6.5 6.5 6.5 6.5-2.96 6.5-6.5zM12 9a3 3 0 100 6 3 3 0 000-6z"/>
+                            </svg>
+                        </a>
+                        <a href="#" class="social-icon">
+                            <svg viewBox="0 0 24 24" width="24" height="24">
+                                <path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 15h-2v-6h2v6zm-1-6.5c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zM17 17h-2v-3c0-.55-.45-1-1-1s-1 .45-1 1v3h-2v-6h2v1.1c.52-.8 1.52-1.1 2-1.1 1.38 0 2 1.12 2 2.5V17z"/>
+                            </svg>
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <div class="copyright">
+                <p>&copy; 2023 游戏攻略网 版权所有</p>
+            </div>
+        </div>
+    </footer>
+
+    <button id="back-to-top" class="back-to-top" aria-label="返回顶部">↑</button>
+    
+    <script src="scripts.js"></script>
+</body>
+</html> 

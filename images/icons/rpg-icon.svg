@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="300" height="200" viewBox="0 0 300 200" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="rpgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#6a11cb"/>
+      <stop offset="100%" stop-color="#2575fc"/>
+    </linearGradient>
+  </defs>
+  <rect width="300" height="200" fill="url(#rpgGradient)" rx="10" ry="10"/>
+  <g fill="#ffffff">
+    <path d="M150,50 L170,80 L200,85 L175,110 L180,140 L150,125 L120,140 L125,110 L100,85 L130,80 Z" opacity="0.9"/>
+    <path d="M110,140 C110,140 120,160 150,160 C180,160 190,140 190,140 L180,130 L120,130 Z" opacity="0.7"/>
+    <circle cx="130" cy="105" r="5"/>
+    <circle cx="170" cy="105" r="5"/>
+  </g>
+  <text x="150" y="185" font-family="Arial, sans-serif" font-size="14" fill="white" text-anchor="middle">角色扮演</text>
+</svg> 

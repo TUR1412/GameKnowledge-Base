@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 160" width="120" height="160">
+    <rect width="120" height="160" fill="#3d405b" />
+    <path d="M60,40 L30,60 L60,80 L90,60 Z" fill="#e07a5f" />
+    <path d="M60,90 L30,110 L60,130 L90,110 Z" fill="#f2cc8f" />
+    <circle cx="60" cy="25" r="10" fill="#f4f1de" />
+    <path d="M50,110 L70,110 M50,120 L70,120" stroke="#3d405b" stroke-width="2" />
+    <title>黑暗灵魂3图标</title>
+</svg> 

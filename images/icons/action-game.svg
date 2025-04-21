@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 60" width="60" height="60">
+    <rect width="60" height="60" fill="#3d405b" />
+    <path d="M30,10 L45,30 L30,50 L15,30 Z" fill="#e07a5f" />
+    <circle cx="30" cy="30" r="8" fill="#f4f1de" />
+    <path d="M25,30 L35,30 M30,25 L30,35" stroke="#3d405b" stroke-width="2" />
+    <title>动作游戏通用图标</title>
+</svg> 

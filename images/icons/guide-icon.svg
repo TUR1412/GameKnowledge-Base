@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="250" height="150" viewBox="0 0 250 150" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="guideGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3a7bd5"/>
+      <stop offset="100%" stop-color="#3a6073"/>
+    </linearGradient>
+  </defs>
+  <rect width="250" height="150" fill="url(#guideGradient)" rx="8" ry="8"/>
+  
+  <!-- 攻略书图标 -->
+  <g fill="#ffffff">
+    <!-- 书本 -->
+    <rect x="75" y="45" width="100" height="70" fill="none" stroke="#ffffff" stroke-width="2" rx="3" ry="3"/>
+    <path d="M75,45 L75,115 C85,105 115,105 125,115 C135,105 165,105 175,115 L175,45 C165,35 135,35 125,45 C115,35 85,35 75,45 Z" fill="#ffffff" opacity="0.2" stroke="#ffffff" stroke-width="1"/>
+    
+    <!-- 书页效果 -->
+    <path d="M125,45 L125,115" stroke="#ffffff" stroke-width="1" opacity="0.8"/>
+    <path d="M95,60 L115,60" stroke="#ffffff" stroke-width="1.5" opacity="0.8"/>
+    <path d="M95,70 L115,70" stroke="#ffffff" stroke-width="1.5" opacity="0.8"/>
+    <path d="M95,80 L115,80" stroke="#ffffff" stroke-width="1.5" opacity="0.8"/>
+    <path d="M95,90 L115,90" stroke="#ffffff" stroke-width="1.5" opacity="0.8"/>
+    
+    <path d="M135,60 L155,60" stroke="#ffffff" stroke-width="1.5" opacity="0.8"/>
+    <path d="M135,70 L155,70" stroke="#ffffff" stroke-width="1.5" opacity="0.8"/>
+    <path d="M135,80 L155,80" stroke="#ffffff" stroke-width="1.5" opacity="0.8"/>
+    <path d="M135,90 L155,90" stroke="#ffffff" stroke-width="1.5" opacity="0.8"/>
+  </g>
+  
+  <text x="125" y="130" font-family="Arial, sans-serif" font-size="14" fill="white" text-anchor="middle">游戏攻略</text>
+</svg> 

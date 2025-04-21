@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 160" width="120" height="160">
+    <rect width="120" height="160" fill="#e07a5f" />
+    <path d="M40,40 L80,40 L60,80 Z" fill="#f4f1de" />
+    <path d="M40,100 L80,100 L60,140 Z" fill="#f4f1de" />
+    <line x1="40" y1="70" x2="80" y2="70" stroke="#f4f1de" stroke-width="3" />
+    <path d="M50,50 L70,50" stroke="#3d405b" stroke-width="2" />
+    <path d="M50,110 L70,110" stroke="#3d405b" stroke-width="2" />
+    <title>鬼泣5图标</title>
+</svg> 

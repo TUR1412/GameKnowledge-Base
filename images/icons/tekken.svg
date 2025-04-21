@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 60" width="60" height="60">
+    <rect width="60" height="60" fill="#3d405b" />
+    <circle cx="20" cy="20" r="10" fill="#f4f1de" />
+    <circle cx="40" cy="40" r="10" fill="#f4f1de" />
+    <line x1="20" y1="20" x2="40" y2="40" stroke="#e07a5f" stroke-width="4" />
+    <title>铁拳图标</title>
+</svg> 

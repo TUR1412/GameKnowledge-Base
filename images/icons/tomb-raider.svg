@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 60" width="60" height="60">
+    <rect width="60" height="60" fill="#3d405b" />
+    <circle cx="30" cy="20" r="10" fill="#f2cc8f" />
+    <path d="M20,35 L40,35 L30,55 Z" fill="#f2cc8f" />
+    <path d="M25,20 L35,20" stroke="#3d405b" stroke-width="1.5" />
+    <title>古墓丽影图标</title>
+</svg> 
