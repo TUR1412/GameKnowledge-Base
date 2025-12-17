@@ -1,30 +1,62 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-CN" class="no-js">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>星光奇迹攻略 - 游戏攻略网</title>
-    <link rel="stylesheet" href="styles.css">
+    <meta name="description" content="星光奇迹深度攻略：基础指南、主线流程、角色培养、装备系统与BOSS机制拆解。">
+    <link rel="stylesheet" href="styles.css?v=20251217">
+    <link rel="icon" href="images/icons/favicon.svg" type="image/svg+xml">
+    <meta name="theme-color" content="#5d3fd3">
+    <script>
+        (() => {
+            try {
+                const key = "gkb-theme";
+                const saved = localStorage.getItem(key);
+                const prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+                document.documentElement.dataset.theme = saved || (prefersDark ? "dark" : "light");
+                document.documentElement.classList.remove("no-js");
+            } catch (_) {}
+        })();
+    </script>
 </head>
-<body>
+<body data-page="game-deep">
+    <a class="skip-link" href="#main">跳到正文</a>
     <div id="particles-background" class="floating-particles"></div>
     <div class="overlay"></div>
     
     <header>
-        <div class="logo-container">
-            <h1>游戏攻略网</h1>
-            <p>你的专业游戏指南</p>
+        <div class="container header-inner">
+            <div class="logo-container">
+                <h1>游戏攻略网</h1>
+                <p>你的专业游戏指南</p>
+            </div>
+            <button class="mobile-nav-toggle" aria-label="切换导航菜单" aria-controls="site-nav" aria-expanded="false">☰</button>
+            <nav id="site-nav" aria-label="主导航">
+                <ul>
+                    <li><a href="index.html">首页</a></li>
+                    <li><a href="rpg.html">角色扮演</a></li>
+                    <li><a href="strategy.html">策略</a></li>
+                    <li><a href="action.html">动作</a></li>
+                    <li><a href="community.html">社区交流</a></li>
+                    <li><a href="all-games.html">所有游戏</a></li>
+                </ul>
+            </nav>
+            <div class="header-actions">
+                <a class="icon-button" href="game.html?id=starlight-miracle" aria-label="查看游戏概览页">
+                    <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+                        <path fill="currentColor" d="M4 6a3 3 0 0 1 3-3h10a3 3 0 0 1 3 3v12a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3V6zm3-1a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1H7z"/>
+                    </svg>
+                    <span class="icon-button-text">概览</span>
+                </a>
+                <button type="button" class="icon-button theme-toggle" data-action="theme-toggle" aria-label="切换主题">
+                    <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+                        <path fill="currentColor" d="M12 18a6 6 0 1 1 0-12a6 6 0 0 1 0 12z"/>
+                    </svg>
+                    <span class="icon-button-text">主题</span>
+                </button>
+            </div>
         </div>
-        <nav>
-            <ul>
-                <li><a href="index.html">首页</a></li>
-                <li><a href="rpg.html">角色扮演</a></li>
-                <li><a href="strategy.html">策略</a></li>
-                <li><a href="action.html">动作</a></li>
-                <li><a href="community.html">社区交流</a></li>
-                <li><a href="all-games.html">所有游戏</a></li>
-            </ul>
-        </nav>
     </header>
 
     <div class="game-header">
@@ -55,7 +87,7 @@
         </div>
     </div>
 
-    <main class="guide-content">
+    <main id="main" class="guide-content">
         <section id="basics" class="guide-section">
             <h2>基础指南</h2>
             <div class="guide-article">
@@ -341,7 +373,7 @@
                     <line x1="6" y1="6" x2="18" y2="6" stroke="#f2cc8f" stroke-width="1" />
                 </svg>
                 <h3>星际交易系统详解</h3>
-                <a href="trading-guide.html" class="btn btn-small">查看</a>
+                <a href="guide-detail.html?id=trading-guide" class="btn btn-small">查看</a>
             </div>
             <div class="related-guide">
                 <svg class="guide-icon" viewBox="0 0 24 24" width="150" height="100">
@@ -351,7 +383,7 @@
                     <circle cx="18" cy="6" r="2" fill="#e07a5f" />
                 </svg>
                 <h3>所有隐藏任务位置</h3>
-                <a href="hidden-quests.html" class="btn btn-small">查看</a>
+                <a href="guide-detail.html?id=hidden-quests" class="btn btn-small">查看</a>
             </div>
             <div class="related-guide">
                 <svg class="guide-icon" viewBox="0 0 24 24" width="150" height="100">
@@ -360,7 +392,7 @@
                     <circle cx="12" cy="12" r="3" fill="#e07a5f" />
                 </svg>
                 <h3>飞船升级与定制指南</h3>
-                <a href="ship-customization.html" class="btn btn-small">查看</a>
+                <a href="guide-detail.html?id=ship-customization" class="btn btn-small">查看</a>
             </div>
         </div>
     </div>
@@ -448,37 +480,13 @@
             </div>
         </div>
         <div class="copyright">
-            <p>&copy; 2023 游戏攻略网 版权所有</p>
+            <p>&copy; 2025 游戏攻略网 版权所有</p>
         </div>
     </footer>
 
-    <script src="scripts.js"></script>
-    <script>
-        // 页面效果初始化脚本
-        document.addEventListener('DOMContentLoaded', function() {
-            // 平滑滚动到锚点
-            document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-                anchor.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    document.querySelector(this.getAttribute('href')).scrollIntoView({
-                        behavior: 'smooth'
-                    });
-                });
-            });
-            
-            // 图像与内容加载动画
-            const guideElements = document.querySelectorAll('.guide-section, .related-guide');
-            guideElements.forEach((element, index) => {
-                element.style.opacity = '0';
-                element.style.transform = 'translateY(20px)';
-                element.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
-                
-                setTimeout(() => {
-                    element.style.opacity = '1';
-                    element.style.transform = 'translateY(0)';
-                }, 100 * index);
-            });
-        });
-    </script>
+    <button id="back-to-top" class="back-to-top" aria-label="返回顶部">↑</button>
+
+    <script src="data.js?v=20251217" defer></script>
+    <script src="scripts.js?v=20251217" defer></script>
 </body>
 </html> 
