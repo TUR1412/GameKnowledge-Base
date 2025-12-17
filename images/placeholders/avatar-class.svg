@@ -1,0 +1,26 @@
+<svg width="120" height="120" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="职业头像占位图">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#5d3fd3"/>
+      <stop offset="100%" stop-color="#00c2ff"/>
+    </linearGradient>
+    <radialGradient id="shine" cx="35%" cy="30%" r="70%">
+      <stop offset="0%" stop-color="rgba(255,255,255,0.7)"/>
+      <stop offset="55%" stop-color="rgba(255,255,255,0.16)"/>
+      <stop offset="100%" stop-color="rgba(255,255,255,0)"/>
+    </radialGradient>
+  </defs>
+
+  <rect x="2" y="2" width="116" height="116" rx="22" fill="url(#bg)" stroke="rgba(255,255,255,0.25)" stroke-width="2"/>
+  <rect x="2" y="2" width="116" height="116" rx="22" fill="url(#shine)"/>
+
+  <g transform="translate(60 54)" fill="rgba(12,16,28,0.35)" stroke="rgba(255,255,255,0.65)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="0" cy="-10" r="12" fill="rgba(255,255,255,0.18)"/>
+    <path d="M-26 36c6-16 16-24 26-24s20 8 26 24" fill="rgba(255,255,255,0.14)"/>
+    <path d="M-8 -6l8 8l18-18" fill="none"/>
+  </g>
+
+  <text x="60" y="106" text-anchor="middle" font-size="10" font-weight="800" fill="rgba(255,255,255,0.85)" font-family="system-ui, -apple-system, Segoe UI, PingFang SC, Microsoft YaHei, sans-serif">
+    CLASS
+  </text>
+</svg>

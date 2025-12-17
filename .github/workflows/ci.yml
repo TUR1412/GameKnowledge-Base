@@ -1,0 +1,25 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  sanity:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "lts/*"
+
+      - name: JS Syntax Check
+        run: |
+          node --check scripts.js
+          node --check data.js
+
+      - name: Link / Asset / Cache Busting Check
+        run: node tools/check-links.mjs
