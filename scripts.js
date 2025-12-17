@@ -15,6 +15,8 @@
     allGuidesState: "gkb-all-guides-state",
     savedGuides: "gkb-saved-guides",
     forumRepliesPrefix: "gkb-forum-replies:",
+    recentGames: "gkb-recent-games",
+    recentGuides: "gkb-recent-guides",
   };
 
   const $ = (selector, root = document) => root.querySelector(selector);
@@ -52,6 +54,27 @@
         return false;
       }
     },
+  };
+
+  const readStringList = (key) => {
+    const list = safeJsonParse(storage.get(key), []);
+    if (!Array.isArray(list)) return [];
+    return list.map((x) => String(x || "").trim()).filter(Boolean);
+  };
+
+  const writeStringList = (key, list) => {
+    const next = Array.from(
+      new Set((Array.isArray(list) ? list : []).map((x) => String(x || "").trim()).filter(Boolean))
+    );
+    storage.set(key, JSON.stringify(next));
+    return next;
+  };
+
+  const pushRecent = (key, id, limit = 10) => {
+    if (!id) return [];
+    const current = readStringList(key).filter((x) => x !== id);
+    current.unshift(id);
+    return writeStringList(key, current.slice(0, Math.max(1, Number(limit) || 10)));
   };
 
   const escapeHtml = (input) => {
@@ -157,6 +180,392 @@
   };
 
   // -------------------------
+  // Command Palette (Ctrl+K)
+  // -------------------------
+
+  const initCommandPalette = () => {
+    const getFocusable = (root) =>
+      $$(
+        'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        root
+      );
+
+    const ensureHeaderButton = (open) => {
+      const host = $(".header-actions");
+      if (!host) return;
+      if ($(".cmdk-toggle", host)) return;
+
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "icon-button cmdk-toggle";
+      btn.setAttribute("aria-label", "全站搜索（Ctrl+K）");
+      btn.innerHTML = `
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+          <path fill="currentColor" d="M10 2a8 8 0 1 1 5.293 14.293l4.707 4.707a1 1 0 0 1-1.414 1.414l-4.707-4.707A8 8 0 0 1 10 2zm0 2a6 6 0 1 0 0 12a6 6 0 0 0 0-12z"/>
+        </svg>
+        <span class="icon-button-text">搜索</span>
+      `;
+      btn.addEventListener("click", open);
+      host.insertBefore(btn, host.firstChild);
+    };
+
+    const root = document.createElement("div");
+    root.className = "cmdk-root";
+    root.hidden = true;
+    root.innerHTML = `
+      <div class="cmdk-backdrop" data-action="cmdk-close" aria-hidden="true"></div>
+      <div class="cmdk-panel" role="dialog" aria-modal="true" aria-label="全站搜索">
+        <div class="cmdk-bar">
+          <input class="cmdk-input" type="search" placeholder="搜索游戏 / 攻略 / 话题（Ctrl+K）" autocomplete="off" spellcheck="false">
+          <button class="cmdk-close" type="button" data-action="cmdk-close" aria-label="关闭">Esc</button>
+        </div>
+        <div class="cmdk-hint">↑ ↓ 选择，Enter 打开，Esc 关闭</div>
+        <div class="cmdk-list" role="listbox" aria-label="搜索结果"></div>
+      </div>
+    `;
+    document.body.appendChild(root);
+
+    const input = $(".cmdk-input", root);
+    const list = $(".cmdk-list", root);
+    let lastActive = null;
+    let selected = 0;
+    let flatItems = [];
+
+    const highlight = (text, q) => {
+      const raw = String(text || "");
+      const query = String(q || "").trim();
+      if (!query) return escapeHtml(raw);
+      const hay = raw.toLowerCase();
+      const needle = query.toLowerCase();
+      const idx = hay.indexOf(needle);
+      if (idx < 0) return escapeHtml(raw);
+      return (
+        escapeHtml(raw.slice(0, idx)) +
+        `<mark>${escapeHtml(raw.slice(idx, idx + query.length))}</mark>` +
+        escapeHtml(raw.slice(idx + query.length))
+      );
+    };
+
+    const getThemeLabel = () => {
+      const current = document.documentElement.dataset.theme || "light";
+      return current === "dark" ? "切换到浅色主题" : "切换到深色主题";
+    };
+
+    const buildGroups = (query) => {
+      const data = getData();
+      const q = String(query || "").trim().toLowerCase();
+
+      const actions = [
+        {
+          kind: "action",
+          badge: "操作",
+          title: getThemeLabel(),
+          subtitle: "立即生效，并保存到本地",
+          run: () => {
+            const current = document.documentElement.dataset.theme || "light";
+            setTheme(current === "dark" ? "light" : "dark");
+            toast({ title: "主题已切换", message: "偏好已保存到本地。", tone: "success" });
+          },
+        },
+        {
+          kind: "action",
+          badge: "操作",
+          title: "回到顶部",
+          subtitle: "快速回到页面顶部",
+          run: () => window.scrollTo({ top: 0, behavior: prefersReducedMotion() ? "auto" : "smooth" }),
+        },
+        { kind: "link", badge: "导航", title: "打开游戏库", subtitle: "筛选与排序全部游戏", href: "all-games.html" },
+        { kind: "link", badge: "导航", title: "打开攻略库", subtitle: "搜索与标签筛选", href: "all-guides.html" },
+      ];
+
+      const withHighlight = (groups) => {
+        groups.forEach((g) => {
+          g.items = (g.items || []).map((item) => ({
+            ...item,
+            __titleHtml: highlight(item.title, query),
+            __subtitleHtml: highlight(item.subtitle, query),
+          }));
+        });
+        return groups;
+      };
+
+      if (!q) {
+        const recentGames = readStringList(STORAGE_KEYS.recentGames);
+        const recentGuides = readStringList(STORAGE_KEYS.recentGuides);
+        const savedGuides = readStringList(STORAGE_KEYS.savedGuides);
+
+        const recent = [];
+        recentGames.slice(0, 6).forEach((id) => {
+          const g = data?.games?.[id] || null;
+          recent.push({
+            kind: "link",
+            badge: "最近·游戏",
+            title: g?.title || `游戏：${id}`,
+            subtitle: g?.genre || "打开游戏详情",
+            href: `game.html?id=${encodeURIComponent(id)}`,
+          });
+        });
+        recentGuides.slice(0, 6).forEach((id) => {
+          const g = data?.guides?.[id] || null;
+          recent.push({
+            kind: "link",
+            badge: "最近·攻略",
+            title: g?.title || `攻略：${id}`,
+            subtitle: g?.summary || "打开攻略详情",
+            href: `guide-detail.html?id=${encodeURIComponent(id)}`,
+          });
+        });
+
+        const saved = savedGuides.slice(0, 8).map((id) => {
+          const g = data?.guides?.[id] || null;
+          return {
+            kind: "link",
+            badge: "收藏",
+            title: g?.title || `攻略：${id}`,
+            subtitle: g?.summary || "打开收藏的攻略",
+            href: `guide-detail.html?id=${encodeURIComponent(id)}`,
+          };
+        });
+
+        const groups = [{ title: "快捷操作", items: actions }];
+        if (recent.length > 0) groups.push({ title: "最近访问", items: recent });
+        if (saved.length > 0) groups.push({ title: "本地收藏", items: saved });
+        return withHighlight(groups);
+      }
+
+      const gameItems = Object.entries(data?.games || {})
+        .map(([id, g]) => ({ id, g }))
+        .filter(({ id, g }) => {
+          const title = String(g?.title || id).toLowerCase();
+          const genre = String(g?.genre || "").toLowerCase();
+          return `${title} ${genre}`.includes(q);
+        })
+        .slice(0, 6)
+        .map(({ id, g }) => ({
+          kind: "link",
+          badge: "游戏",
+          title: g?.title || id,
+          subtitle: [g?.genre, g?.year ? `${g.year}` : ""].filter(Boolean).join(" · ") || "打开游戏详情",
+          href: `game.html?id=${encodeURIComponent(id)}`,
+        }));
+
+      const guideItems = Object.entries(data?.guides || {})
+        .map(([id, g]) => ({ id, g }))
+        .filter(({ id, g }) => {
+          const title = String(g?.title || id).toLowerCase();
+          const summary = String(g?.summary || "").toLowerCase();
+          const tags = Array.isArray(g?.tags) ? g.tags.map(String).join(" ").toLowerCase() : "";
+          return `${title} ${summary} ${tags}`.includes(q);
+        })
+        .slice(0, 8)
+        .map(({ id, g }) => ({
+          kind: "link",
+          badge: "攻略",
+          title: g?.title || id,
+          subtitle: g?.summary || "打开攻略详情",
+          href: `guide-detail.html?id=${encodeURIComponent(id)}`,
+        }));
+
+      const topicItems = Object.entries(data?.topics || {})
+        .map(([id, g]) => ({ id, g }))
+        .filter(({ id, g }) => {
+          const title = String(g?.title || id).toLowerCase();
+          const summary = String(g?.summary || "").toLowerCase();
+          return `${title} ${summary}`.includes(q);
+        })
+        .slice(0, 6)
+        .map(({ id, g }) => ({
+          kind: "link",
+          badge: "话题",
+          title: g?.title || id,
+          subtitle: g?.summary || "进入讨论",
+          href: `forum-topic.html?id=${encodeURIComponent(id)}`,
+        }));
+
+      const groups = [{ title: "快捷操作", items: actions }];
+      if (gameItems.length > 0) groups.push({ title: "游戏", items: gameItems });
+      if (guideItems.length > 0) groups.push({ title: "攻略", items: guideItems });
+      if (topicItems.length > 0) groups.push({ title: "话题", items: topicItems });
+
+      if (gameItems.length + guideItems.length + topicItems.length === 0) {
+        groups.push({
+          title: "未找到结果",
+          items: [
+            {
+              kind: "link",
+              badge: "建议",
+              title: "打开游戏库",
+              subtitle: "去“所有游戏”里用筛选器找内容",
+              href: "all-games.html",
+            },
+            {
+              kind: "link",
+              badge: "建议",
+              title: "打开攻略库",
+              subtitle: "去“所有攻略”里按标签与关键词筛选",
+              href: "all-guides.html",
+            },
+          ],
+        });
+      }
+
+      return withHighlight(groups);
+    };
+
+    const render = (query) => {
+      if (!list) return;
+      const groups = buildGroups(query);
+
+      flatItems = [];
+      let idx = 0;
+
+      list.innerHTML = groups
+        .map((g) => {
+          const itemsHtml = (g.items || [])
+            .map((item) => {
+              const id = idx;
+              idx += 1;
+              flatItems.push(item);
+
+              const titleHtml = item.__titleHtml || escapeHtml(item.title);
+              const subtitleHtml = item.__subtitleHtml || escapeHtml(item.subtitle || "");
+
+              return `
+                <button type="button" class="cmdk-item" role="option" aria-selected="false" data-idx="${id}">
+                  <span class="cmdk-badge">${escapeHtml(item.badge || "")}</span>
+                  <span class="cmdk-main">
+                    <span class="cmdk-title">${titleHtml}</span>
+                    <span class="cmdk-sub">${subtitleHtml}</span>
+                  </span>
+                </button>
+              `;
+            })
+            .join("");
+          return `
+            <div class="cmdk-group">
+              <div class="cmdk-group-title">${escapeHtml(g.title || "")}</div>
+              <div class="cmdk-group-items">${itemsHtml}</div>
+            </div>
+          `;
+        })
+        .join("");
+
+      const buttons = $$(".cmdk-item", list);
+      selected = 0;
+      if (buttons.length > 0) buttons[0].setAttribute("aria-selected", "true");
+
+      buttons.forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const i = Number(btn.dataset.idx || 0);
+          const item = flatItems[i];
+          if (!item) return;
+          if (item.kind === "action" && typeof item.run === "function") {
+            item.run();
+            close();
+            return;
+          }
+          if (item.href) window.location.href = item.href;
+        });
+      });
+    };
+
+    const syncSelection = (next) => {
+      const buttons = $$(".cmdk-item", list);
+      if (buttons.length === 0) return;
+      selected = Math.max(0, Math.min(next, buttons.length - 1));
+      buttons.forEach((b, i) => b.setAttribute("aria-selected", i === selected ? "true" : "false"));
+      buttons[selected]?.scrollIntoView({ block: "nearest" });
+    };
+
+    const open = () => {
+      if (!root.hidden) return;
+      lastActive = document.activeElement;
+      root.hidden = false;
+      document.body.classList.add("cmdk-open");
+      if (input) {
+        input.value = "";
+        render("");
+        window.setTimeout(() => input.focus(), 0);
+      } else {
+        render("");
+      }
+    };
+
+    const close = () => {
+      if (root.hidden) return;
+      root.hidden = true;
+      document.body.classList.remove("cmdk-open");
+      try {
+        lastActive?.focus?.();
+      } catch (_) {}
+    };
+
+    root.addEventListener("click", (e) => {
+      const el = e.target;
+      if (!(el instanceof HTMLElement)) return;
+      if (el.dataset.action === "cmdk-close") close();
+    });
+
+    input?.addEventListener("input", () => render(input.value));
+
+    root.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        close();
+        return;
+      }
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        syncSelection(selected + 1);
+        return;
+      }
+      if (e.key === "ArrowUp") {
+        e.preventDefault();
+        syncSelection(selected - 1);
+        return;
+      }
+      if (e.key === "Enter") {
+        const btn = $$(".cmdk-item", list)[selected];
+        btn?.click();
+        return;
+      }
+      if (e.key === "Tab") {
+        const focusable = getFocusable(root);
+        if (focusable.length === 0) return;
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
+    });
+
+    window.addEventListener("keydown", (e) => {
+      if (e.defaultPrevented) return;
+      const tag = String(document.activeElement?.tagName || "").toLowerCase();
+      const isTyping = tag === "input" || tag === "textarea" || document.activeElement?.isContentEditable;
+      if (isTyping) return;
+
+      const isCtrlK = (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k";
+      if (isCtrlK) {
+        e.preventDefault();
+        if (root.hidden) open();
+        else close();
+      }
+      if (e.key === "/" && root.hidden) {
+        e.preventDefault();
+        open();
+      }
+    });
+
+    ensureHeaderButton(open);
+  };
+
+  // -------------------------
   // Navigation / BackToTop
   // -------------------------
 
@@ -215,7 +624,9 @@
     window.addEventListener("scroll", onScroll, { passive: true });
     onScroll();
 
-    btn.addEventListener("click", () => window.scrollTo({ top: 0, behavior: "smooth" }));
+    btn.addEventListener("click", () =>
+      window.scrollTo({ top: 0, behavior: prefersReducedMotion() ? "auto" : "smooth" })
+    );
   };
 
   // -------------------------
@@ -229,7 +640,15 @@
   const initScrollReveal = () => {
     const targets = $$(".animate-on-scroll, .fade-in-up");
     if (targets.length === 0) return;
-    if (!("IntersectionObserver" in window)) return;
+    const showAll = () => targets.forEach((el) => el.classList.add("visible", "animated"));
+    if (prefersReducedMotion()) {
+      showAll();
+      return;
+    }
+    if (!("IntersectionObserver" in window)) {
+      showAll();
+      return;
+    }
 
     const observer = new IntersectionObserver(
       (entries) => {
@@ -520,23 +939,42 @@
 
     const readState = () => {
       const raw = storage.get(STORAGE_KEYS.allGuidesState);
-      return safeJsonParse(raw, null) || { query: "", tags: [] };
+      const parsed = safeJsonParse(raw, null);
+      if (!parsed || typeof parsed !== "object") return { query: "", tags: [], savedOnly: false };
+      return {
+        query: String(parsed.query || ""),
+        tags: Array.isArray(parsed.tags) ? parsed.tags.map(String) : [],
+        savedOnly: Boolean(parsed.savedOnly),
+      };
     };
     const writeState = (s) => storage.set(STORAGE_KEYS.allGuidesState, JSON.stringify(s));
 
     let state = readState();
+    let saved = new Set(readStringList(STORAGE_KEYS.savedGuides));
 
     const renderTags = () => {
       if (!tagRoot) return;
-      tagRoot.innerHTML = allTags
-        .map((t) => {
-          const active = state.tags.includes(t);
-          return `<button type="button" class="chip chip-btn ${active ? "active" : ""}" data-tag="${escapeHtml(t)}">${escapeHtml(t)}</button>`;
-        })
-        .join("");
+      const savedActive = state.savedOnly ? "active" : "";
+      const savedChip = `<button type="button" class="chip chip-btn chip-saved ${savedActive}" data-action="saved-only">只看收藏</button>`;
+      tagRoot.innerHTML =
+        savedChip +
+        allTags
+          .map((t) => {
+            const active = state.tags.includes(t);
+            return `<button type="button" class="chip chip-btn ${active ? "active" : ""}" data-tag="${escapeHtml(t)}">${escapeHtml(t)}</button>`;
+          })
+          .join("");
 
       $$(".chip-btn", tagRoot).forEach((btn) => {
         btn.addEventListener("click", () => {
+          const action = btn.dataset.action || "";
+          if (action === "saved-only") {
+            state.savedOnly = !state.savedOnly;
+            writeState(state);
+            renderTags();
+            apply();
+            return;
+          }
           const t = btn.dataset.tag || "";
           if (!t) return;
           state.tags = state.tags.includes(t) ? state.tags.filter((x) => x !== t) : [...state.tags, t];
@@ -552,13 +990,16 @@
       const title = guide.title || id;
       const summary = guide.summary || "该攻略正在整理中。";
       const tags = Array.isArray(guide.tags) ? guide.tags : [];
+      const isSaved = saved.has(id);
+      const saveLabel = isSaved ? "取消收藏" : "收藏";
+      const saveStar = isSaved ? "★" : "☆";
       const chips =
         tags.length > 0
           ? `<div class="chips-inline">${tags.slice(0, 4).map((t) => `<span class="chip">${escapeHtml(t)}</span>`).join("")}</div>`
           : "";
 
       return `
-        <div class="game-card guide-card fade-in-up">
+        <div class="game-card guide-card fade-in-up ${isSaved ? "is-saved" : ""}">
           <div class="game-card-image">
             <img src="${icon}" alt="${escapeHtml(title)}">
           </div>
@@ -566,13 +1007,20 @@
             <h3 class="game-card-title">${escapeHtml(title)}</h3>
             <p class="game-card-description">${escapeHtml(summary)}</p>
             ${chips}
-            <a href="guide-detail.html?id=${encodeURIComponent(id)}" class="btn btn-small">阅读全文</a>
+            <div class="card-actions">
+              <a href="guide-detail.html?id=${encodeURIComponent(id)}" class="btn btn-small">阅读全文</a>
+              <button type="button" class="save-pill ${isSaved ? "active" : ""}" data-guide-id="${escapeHtml(id)}" aria-pressed="${isSaved ? "true" : "false"}" aria-label="${escapeHtml(saveLabel)}">
+                <span class="save-star" aria-hidden="true">${saveStar}</span>
+                <span class="save-text">${escapeHtml(saveLabel)}</span>
+              </button>
+            </div>
           </div>
         </div>
       `;
     };
 
     const apply = () => {
+      saved = new Set(readStringList(STORAGE_KEYS.savedGuides));
       const q = (state.query || "").trim().toLowerCase();
       const tagSet = new Set(state.tags);
 
@@ -582,10 +1030,30 @@
         const tags = Array.isArray(guide.tags) ? guide.tags.map(String) : [];
         const okQuery = !q || `${title} ${summary}`.includes(q);
         const okTags = tagSet.size === 0 || tags.some((t) => tagSet.has(t));
-        return okQuery && okTags;
+        const okSaved = !state.savedOnly || saved.has(id);
+        return okQuery && okTags && okSaved;
       });
 
       grid.innerHTML = filtered.map(({ id, guide }) => renderCard(id, guide)).join("");
+      $$(".save-pill", grid).forEach((btn) => {
+        btn.addEventListener("click", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          const gid = btn.dataset.guideId || "";
+          if (!gid) return;
+          const list = new Set(readStringList(STORAGE_KEYS.savedGuides));
+          const has = list.has(gid);
+          if (has) list.delete(gid);
+          else list.add(gid);
+          writeStringList(STORAGE_KEYS.savedGuides, Array.from(list));
+          toast({
+            title: has ? "已取消收藏" : "已收藏",
+            message: "偏好已保存到本地浏览器。",
+            tone: has ? "info" : "success",
+          });
+          apply();
+        });
+      });
       if (empty) empty.hidden = filtered.length !== 0;
       if (empty && filtered.length === 0) grid.innerHTML = "";
     };
@@ -616,7 +1084,7 @@
     }
 
     clearBtn?.addEventListener("click", () => {
-      state = { query: "", tags: [] };
+      state = { query: "", tags: [], savedOnly: false };
       writeState(state);
       if (searchInput) searchInput.value = "";
       renderTags();
@@ -651,6 +1119,7 @@
     if (iconEl) iconEl.src = guide?.icon || "images/icons/guide-icon.svg";
     if (tagEl) tagEl.textContent = (guide?.tags && guide.tags[0]) || "攻略";
     document.title = `${title} - 游戏攻略网`;
+    if (id) pushRecent(STORAGE_KEYS.recentGuides, id, 12);
 
     if (contentEl) {
       const tags = Array.isArray(guide?.tags) ? guide.tags : [];
@@ -704,12 +1173,33 @@
       }
     }
 
+    const syncSaveButton = () => {
+      if (!saveBtn) return;
+      const set = new Set(readStringList(STORAGE_KEYS.savedGuides));
+      const isSaved = id && set.has(id);
+      saveBtn.textContent = isSaved ? "已收藏（点击取消）" : "收藏到本地";
+      saveBtn.setAttribute("aria-pressed", isSaved ? "true" : "false");
+      saveBtn.classList.toggle("btn-secondary", Boolean(isSaved));
+    };
+
+    syncSaveButton();
+
     saveBtn?.addEventListener("click", () => {
-      const raw = storage.get(STORAGE_KEYS.savedGuides);
-      const list = safeJsonParse(raw, []) || [];
-      const next = Array.from(new Set([...list, id || title]));
-      storage.set(STORAGE_KEYS.savedGuides, JSON.stringify(next));
-      toast({ title: "已收藏", message: "已保存到本地浏览器。", tone: "success" });
+      if (!id) {
+        toast({ title: "暂不可收藏", message: "缺少攻略 id（链接不完整）。", tone: "warn" });
+        return;
+      }
+      const set = new Set(readStringList(STORAGE_KEYS.savedGuides));
+      const isSaved = set.has(id);
+      if (isSaved) set.delete(id);
+      else set.add(id);
+      writeStringList(STORAGE_KEYS.savedGuides, Array.from(set));
+      toast({
+        title: isSaved ? "已取消收藏" : "已收藏",
+        message: "已保存到本地浏览器。",
+        tone: isSaved ? "info" : "success",
+      });
+      syncSaveButton();
     });
   };
 
@@ -745,6 +1235,7 @@
     const summary = game?.summary || "你可以先从通用攻略入手，或者在游戏库中筛选相关内容。";
 
     document.title = `${title} - 游戏攻略网`;
+    if (id) pushRecent(STORAGE_KEYS.recentGames, id, 12);
     if (titleEl) titleEl.textContent = title;
     if (subtitleEl) subtitleEl.textContent = subtitle;
     if (iconEl) {
@@ -913,6 +1404,7 @@
     };
 
     run(initThemeToggle);
+    run(initCommandPalette);
     run(initNavigation);
     run(initBackToTop);
     run(initPageLoaded);

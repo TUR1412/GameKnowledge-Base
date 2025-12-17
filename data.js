@@ -6,7 +6,7 @@
 
 (() => {
   const data = {
-    version: "20251217",
+    version: "20251217-2",
     site: {
       name: "游戏攻略网",
       tagline: "你的专业游戏指南",
@@ -104,12 +104,14 @@
       "civ6-science": {
         title: "文明6：科技胜利的终极战略",
         summary: "路线、城市规划、区域联动与关键政策卡，一次讲透科技胜利。",
+        gameId: "civilization6",
         icon: "images/icons/strategy-icon.svg",
         tags: ["科技树", "城市规划", "节奏"],
       },
       "dmc5-combo": {
         title: "鬼泣5：但丁全武器连招指南",
         summary: "从基础连段到取消思路，帮助你更稳定拿到高评分。",
+        gameId: "devil-may-cry5",
         icon: "images/icons/combo-guide.svg",
         tags: ["连招", "练习", "评分系统"],
       },
