@@ -18,6 +18,7 @@
     recentGames: "gkb-recent-games",
     recentGuides: "gkb-recent-guides",
     swSeenPrefix: "gkb-sw-seen:",
+    pwaInstallTipPrefix: "gkb-pwa-install-tip:",
   };
 
   const $ = (selector, root = document) => root.querySelector(selector);
@@ -593,6 +594,17 @@
           subtitle: "手动触发 Service Worker 更新检查",
           run: checkServiceWorkerUpdate,
         },
+        ...(deferredPwaInstallPrompt
+          ? [
+              {
+                kind: "action",
+                badge: "PWA",
+                title: "安装到桌面",
+                subtitle: "将站点作为应用安装（支持离线）",
+                run: runPwaInstallPrompt,
+              },
+            ]
+          : []),
         {
           kind: "action",
           badge: "本地",
@@ -968,11 +980,72 @@
   // Service Worker (PWA)
   // -------------------------
 
+  let deferredPwaInstallPrompt = null;
+
   const detectAssetVersion = () => {
     const el = document.querySelector('script[src^="data.js"]');
     const src = el?.getAttribute("src") || "";
     const m = src.match(/[?&]v=([^&#]+)/);
     return m ? decodeURIComponent(m[1]) : "";
+  };
+
+  const runPwaInstallPrompt = () => {
+    const promptEvent = deferredPwaInstallPrompt;
+    if (!promptEvent || typeof promptEvent.prompt !== "function") {
+      toast({
+        title: "暂不可安装",
+        message: "当前环境未触发安装提示（需要支持 PWA 的浏览器与 HTTPS）。",
+        tone: "warn",
+      });
+      return;
+    }
+
+    try {
+      promptEvent.prompt();
+      const choice = promptEvent.userChoice;
+      deferredPwaInstallPrompt = null; // prompt 只能触发一次
+
+      if (choice && typeof choice.then === "function") {
+        choice.then((result) => {
+          const outcome = String(result?.outcome || "");
+          if (outcome === "accepted") {
+            toast({ title: "开始安装", message: "已触发安装流程。", tone: "success" });
+          } else {
+            toast({ title: "已取消安装", message: "你可以稍后再试。", tone: "info" });
+          }
+        });
+      } else {
+        toast({ title: "开始安装", message: "已触发安装流程。", tone: "success" });
+      }
+    } catch (_) {
+      toast({ title: "安装失败", message: "无法触发安装流程。", tone: "warn" });
+    }
+  };
+
+  const initPwaInstall = () => {
+    window.addEventListener("beforeinstallprompt", (e) => {
+      try {
+        e.preventDefault();
+      } catch (_) {}
+
+      deferredPwaInstallPrompt = e;
+
+      const v = detectAssetVersion();
+      const key = `${STORAGE_KEYS.pwaInstallTipPrefix}${v || "unknown"}`;
+      if (storage.get(key)) return;
+      storage.set(key, "1");
+      toast({
+        title: "可安装到桌面",
+        message: "打开全站搜索（Ctrl+K），选择“安装到桌面”。",
+        tone: "success",
+        timeout: 3600,
+      });
+    });
+
+    window.addEventListener("appinstalled", () => {
+      deferredPwaInstallPrompt = null;
+      toast({ title: "安装完成", message: "已添加到你的设备。", tone: "success" });
+    });
   };
 
   const initServiceWorker = () => {
@@ -1937,6 +2010,7 @@
     run(initNavigation);
     run(initBackToTop);
     run(initCopyLinkButtons);
+    run(initPwaInstall);
 
     // 页面逻辑尽早执行，保证后续动效能覆盖动态内容
     run(initAllGamesPage);
