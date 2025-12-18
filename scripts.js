@@ -355,6 +355,69 @@
   };
 
   // -------------------------
+  // Share Meta (OG / Twitter / Canonical)
+  // -------------------------
+
+  const upsertMeta = ({ name, property }, content) => {
+    const value = String(content ?? "").trim();
+    if (!value) return;
+    const esc = (s) => String(s).replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+    const selector = name ? `meta[name="${esc(name)}"]` : `meta[property="${esc(property)}"]`;
+    let el = document.head ? document.head.querySelector(selector) : null;
+    if (!el) {
+      el = document.createElement("meta");
+      if (name) el.setAttribute("name", String(name));
+      if (property) el.setAttribute("property", String(property));
+      document.head.appendChild(el);
+    }
+    el.setAttribute("content", value);
+  };
+
+  const upsertLink = (rel, href) => {
+    const relValue = String(rel || "").trim();
+    const hrefValue = String(href || "").trim();
+    if (!relValue || !hrefValue) return;
+    const esc = (s) => String(s).replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+    let el = document.head ? document.head.querySelector(`link[rel="${esc(relValue)}"]`) : null;
+    if (!el) {
+      el = document.createElement("link");
+      el.setAttribute("rel", relValue);
+      document.head.appendChild(el);
+    }
+    el.setAttribute("href", hrefValue);
+  };
+
+  const syncShareMeta = ({ title, description, image } = {}) => {
+    try {
+      const url = new URL(window.location.href);
+      url.hash = "";
+      const canonical = url.toString();
+
+      upsertLink("canonical", canonical);
+      upsertMeta({ name: "description" }, description || "");
+
+      const siteName = String(getData()?.site?.name || "游戏攻略网");
+
+      upsertMeta({ property: "og:site_name" }, siteName);
+      upsertMeta({ property: "og:type" }, "website");
+      upsertMeta({ property: "og:url" }, canonical);
+      upsertMeta({ property: "og:title" }, title || siteName);
+      upsertMeta({ property: "og:description" }, description || "");
+
+      const imgAbs = image ? new URL(String(image), canonical).toString() : "";
+      if (imgAbs) {
+        upsertMeta({ property: "og:image" }, imgAbs);
+        upsertMeta({ name: "twitter:card" }, "summary_large_image");
+        upsertMeta({ name: "twitter:image" }, imgAbs);
+      } else {
+        upsertMeta({ name: "twitter:card" }, "summary");
+      }
+      upsertMeta({ name: "twitter:title" }, title || siteName);
+      upsertMeta({ name: "twitter:description" }, description || "");
+    } catch (_) {}
+  };
+
+  // -------------------------
   // Theme
   // -------------------------
 
@@ -1526,6 +1589,11 @@
     if (iconEl) iconEl.src = guide?.icon || "images/icons/guide-icon.svg";
     if (tagEl) tagEl.textContent = (guide?.tags && guide.tags[0]) || "攻略";
     document.title = `${title} - 游戏攻略网`;
+    syncShareMeta({
+      title: document.title,
+      description: summary,
+      image: guide?.icon || "images/icons/guide-icon.svg",
+    });
     if (id) pushRecent(STORAGE_KEYS.recentGuides, id, 12);
 
     if (contentEl) {
@@ -1642,6 +1710,7 @@
     const summary = game?.summary || "你可以先从通用攻略入手，或者在游戏库中筛选相关内容。";
 
     document.title = `${title} - 游戏攻略网`;
+    syncShareMeta({ title: document.title, description: summary, image: icon });
     if (id) pushRecent(STORAGE_KEYS.recentGames, id, 12);
     if (titleEl) titleEl.textContent = title;
     if (subtitleEl) subtitleEl.textContent = subtitle;
@@ -1743,6 +1812,11 @@
     const starter = topic?.starter || "站内编辑";
 
     document.title = `${title} - 游戏攻略网`;
+    syncShareMeta({
+      title: document.title,
+      description: summary,
+      image: "images/icons/favicon.svg",
+    });
     if (titleEl) titleEl.textContent = title;
     if (summaryEl) summaryEl.textContent = summary;
     if (metaEl) metaEl.textContent = `发起人：${starter}`;
