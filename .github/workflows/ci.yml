@@ -24,6 +24,7 @@ jobs:
           node --check sw.js
           node --check tools/check-links.mjs
           node --check tools/bump-version.mjs
+          node --check tools/generate-sitemap.mjs
 
       - name: Link / Asset / Cache Busting Check
         run: node tools/check-links.mjs

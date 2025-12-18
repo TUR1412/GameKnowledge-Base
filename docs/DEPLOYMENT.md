@@ -40,3 +40,16 @@
 ## 5) 自定义域名（可选）
 
 如果你有自定义域名，可以在 `Pages` 中配置，并在仓库根目录添加 `CNAME` 文件（内容为你的域名）。
+
+## 6) SEO（Sitemap / Robots）
+
+仓库根目录已提供：
+
+- `sitemap.xml`
+- `robots.txt`
+
+如果你使用 **自定义域名** 或者仓库名发生变化，建议重新生成（确保 `Sitemap:` 与 `<loc>` 的域名正确）：
+
+```bash
+node tools/generate-sitemap.mjs --base https://your-domain.example/
+```

@@ -151,6 +151,14 @@ node tools/check-links.mjs
 node tools/bump-version.mjs
 ```
 
+### Sitemap / Robots（SEO）
+
+仓库根目录包含 `sitemap.xml` 与 `robots.txt`。当你启用 GitHub Pages 或自定义域名后，建议用脚本重新生成（确保域名正确）：
+
+```bash
+node tools/generate-sitemap.mjs --base https://your-domain.example/
+```
+
 ---
 
 ## 🤝 贡献与规范
