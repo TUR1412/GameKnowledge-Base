@@ -143,6 +143,14 @@ node --check sw.js
 node tools/check-links.mjs
 ```
 
+### 数据模型校验（推荐）
+
+用于确保 `data.js` 中的 `gameId`、图标路径与关键字段完整性：
+
+```bash
+node tools/validate-data.mjs
+```
+
 ### 版本号自动升级（推荐）
 
 当你修改了 `styles.css` / `scripts.js` / `data.js` / `boot.js` / `manifest.webmanifest` 等核心资源时，建议使用脚本一次性更新所有页面的 `?v=`：
