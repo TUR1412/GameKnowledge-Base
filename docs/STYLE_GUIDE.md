@@ -9,11 +9,11 @@
 所有页面必须使用带版本号的静态资源引用：
 
 ```html
-<link rel="stylesheet" href="styles.css?v=20251218-10">
-<link rel="manifest" href="manifest.webmanifest?v=20251218-10">
-<script src="boot.js?v=20251218-10"></script>
-<script src="data.js?v=20251218-10" defer></script>
-<script src="scripts.js?v=20251218-10" defer></script>
+<link rel="stylesheet" href="styles.css?v=20251218-11">
+<link rel="manifest" href="manifest.webmanifest?v=20251218-11">
+<script src="boot.js?v=20251218-11"></script>
+<script src="data.js?v=20251218-11" defer></script>
+<script src="scripts.js?v=20251218-11" defer></script>
 ```
 
 当你修改以下任意文件时，请同步更新所有 HTML 页里的 `?v=`：

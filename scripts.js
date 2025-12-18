@@ -552,6 +552,32 @@
       );
     };
 
+    const fuzzyScore = (text, q) => {
+      const hay = String(text || "").toLowerCase();
+      const needle = String(q || "").toLowerCase().trim();
+      if (!needle) return 0;
+      if (!hay) return null;
+
+      // 直接子串：最高优先
+      const direct = hay.indexOf(needle);
+      if (direct >= 0) {
+        return 1200 + needle.length * 12 - direct;
+      }
+
+      // 顺序匹配：允许跳跃，连续命中加权
+      let h = 0;
+      let score = 0;
+      let streak = 0;
+      for (const ch of needle) {
+        const idx = hay.indexOf(ch, h);
+        if (idx < 0) return null;
+        streak = idx === h ? streak + 1 : 1;
+        score += 3 + streak * 2;
+        h = idx + 1;
+      }
+      return score;
+    };
+
     const getThemeLabel = () => {
       const current = document.documentElement.dataset.theme || "light";
       return current === "dark" ? "切换到浅色主题" : "切换到深色主题";
@@ -693,12 +719,15 @@
       }
 
       const gameItems = Object.entries(data?.games || {})
-        .map(([id, g]) => ({ id, g }))
-        .filter(({ id, g }) => {
-          const title = String(g?.title || id).toLowerCase();
-          const genre = String(g?.genre || "").toLowerCase();
-          return `${title} ${genre}`.includes(q);
+        .map(([id, g]) => {
+          const title = String(g?.title || id);
+          const genre = String(g?.genre || "");
+          const year = g?.year ? `${g.year}` : "";
+          const score = fuzzyScore(`${id} ${title} ${genre} ${year}`, q);
+          return { id, g, score };
         })
+        .filter((x) => x.score != null)
+        .sort((a, b) => (b.score || 0) - (a.score || 0))
         .slice(0, 6)
         .map(({ id, g }) => ({
           kind: "link",
@@ -709,13 +738,15 @@
         }));
 
       const guideItems = Object.entries(data?.guides || {})
-        .map(([id, g]) => ({ id, g }))
-        .filter(({ id, g }) => {
-          const title = String(g?.title || id).toLowerCase();
-          const summary = String(g?.summary || "").toLowerCase();
-          const tags = Array.isArray(g?.tags) ? g.tags.map(String).join(" ").toLowerCase() : "";
-          return `${title} ${summary} ${tags}`.includes(q);
+        .map(([id, g]) => {
+          const title = String(g?.title || id);
+          const summary = String(g?.summary || "");
+          const tags = Array.isArray(g?.tags) ? g.tags.map(String).join(" ") : "";
+          const score = fuzzyScore(`${id} ${title} ${summary} ${tags}`, q);
+          return { id, g, score };
         })
+        .filter((x) => x.score != null)
+        .sort((a, b) => (b.score || 0) - (a.score || 0))
         .slice(0, 8)
         .map(({ id, g }) => ({
           kind: "link",
@@ -726,12 +757,14 @@
         }));
 
       const topicItems = Object.entries(data?.topics || {})
-        .map(([id, g]) => ({ id, g }))
-        .filter(({ id, g }) => {
-          const title = String(g?.title || id).toLowerCase();
-          const summary = String(g?.summary || "").toLowerCase();
-          return `${title} ${summary}`.includes(q);
+        .map(([id, g]) => {
+          const title = String(g?.title || id);
+          const summary = String(g?.summary || "");
+          const score = fuzzyScore(`${id} ${title} ${summary}`, q);
+          return { id, g, score };
         })
+        .filter((x) => x.score != null)
+        .sort((a, b) => (b.score || 0) - (a.score || 0))
         .slice(0, 6)
         .map(({ id, g }) => ({
           kind: "link",
