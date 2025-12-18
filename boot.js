@@ -32,7 +32,16 @@
   const stored = readStoredTheme();
   const theme = stored === "light" || stored === "dark" ? stored : getSystemTheme();
 
+  const syncThemeColor = (next) => {
+    try {
+      const meta = document.querySelector('meta[name="theme-color"]');
+      if (!meta) return;
+      // 尽量贴近页面背景，避免浏览器 UI（地址栏/状态栏）在深色主题下刺眼
+      meta.setAttribute("content", next === "dark" ? "#070a12" : "#f6f7fb");
+    } catch (_) {}
+  };
+
   root.dataset.theme = theme;
   root.classList.remove("no-js");
+  syncThemeColor(theme);
 })();
-

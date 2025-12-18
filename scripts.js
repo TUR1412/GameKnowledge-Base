@@ -305,14 +305,26 @@
   // Theme
   // -------------------------
 
-  const setTheme = (theme) => {
+  const syncThemeColor = (theme) => {
+    try {
+      const meta = document.querySelector('meta[name="theme-color"]');
+      if (!meta) return;
+      meta.setAttribute("content", theme === "dark" ? "#070a12" : "#f6f7fb");
+    } catch (_) {}
+  };
+
+  const applyTheme = (theme, { persist = false } = {}) => {
     const next = theme === "dark" ? "dark" : "light";
     document.documentElement.dataset.theme = next;
-    storage.set(STORAGE_KEYS.theme, next);
+    if (persist) storage.set(STORAGE_KEYS.theme, next);
+    syncThemeColor(next);
     $$('[data-action="theme-toggle"]').forEach((btn) => {
       btn.setAttribute("aria-label", next === "dark" ? "切换到浅色主题" : "切换到深色主题");
+      btn.setAttribute("aria-pressed", next === "dark" ? "true" : "false");
     });
   };
+
+  const setTheme = (theme) => applyTheme(theme, { persist: true });
 
   const initThemeToggle = () => {
     const btns = $$('[data-action="theme-toggle"]');
@@ -322,6 +334,9 @@
     if (saved === "light" || saved === "dark") {
       document.documentElement.dataset.theme = saved;
     }
+
+    // 无论主题来自 localStorage 还是 boot.js 的系统偏好，都要同步按钮可访问性状态与 theme-color
+    applyTheme(document.documentElement.dataset.theme || "light", { persist: false });
 
     btns.forEach((btn) => {
       btn.addEventListener("click", () => {
