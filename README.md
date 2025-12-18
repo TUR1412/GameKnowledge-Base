@@ -143,6 +143,14 @@ node --check sw.js
 node tools/check-links.mjs
 ```
 
+### 版本号自动升级（推荐）
+
+当你修改了 `styles.css` / `scripts.js` / `data.js` / `boot.js` / `manifest.webmanifest` 等核心资源时，建议使用脚本一次性更新所有页面的 `?v=`：
+
+```bash
+node tools/bump-version.mjs
+```
+
 ---
 
 ## 🤝 贡献与规范

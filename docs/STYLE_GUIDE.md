@@ -27,6 +27,20 @@
 
 CI 会强制检查（见 `tools/check-links.mjs`）。
 
+### 一键更新版本号（推荐）
+
+为了避免手工逐页替换导致漏改，本仓库提供了版本号自动升级脚本（会同时更新 `data.js` 与所有根目录 HTML 的资源引用版本号）：
+
+```bash
+node tools/bump-version.mjs
+```
+
+你也可以先预览（不写入）：
+
+```bash
+node tools/bump-version.mjs --dry-run
+```
+
 ---
 
 ## 2) JS 失效也要可见（必须）
