@@ -1422,6 +1422,43 @@
     let state = readState();
     let saved = new Set(readStringList(STORAGE_KEYS.savedGuides));
 
+    // 初始化状态：URL > localStorage > default（便于分享“筛选后的链接”）
+    const readUrlParams = () => {
+      try {
+        const params = new URLSearchParams(window.location.search);
+
+        const readList = (key) => {
+          const raw = params
+            .getAll(key)
+            .flatMap((v) => String(v || "").split(","))
+            .map((v) => v.trim())
+            .filter(Boolean);
+          return Array.from(new Set(raw));
+        };
+
+        const q = String(params.get("q") || params.get("query") || "").trim();
+        const tags = [...readList("tag"), ...readList("tags")];
+        const reset = params.get("reset") === "1";
+        const savedOnlyRaw = String(params.get("saved") || params.get("savedOnly") || "").trim().toLowerCase();
+        const savedOnly = savedOnlyRaw === "1" || savedOnlyRaw === "true";
+
+        return { reset, query: q, tags, savedOnly };
+      } catch (_) {
+        return { reset: false, query: "", tags: [], savedOnly: false };
+      }
+    };
+
+    const url = readUrlParams();
+    if (url.reset) state = { query: "", tags: [], savedOnly: false };
+
+    if (url.query) state = { ...state, query: url.query };
+    if (url.tags.length > 0) {
+      const known = new Set(allTags);
+      const nextTags = url.tags.filter((t) => known.has(t));
+      if (nextTags.length > 0) state = { ...state, tags: nextTags };
+    }
+    if (url.savedOnly) state = { ...state, savedOnly: true };
+
     const renderTags = () => {
       if (!tagRoot) return;
       const savedActive = state.savedOnly ? "active" : "";
