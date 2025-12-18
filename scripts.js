@@ -150,6 +150,158 @@
   })();
 
   // -------------------------
+  // Local Data (Export / Import / Reset)
+  // -------------------------
+
+  const listLocalStorageKeys = () => {
+    try {
+      const keys = [];
+      for (let i = 0; i < localStorage.length; i += 1) {
+        const k = localStorage.key(i);
+        if (k) keys.push(k);
+      }
+      return keys;
+    } catch (_) {
+      return [];
+    }
+  };
+
+  const downloadTextFile = (filename, text, mime = "application/json") => {
+    try {
+      const blob = new Blob([text], { type: mime });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      a.rel = "noopener";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1500);
+      return true;
+    } catch (_) {
+      return false;
+    }
+  };
+
+  const exportLocalData = () => {
+    const keys = listLocalStorageKeys().filter((k) => k.startsWith("gkb-"));
+    const data = {};
+    keys.forEach((k) => {
+      const v = storage.get(k);
+      if (typeof v === "string") data[k] = v;
+    });
+
+    const version = String(getData()?.version || "");
+    const exportedAt = new Date().toISOString();
+    const payload = {
+      schema: "gkb-local-storage",
+      version,
+      exportedAt,
+      data,
+    };
+
+    const date = exportedAt.slice(0, 10);
+    const safeVersion = version || "unknown";
+    const fileName = `gkb-backup-${safeVersion}-${date}.json`;
+
+    const ok = downloadTextFile(fileName, JSON.stringify(payload, null, 2));
+    toast({
+      title: ok ? "已导出" : "导出失败",
+      message: ok ? "已下载备份文件（JSON）。" : "浏览器不支持下载或权限受限。",
+      tone: ok ? "success" : "warn",
+    });
+  };
+
+  const importLocalData = () => {
+    const proceed = window.confirm(
+      "导入会覆盖你当前的本地数据（主题/筛选/收藏/话题回复等）。\n\n确定继续吗？"
+    );
+    if (!proceed) return;
+
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "application/json";
+    input.style.position = "fixed";
+    input.style.left = "-9999px";
+    input.style.top = "0";
+    document.body.appendChild(input);
+
+    const cleanup = () => {
+      try {
+        input.value = "";
+      } catch (_) {}
+      input.remove();
+    };
+
+    input.addEventListener(
+      "change",
+      () => {
+        const file = input.files && input.files[0] ? input.files[0] : null;
+        if (!file) {
+          cleanup();
+          return;
+        }
+
+        file
+          .text()
+          .then((text) => {
+            const parsed = safeJsonParse(text, null);
+            const entries = parsed && typeof parsed === "object" ? parsed.data : null;
+            if (!entries || typeof entries !== "object") {
+              toast({ title: "导入失败", message: "备份文件格式不正确。", tone: "warn" });
+              return;
+            }
+
+            const keys = Object.keys(entries).filter((k) => k.startsWith("gkb-"));
+            let written = 0;
+            keys.forEach((k) => {
+              const v = entries[k];
+              if (typeof v !== "string") return;
+              if (storage.set(k, v)) written += 1;
+            });
+
+            toast({
+              title: "导入完成",
+              message: `已写入 ${written} 项本地数据，页面将自动刷新以生效。`,
+              tone: "success",
+              timeout: 3200,
+            });
+            window.setTimeout(() => window.location.reload(), 800);
+          })
+          .catch(() => {
+            toast({ title: "导入失败", message: "无法读取文件内容。", tone: "warn" });
+          })
+          .finally(cleanup);
+      },
+      { once: true }
+    );
+
+    input.click();
+  };
+
+  const resetLocalData = () => {
+    const proceed = window.confirm(
+      "这会清空该站点在本地浏览器中保存的所有数据（gkb-*），包括收藏、筛选、话题回复等。\n\n确定要清空吗？"
+    );
+    if (!proceed) return;
+
+    const keys = listLocalStorageKeys().filter((k) => k.startsWith("gkb-"));
+    let removed = 0;
+    keys.forEach((k) => {
+      if (storage.remove(k)) removed += 1;
+    });
+
+    toast({
+      title: "已清空",
+      message: `已删除 ${removed} 项本地数据，页面将刷新以恢复默认状态。`,
+      tone: "info",
+      timeout: 3000,
+    });
+    window.setTimeout(() => window.location.reload(), 800);
+  };
+
+  // -------------------------
   // Theme
   // -------------------------
 
@@ -273,6 +425,27 @@
           title: "回到顶部",
           subtitle: "快速回到页面顶部",
           run: () => window.scrollTo({ top: 0, behavior: prefersReducedMotion() ? "auto" : "smooth" }),
+        },
+        {
+          kind: "action",
+          badge: "本地",
+          title: "导出本地数据",
+          subtitle: "下载 JSON 备份（收藏/筛选/回复等）",
+          run: exportLocalData,
+        },
+        {
+          kind: "action",
+          badge: "本地",
+          title: "导入本地数据",
+          subtitle: "从 JSON 恢复（会覆盖当前本地数据）",
+          run: importLocalData,
+        },
+        {
+          kind: "action",
+          badge: "本地",
+          title: "清空本地数据",
+          subtitle: "重置主题/筛选/收藏/回复（需确认）",
+          run: resetLocalData,
         },
         { kind: "link", badge: "导航", title: "打开游戏库", subtitle: "筛选与排序全部游戏", href: "all-games.html" },
         { kind: "link", badge: "导航", title: "打开攻略库", subtitle: "搜索与标签筛选", href: "all-guides.html" },
@@ -586,12 +759,14 @@
       const close = () => {
         nav.classList.remove("active");
         toggle.setAttribute("aria-expanded", "false");
+        toggle.setAttribute("aria-label", "打开导航菜单");
         toggle.textContent = "☰";
       };
 
       const open = () => {
         nav.classList.add("active");
         toggle.setAttribute("aria-expanded", "true");
+        toggle.setAttribute("aria-label", "关闭导航菜单");
         toggle.textContent = "✕";
       };
 
@@ -599,6 +774,9 @@
         if (nav.classList.contains("active")) close();
         else open();
       });
+
+      // 初始化：统一可访问性状态（避免不同页面初始 aria 文案不一致）
+      close();
 
       $$("a", nav).forEach((a) => a.addEventListener("click", close));
       window.addEventListener("keydown", (e) => {
@@ -612,7 +790,33 @@
     const currentPage = window.location.pathname.split("/").pop();
     $$("header nav a").forEach((a) => {
       const href = a.getAttribute("href") || "";
-      if (href === currentPage || (currentPage === "" && href === "index.html")) a.classList.add("active");
+      const isActive = href === currentPage || (currentPage === "" && href === "index.html");
+      a.classList.toggle("active", isActive);
+      if (isActive) a.setAttribute("aria-current", "page");
+      else a.removeAttribute("aria-current");
+    });
+  };
+
+  // -------------------------
+  // Service Worker (PWA)
+  // -------------------------
+
+  const detectAssetVersion = () => {
+    const el = document.querySelector('script[src^="data.js"]');
+    const src = el?.getAttribute("src") || "";
+    const m = src.match(/[?&]v=([^&#]+)/);
+    return m ? decodeURIComponent(m[1]) : "";
+  };
+
+  const initServiceWorker = () => {
+    if (!("serviceWorker" in navigator)) return;
+    if (window.location.protocol !== "https:" && window.location.hostname !== "localhost") return;
+
+    const v = detectAssetVersion();
+    const swUrl = v ? `sw.js?v=${encodeURIComponent(v)}` : "sw.js";
+
+    navigator.serviceWorker.register(swUrl).catch(() => {
+      // 离线能力是增强项：注册失败不影响基本可用性
     });
   };
 
@@ -1405,6 +1609,7 @@
 
     run(initThemeToggle);
     run(initCommandPalette);
+    run(initServiceWorker);
     run(initNavigation);
     run(initBackToTop);
     run(initPageLoaded);
@@ -1419,4 +1624,3 @@
     run(initForumTopicPage);
   });
 })();
-

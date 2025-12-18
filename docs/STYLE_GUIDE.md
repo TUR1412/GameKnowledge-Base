@@ -9,16 +9,21 @@
 所有页面必须使用带版本号的静态资源引用：
 
 ```html
-<link rel="stylesheet" href="styles.css?v=20251217-2">
-<script src="data.js?v=20251217-2" defer></script>
-<script src="scripts.js?v=20251217-2" defer></script>
+<link rel="stylesheet" href="styles.css?v=20251218-1">
+<link rel="manifest" href="manifest.webmanifest?v=20251218-1">
+<script src="boot.js?v=20251218-1"></script>
+<script src="data.js?v=20251218-1" defer></script>
+<script src="scripts.js?v=20251218-1" defer></script>
 ```
 
 当你修改以下任意文件时，请同步更新所有 HTML 页里的 `?v=`：
 
 - `styles.css`
+- `boot.js`
 - `scripts.js`
 - `data.js`
+- `manifest.webmanifest`
+- `sw.js`（离线缓存版本依赖 `?v=`）
 
 CI 会强制检查（见 `tools/check-links.mjs`）。
 
@@ -60,4 +65,3 @@ CI 会强制检查（见 `tools/check-links.mjs`）。
 - `.gitattributes`
 
 确保在 Windows / macOS / Linux 上显示一致，避免 CRLF/LF 混乱导致的 diff 噪音。
-

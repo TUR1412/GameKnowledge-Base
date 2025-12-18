@@ -13,8 +13,10 @@
 - **数据驱动页面**：`game.html?id=...`、`guide-detail.html?id=...`、`forum-topic.html?id=...` 统一承接，避免大量静态页面碎片化。
 - **全站搜索（Command Palette）**：按 `Ctrl + K`（或 `/`）呼出搜索面板，搜游戏/攻略/话题；支持最近访问与快捷操作。
 - **收藏体系（本地持久化）**：攻略详情页可收藏/取消收藏；攻略库支持“只看收藏”筛选。
+- **本地数据备份/迁移**：在搜索面板中可一键导出/导入/清空本地数据（收藏/筛选/话题回复等）。
 - **对象恒常性**：主题、筛选状态、收藏、话题回复都落地到 `localStorage`，刷新不丢。
 - **缓存穿透**：核心静态资源统一使用 `?v=...`（见 `docs/STYLE_GUIDE.md`）。
+- **离线能力（PWA）**：自动注册 Service Worker，支持离线访问已缓存页面与资源，并提供 `offline.html` 兜底。
 - **可访问性与稳健性**：`skip-link`、减少动态效果、JS 禁用时内容默认可见、缺失 `id` 自动兜底“建设中”。
 - **CI 自动审查**：GitHub Actions 自动执行 `node --check` 与断链/资源/版本号检查（见 `tools/check-links.mjs`）。
 
@@ -52,6 +54,7 @@
 
 ```text
 .
+├─ boot.js                   # 启动脚本（早期主题/No-JS 处理）
 ├─ index.html                # 首页
 ├─ all-games.html            # 游戏库（筛选/排序/视图）
 ├─ all-guides.html           # 攻略库（搜索/标签/收藏）
@@ -59,8 +62,11 @@
 ├─ guide-detail.html         # 攻略详情（通过 id 参数渲染）
 ├─ forum-topic.html          # 话题页（通过 id 参数渲染 + 本地回复）
 ├─ 404.html                  # GitHub Pages 友好 404
+├─ offline.html              # 离线兜底页（PWA）
 ├─ data.js                   # 站点数据（games/guides/topics）
 ├─ scripts.js                # 全站交互脚本（主题/搜索/筛选/持久化/动效）
+├─ sw.js                     # Service Worker（离线缓存）
+├─ manifest.webmanifest      # PWA Manifest
 ├─ styles.css                # 全站样式（含深浅主题与现代视觉体系）
 ├─ images/
 │  ├─ icons/                 # 图标资源
@@ -125,8 +131,10 @@ topics: {
 ### 仅做语法检查（不会启动服务）
 
 ```bash
+node --check boot.js
 node --check scripts.js
 node --check data.js
+node --check sw.js
 ```
 
 ### 断链/资源/缓存穿透检查
@@ -148,4 +156,3 @@ node tools/check-links.mjs
 ## 📌 变更记录
 
 见：`CHANGELOG.md`
-

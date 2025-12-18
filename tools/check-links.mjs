@@ -29,18 +29,39 @@ const htmlSet = new Set(htmlFiles);
 
 const errors = [];
 
+const extractVersion = (content, re) => {
+  const m = content.match(re);
+  return m ? String(m[1] || "").trim() : "";
+};
+
 const requireCacheBusting = (fileName, content) => {
   const required = [
-    { label: "styles", regex: /href="styles\.css\?v=[^"]+"/ },
-    { label: "data", regex: /src="data\.js\?v=[^"]+"/ },
-    { label: "scripts", regex: /src="scripts\.js\?v=[^"]+"/ },
+    { label: "styles", regex: /href="styles\.css\?v=([^"]+)"/ },
+    { label: "manifest", regex: /href="manifest\.webmanifest\?v=([^"]+)"/ },
+    { label: "boot", regex: /src="boot\.js\?v=([^"]+)"/ },
+    { label: "data", regex: /src="data\.js\?v=([^"]+)"/ },
+    { label: "scripts", regex: /src="scripts\.js\?v=([^"]+)"/ },
   ];
 
+  const versions = {};
   for (const item of required) {
-    if (!item.regex.test(content)) {
+    const v = extractVersion(content, item.regex);
+    versions[item.label] = v;
+    if (!v) {
       errors.push(`[CACHE] ${fileName}: 缺少 ${item.label} 的 ?v= 版本号（缓存穿透）`);
     }
   }
+
+  const present = Object.values(versions).filter(Boolean);
+  const unique = new Set(present);
+  if (unique.size > 1) {
+    const detail = Object.entries(versions)
+      .map(([k, v]) => `${k}=${v || "MISSING"}`)
+      .join(", ");
+    errors.push(`[CACHE] ${fileName}: 核心资源版本号不一致 -> ${detail}`);
+  }
+
+  return present[0] || "";
 };
 
 const checkLocalHtmlLinks = (fileName, content) => {
@@ -69,11 +90,29 @@ const checkImages = (fileName, content) => {
   }
 };
 
+let globalVersion = "";
 for (const html of htmlFiles) {
   const content = readText(path.join(WORKSPACE_ROOT, html));
-  requireCacheBusting(html, content);
+  const v = requireCacheBusting(html, content);
+  if (!globalVersion && v) globalVersion = v;
+  else if (globalVersion && v && v !== globalVersion) {
+    errors.push(`[CACHE] ${html}: 版本号与全站不一致（期望 ${globalVersion}，实际 ${v}）`);
+  }
   checkLocalHtmlLinks(html, content);
   checkImages(html, content);
+}
+
+// 全站版本一致性：HTML ?v= 必须与 data.js 的 data.version 对齐（避免人肉同步失误）
+if (globalVersion) {
+  const dataContent = readText(path.join(WORKSPACE_ROOT, "data.js"));
+  const dataVersion = extractVersion(dataContent, /version:\s*"([^"]+)"/);
+  if (!dataVersion) {
+    errors.push(`[CACHE] data.js: 未找到 data.version（建议保留 version 字段用于发布与离线缓存）`);
+  } else if (dataVersion !== globalVersion) {
+    errors.push(
+      `[CACHE] 版本不一致：HTML ?v=${globalVersion} 但 data.js version=${dataVersion}`
+    );
+  }
 }
 
 if (errors.length > 0) {

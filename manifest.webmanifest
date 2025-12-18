@@ -1,0 +1,26 @@
+{
+  "name": "游戏攻略网 · GameKnowledge-Base",
+  "short_name": "游戏攻略网",
+  "description": "纯静态、离线可用的游戏知识库/攻略站点。",
+  "lang": "zh-CN",
+  "start_url": "index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#070a12",
+  "theme_color": "#5d3fd3",
+  "icons": [
+    {
+      "src": "images/icons/favicon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any",
+      "purpose": "any"
+    },
+    {
+      "src": "images/icons/favicon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any",
+      "purpose": "maskable"
+    }
+  ]
+}
+

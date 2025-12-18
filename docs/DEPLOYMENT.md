@@ -24,7 +24,19 @@
 
 如果你修改了 `styles.css` / `scripts.js` / `data.js` 或页面结构，务必同步更新所有 HTML 中的版本号（见 `docs/STYLE_GUIDE.md`）。
 
-## 4) 自定义域名（可选）
+## 4) 离线缓存（PWA）
+
+本项目默认启用 PWA 能力：
+
+- `manifest.webmanifest`：站点元信息
+- `sw.js`：Service Worker（离线缓存 + 秒开体验）
+- `offline.html`：离线兜底页
+
+说明：
+
+- Service Worker 只在 **HTTPS**（例如 GitHub Pages）或 `localhost` 下可用；在 `file://` 直接打开时属于增强项失败，不影响基本浏览。
+- 首次访问需要联网完成缓存；之后断网仍可打开已缓存页面与资源。
+
+## 5) 自定义域名（可选）
 
 如果你有自定义域名，可以在 `Pages` 中配置，并在仓库根目录添加 `CNAME` 文件（内容为你的域名）。
-
