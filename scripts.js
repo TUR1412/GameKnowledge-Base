@@ -1884,21 +1884,35 @@
       }
     };
 
+    const runIdle = (fn, { timeout = 1200 } = {}) => {
+      try {
+        if ("requestIdleCallback" in window) {
+          window.requestIdleCallback(() => run(fn), { timeout });
+          return;
+        }
+      } catch (_) {}
+      window.setTimeout(() => run(fn), 0);
+    };
+
+    // 关键交互优先：主题 / 导航 / 搜索
     run(initThemeToggle);
     run(initCommandPalette);
-    run(initServiceWorker);
-    run(initCopyLinkButtons);
     run(initNavigation);
     run(initBackToTop);
-    run(initPageLoaded);
-    run(initScrollReveal);
-    run(initParticles);
-    run(initNewsletterForms);
+    run(initCopyLinkButtons);
 
+    // 页面逻辑尽早执行，保证后续动效能覆盖动态内容
     run(initAllGamesPage);
     run(initAllGuidesPage);
     run(initGuideDetailPage);
     run(initGamePage);
     run(initForumTopicPage);
+
+    // 视觉增强项（可延后）
+    run(initPageLoaded);
+    run(initScrollReveal);
+    run(initNewsletterForms);
+    runIdle(initParticles, { timeout: 1200 });
+    runIdle(initServiceWorker, { timeout: 1500 });
   });
 })();
