@@ -303,6 +303,58 @@
   };
 
   // -------------------------
+  // Share / Copy Link
+  // -------------------------
+
+  const copyTextToClipboard = async (text) => {
+    const value = String(text || "");
+    if (!value) return false;
+
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(value);
+        return true;
+      }
+    } catch (_) {
+      // fallback below
+    }
+
+    try {
+      const el = document.createElement("textarea");
+      el.value = value;
+      el.setAttribute("readonly", "readonly");
+      el.style.position = "fixed";
+      el.style.left = "-9999px";
+      el.style.top = "0";
+      document.body.appendChild(el);
+      el.select();
+      el.setSelectionRange(0, el.value.length);
+      const ok = document.execCommand && document.execCommand("copy");
+      el.remove();
+      return Boolean(ok);
+    } catch (_) {
+      return false;
+    }
+  };
+
+  const copyCurrentPageLink = () => {
+    const url = String(window.location.href || "");
+    copyTextToClipboard(url).then((ok) => {
+      toast({
+        title: ok ? "链接已复制" : "复制失败",
+        message: ok ? "已复制到剪贴板，可直接粘贴分享。" : "当前环境不支持剪贴板访问。",
+        tone: ok ? "success" : "warn",
+      });
+    });
+  };
+
+  const initCopyLinkButtons = () => {
+    $$('[data-action="copy-link"]').forEach((btn) => {
+      btn.addEventListener("click", copyCurrentPageLink);
+    });
+  };
+
+  // -------------------------
   // Theme
   // -------------------------
 
@@ -463,6 +515,13 @@
           title: "回到顶部",
           subtitle: "快速回到页面顶部",
           run: () => window.scrollTo({ top: 0, behavior: prefersReducedMotion() ? "auto" : "smooth" }),
+        },
+        {
+          kind: "action",
+          badge: "操作",
+          title: "复制当前页链接",
+          subtitle: "复制到剪贴板，便于分享或收藏",
+          run: copyCurrentPageLink,
         },
         {
           kind: "action",
@@ -1754,6 +1813,7 @@
     run(initThemeToggle);
     run(initCommandPalette);
     run(initServiceWorker);
+    run(initCopyLinkButtons);
     run(initNavigation);
     run(initBackToTop);
     run(initPageLoaded);
