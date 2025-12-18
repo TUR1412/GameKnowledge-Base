@@ -17,6 +17,7 @@
     forumRepliesPrefix: "gkb-forum-replies:",
     recentGames: "gkb-recent-games",
     recentGuides: "gkb-recent-guides",
+    swSeenPrefix: "gkb-sw-seen:",
   };
 
   const $ = (selector, root = document) => root.querySelector(selector);
@@ -326,6 +327,28 @@
 
   const setTheme = (theme) => applyTheme(theme, { persist: true });
 
+  const checkServiceWorkerUpdate = () => {
+    if (!("serviceWorker" in navigator)) {
+      toast({ title: "当前环境不支持", message: "该浏览器不支持 Service Worker。", tone: "warn" });
+      return;
+    }
+
+    navigator.serviceWorker
+      .getRegistration()
+      .then((reg) => {
+        if (!reg) {
+          toast({ title: "未启用离线缓存", message: "当前页面未注册 Service Worker。", tone: "warn" });
+          return;
+        }
+        return reg.update().then(() => {
+          toast({ title: "已检查更新", message: "如果有新版本会自动下载并在后台更新。", tone: "info" });
+        });
+      })
+      .catch(() => {
+        toast({ title: "检查失败", message: "无法检查离线缓存更新，请稍后重试。", tone: "warn" });
+      });
+  };
+
   const initThemeToggle = () => {
     const btns = $$('[data-action="theme-toggle"]');
     if (btns.length === 0) return;
@@ -440,6 +463,13 @@
           title: "回到顶部",
           subtitle: "快速回到页面顶部",
           run: () => window.scrollTo({ top: 0, behavior: prefersReducedMotion() ? "auto" : "smooth" }),
+        },
+        {
+          kind: "action",
+          badge: "PWA",
+          title: "检查离线缓存更新",
+          subtitle: "手动触发 Service Worker 更新检查",
+          run: checkServiceWorkerUpdate,
         },
         {
           kind: "action",
@@ -830,9 +860,23 @@
     const v = detectAssetVersion();
     const swUrl = v ? `sw.js?v=${encodeURIComponent(v)}` : "sw.js";
 
-    navigator.serviceWorker.register(swUrl).catch(() => {
-      // 离线能力是增强项：注册失败不影响基本可用性
-    });
+    navigator.serviceWorker
+      .register(swUrl)
+      .then(() => {
+        if (!v) return;
+        const key = `${STORAGE_KEYS.swSeenPrefix}${v}`;
+        if (storage.get(key)) return;
+        storage.set(key, "1");
+        toast({
+          title: "离线缓存已启用",
+          message: "已为你缓存核心资源；断网时仍可打开已访问过的页面。",
+          tone: "success",
+          timeout: 3400,
+        });
+      })
+      .catch(() => {
+        // 离线能力是增强项：注册失败不影响基本可用性
+      });
   };
 
   const initBackToTop = () => {
