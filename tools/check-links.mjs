@@ -90,6 +90,28 @@ const checkImages = (fileName, content) => {
   }
 };
 
+// 资源稳定交付：禁止引入外链“可执行/可渲染”资源（脚本/样式/图片等）
+// 说明：普通 <a href="https://..."> 外链跳转不在此范围内
+const checkExternalAssets = (fileName, content) => {
+  const patterns = [
+    { kind: "script", re: /<script\b[^>]*\bsrc="(https?:\/\/[^"]+)"/gi },
+    { kind: "style", re: /<link\b[^>]*\brel="stylesheet"[^>]*\bhref="(https?:\/\/[^"]+)"/gi },
+    { kind: "style", re: /<link\b[^>]*\bhref="(https?:\/\/[^"]+)"[^>]*\brel="stylesheet"/gi },
+    { kind: "image", re: /<img\b[^>]*\bsrc="(https?:\/\/[^"]+)"/gi },
+    { kind: "media", re: /<source\b[^>]*\bsrc="(https?:\/\/[^"]+)"/gi },
+    { kind: "media", re: /<source\b[^>]*\bsrcset="(https?:\/\/[^"\s]+)[^"]*"/gi },
+    { kind: "media", re: /<video\b[^>]*\bsrc="(https?:\/\/[^"]+)"/gi },
+    { kind: "media", re: /<audio\b[^>]*\bsrc="(https?:\/\/[^"]+)"/gi },
+  ];
+
+  for (const p of patterns) {
+    for (const m of content.matchAll(p.re)) {
+      const url = m[1] || "";
+      errors.push(`[EXT] ${fileName}: 禁止外链资源（${p.kind}）-> ${url}`);
+    }
+  }
+};
+
 let globalVersion = "";
 for (const html of htmlFiles) {
   const content = readText(path.join(WORKSPACE_ROOT, html));
@@ -100,6 +122,7 @@ for (const html of htmlFiles) {
   }
   checkLocalHtmlLinks(html, content);
   checkImages(html, content);
+  checkExternalAssets(html, content);
 }
 
 // 全站版本一致性：HTML ?v= 必须与 data.js 的 data.version 对齐（避免人肉同步失误）
