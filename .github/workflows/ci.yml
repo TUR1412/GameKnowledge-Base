@@ -23,12 +23,16 @@ jobs:
           node --check data.js
           node --check sw.js
           node --check tools/check-links.mjs
+          node --check tools/check-html.mjs
           node --check tools/bump-version.mjs
           node --check tools/generate-sitemap.mjs
           node --check tools/validate-data.mjs
 
       - name: Link / Asset / Cache Busting Check
         run: node tools/check-links.mjs
+
+      - name: HTML Structure Check
+        run: node tools/check-html.mjs
 
       - name: Data Model Validation
         run: node tools/validate-data.mjs
