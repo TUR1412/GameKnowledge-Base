@@ -606,6 +606,13 @@
             ]
           : []),
         {
+          kind: "link",
+          badge: "PWA",
+          title: "打开离线说明页",
+          subtitle: "查看 offline.html（离线兜底）",
+          href: "offline.html",
+        },
+        {
           kind: "action",
           badge: "本地",
           title: "导出本地数据",
@@ -1072,6 +1079,42 @@
       .catch(() => {
         // 离线能力是增强项：注册失败不影响基本可用性
       });
+  };
+
+  const initConnectivityToasts = () => {
+    let online = true;
+    try {
+      online = Boolean(navigator.onLine);
+    } catch (_) {
+      online = true;
+    }
+
+    const notify = (next) => {
+      const isOnline = Boolean(next);
+      toast({
+        title: isOnline ? "网络已恢复" : "当前离线",
+        message: isOnline
+          ? "已恢复联网，可正常更新与获取最新内容。"
+          : "你仍可浏览已缓存页面；需要联网才能首次缓存新页面。",
+        tone: isOnline ? "info" : "warn",
+        timeout: 3200,
+      });
+    };
+
+    // 首次加载即离线：提示一次
+    if (!online) notify(false);
+
+    window.addEventListener("online", () => {
+      if (online) return;
+      online = true;
+      notify(true);
+    });
+
+    window.addEventListener("offline", () => {
+      if (!online) return;
+      online = false;
+      notify(false);
+    });
   };
 
   const initBackToTop = () => {
@@ -2011,6 +2054,7 @@
     run(initBackToTop);
     run(initCopyLinkButtons);
     run(initPwaInstall);
+    run(initConnectivityToasts);
 
     // 页面逻辑尽早执行，保证后续动效能覆盖动态内容
     run(initAllGamesPage);
