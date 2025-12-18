@@ -1070,8 +1070,93 @@
 
     // 初始化状态：URL > localStorage > default
     let s = readState();
-    const urlGenre = getParam("genre");
-    if (urlGenre) s.genres = [urlGenre];
+
+    const readUrlParams = () => {
+      try {
+        const params = new URLSearchParams(window.location.search);
+
+        const readList = (key) => {
+          const raw = params
+            .getAll(key)
+            .flatMap((v) => String(v || "").split(","))
+            .map((v) => v.trim())
+            .filter(Boolean);
+          return Array.from(new Set(raw));
+        };
+
+        const q = String(params.get("q") || params.get("query") || "").trim();
+        const reset = params.get("reset") === "1";
+        const sortKey = String(params.get("sort") || "").trim();
+        const view = String(params.get("view") || "").trim();
+
+        return {
+          reset,
+          query: q,
+          genres: readList("genre"),
+          platforms: readList("platform"),
+          years: readList("year"),
+          ratings: readList("rating"),
+          sort: sortKey,
+          view,
+        };
+      } catch (_) {
+        return {
+          reset: false,
+          query: "",
+          genres: [],
+          platforms: [],
+          years: [],
+          ratings: [],
+          sort: "",
+          view: "",
+        };
+      }
+    };
+
+    const url = readUrlParams();
+    if (url.reset) {
+      s = {
+        query: "",
+        genres: [],
+        platforms: [],
+        years: [],
+        ratings: [],
+        sort: sortSelect?.value || "popular",
+        view: "grid",
+      };
+    }
+
+    const filterKnown = (name, values) => {
+      const known = new Set($$(`input[name="${name}"]`, root).map((el) => el.value));
+      return (Array.isArray(values) ? values : []).filter((v) => known.has(v));
+    };
+
+    if (url.query) s.query = url.query;
+
+    if (url.genres.length > 0) {
+      const nextGenres = filterKnown("genre", url.genres);
+      if (nextGenres.length > 0) s.genres = nextGenres;
+    }
+    if (url.platforms.length > 0) {
+      const nextPlatforms = filterKnown("platform", url.platforms);
+      if (nextPlatforms.length > 0) s.platforms = nextPlatforms;
+    }
+    if (url.years.length > 0) {
+      const nextYears = filterKnown("year", url.years);
+      if (nextYears.length > 0) s.years = nextYears;
+    }
+    if (url.ratings.length > 0) {
+      const nextRatings = filterKnown("rating", url.ratings);
+      if (nextRatings.length > 0) s.ratings = nextRatings;
+    }
+
+    if (sortSelect) {
+      const sortOptions = new Set($$("option", sortSelect).map((opt) => opt.value).filter(Boolean));
+      if (url.sort && sortOptions.has(url.sort)) s.sort = url.sort;
+    }
+
+    if (url.view === "grid" || url.view === "list") s.view = url.view;
+
     applyStateToUi(s);
     sync();
 
