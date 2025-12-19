@@ -26,3 +26,15 @@
 - 主题启动逻辑抽离为 `boot.js`（减少重复内联脚本）
 - 导航可访问性：移动端菜单 `aria-label` 与当前页 `aria-current="page"` 自动维护
 - CI：新增 `boot.js` / `sw.js` / `tools/check-links.mjs` 语法检查与版本一致性校验
+
+## 2025-12-19
+
+### Added
+- 首页 Hero 重构：数据统计 + 视觉预览面板
+- Bento 功能矩阵区块（核心能力集中呈现）
+- Aurora/Noise 背景叠层与玻璃质感增强
+- 全站输入控件的辅助标签（`sr-only`）与可访问性补强
+
+### Changed
+- 移动端导航按钮图标统一（☰ / ✕）
+- 首页与 RPG 文案更新至 2025 语境

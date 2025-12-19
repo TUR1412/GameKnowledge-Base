@@ -4,15 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>游戏攻略网 - 专业的游戏指南平台</title>
-    <link rel="stylesheet" href="styles.css?v=20251218-11">
+    <link rel="stylesheet" href="styles.css?v=20251219-1">
     <link rel="icon" href="images/icons/favicon.svg" type="image/svg+xml">
-    <link rel="manifest" href="manifest.webmanifest?v=20251218-11">
+    <link rel="manifest" href="manifest.webmanifest?v=20251219-1">
     <meta name="description" content="游戏攻略网是中国专业的游戏攻略平台，提供最新最全面的游戏攻略、新闻资讯、游戏评测与技巧分享。">
     <meta name="theme-color" content="#5d3fd3">
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'; manifest-src 'self'; worker-src 'self'; frame-ancestors 'none'">
     <meta name="referrer" content="strict-origin-when-cross-origin">
     <meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=()">
-    <script src="boot.js?v=20251218-11"></script>
+    <script src="boot.js?v=20251219-1"></script>
 </head>
 <body data-page="home">
     <a class="skip-link" href="#main">跳到正文</a>
@@ -54,17 +54,90 @@
     </header>
 
     <div class="hero-banner">
-        <div class="banner-content">
-            <h1 class="fade-in-up">探索游戏世界的无限可能</h1>
-            <p class="fade-in-up delay-1">从新手到专家，我们提供专业、全面的游戏攻略和资讯</p>
-            <div class="banner-buttons fade-in-up delay-2">
-                <a href="all-games.html" class="btn">浏览所有游戏</a>
-                <a href="community.html" class="btn btn-secondary">加入社区</a>
+        <div class="container hero-grid">
+            <div class="hero-content">
+                <div class="banner-kicker fade-in-up">
+                    <span class="badge">纯静态 · 秒开体验</span>
+                    <span class="badge subtle">PWA 离线可用</span>
+                </div>
+                <h1 class="fade-in-up">探索游戏世界的无限可能</h1>
+                <p class="fade-in-up delay-1">从新手到专家，我们提供专业、全面的游戏攻略与策略体系，帮助你快速上手并提升实力。</p>
+                <div class="hero-actions fade-in-up delay-2">
+                    <a href="all-games.html" class="btn">浏览所有游戏</a>
+                    <a href="community.html" class="btn btn-secondary">加入社区</a>
+                </div>
+                <div class="hero-stats fade-in-up delay-3" aria-label="站点规模">
+                    <div class="stat-card">
+                        <div class="stat-value" data-stat="games">7</div>
+                        <div class="stat-label">游戏收录</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" data-stat="guides">15</div>
+                        <div class="stat-label">精选攻略</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" data-stat="topics">12</div>
+                        <div class="stat-label">讨论话题</div>
+                    </div>
+                </div>
+            </div>
+            <div class="hero-visual fade-in-up delay-2">
+                <div class="hero-panel">
+                    <img src="images/placeholders/screenshot-ui.svg" alt="站点界面预览">
+                    <div class="panel-caption">光晕背景 + 玻璃质感，兼顾阅读与沉浸氛围。</div>
+                </div>
             </div>
         </div>
     </div>
 
     <main id="main" tabindex="-1">
+        <section class="section-container">
+            <div class="section-title">
+                <span class="section-kicker">核心能力</span>
+                <h2>更快、更稳、更沉浸</h2>
+                <p>离线可用、数据驱动、可收藏、可搜索，所有关键体验都在本地即时完成。</p>
+            </div>
+
+            <div class="bento-grid">
+                <article class="bento-card feature fade-in-up">
+                    <h3 class="bento-title">全站搜索（Command Palette）</h3>
+                    <p class="bento-text">按 <strong>Ctrl + K</strong> 或 <strong>/</strong> 呼出命令面板，一键直达游戏、攻略与话题。</p>
+                    <div class="chips">
+                        <span class="chip">快捷键</span>
+                        <span class="chip">最近访问</span>
+                        <span class="chip">快速操作</span>
+                    </div>
+                </article>
+                <article class="bento-card feature fade-in-up delay-1">
+                    <h3 class="bento-title">本地收藏与进度记忆</h3>
+                    <p class="bento-text">收藏、筛选、回复都会持久化保存，刷新页面依旧保持你的阅读节奏。</p>
+                    <div class="chips">
+                        <span class="chip">localStorage</span>
+                        <span class="chip">筛选记忆</span>
+                        <span class="chip">快速回到现场</span>
+                    </div>
+                </article>
+                <article class="bento-card feature fade-in-up delay-2">
+                    <h3 class="bento-title">PWA 离线体验</h3>
+                    <p class="bento-text">首次访问后即可离线阅读，支持安装到桌面，成为你的随身攻略库。</p>
+                    <div class="chips">
+                        <span class="chip">Service Worker</span>
+                        <span class="chip">离线兜底</span>
+                        <span class="chip">秒开</span>
+                    </div>
+                </article>
+                <article class="bento-card feature fade-in-up delay-3">
+                    <h3 class="bento-title">数据驱动架构</h3>
+                    <p class="bento-text">核心内容集中在 <code>data.js</code>，页面以 id 动态渲染，扩展简单且不易断链。</p>
+                    <div class="chips">
+                        <span class="chip">数据模型</span>
+                        <span class="chip">统一渲染</span>
+                        <span class="chip">结构可控</span>
+                    </div>
+                </article>
+            </div>
+        </section>
+
         <section class="section-container">
             <div class="section-title">
                 <h2>精选游戏攻略</h2>
@@ -287,7 +360,7 @@
                     </div>
                     
                     <div class="topic fade-in-up delay-2">
-                        <h3>2023年最值得期待的游戏</h3>
+                        <h3>2025年最值得期待的游戏</h3>
                         <p class="topic-meta">由 <span class="user">游戏预言家</span> 发起 · 189条回复</p>
                         <a href="forum-topic.html?id=upcoming-games" class="btn btn-small">加入讨论</a>
                     </div>
@@ -301,7 +374,8 @@
                     <h2>订阅最新游戏攻略</h2>
                     <p>第一时间获取最新游戏资讯、专业攻略和独家内容</p>
                     <form class="newsletter-form">
-                        <input type="email" placeholder="输入您的邮箱" required>
+                        <label class="sr-only" for="newsletter-email">邮箱</label>
+                        <input id="newsletter-email" type="email" placeholder="输入您的邮箱" required aria-label="输入邮箱">
                         <button type="submit" class="btn">订阅</button>
                     </form>
                 </div>
@@ -350,7 +424,7 @@
 
     <button id="back-to-top" class="back-to-top" aria-label="返回顶部">↑</button>
     
-    <script src="data.js?v=20251218-11" defer></script>
-    <script src="scripts.js?v=20251218-11" defer></script>
+    <script src="data.js?v=20251219-1" defer></script>
+    <script src="scripts.js?v=20251219-1" defer></script>
 </body>
 </html>

@@ -1256,6 +1256,29 @@
   };
 
   // -------------------------
+  // Hero Stats (data-driven)
+  // -------------------------
+
+  const initHeroStats = () => {
+    const data = getData();
+    if (!data) return;
+
+    const count = (obj) => (obj && typeof obj === "object" ? Object.keys(obj).length : 0);
+
+    const stats = {
+      games: count(data.games),
+      guides: count(data.guides),
+      topics: count(data.topics),
+    };
+
+    Object.entries(stats).forEach(([key, value]) => {
+      $$(`[data-stat="${key}"]`).forEach((el) => {
+        el.textContent = String(value);
+      });
+    });
+  };
+
+  // -------------------------
   // All Games Page
   // -------------------------
 
@@ -2099,6 +2122,7 @@
     // 视觉增强项（可延后）
     run(initPageLoaded);
     run(initScrollReveal);
+    run(initHeroStats);
     run(initNewsletterForms);
     runIdle(initParticles, { timeout: 1200 });
     runIdle(initServiceWorker, { timeout: 1500 });
