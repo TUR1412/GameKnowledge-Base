@@ -5,14 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>游戏详情 - 游戏攻略网</title>
     <meta name="description" content="查看游戏介绍、平台信息与相关攻略，并加入玩家讨论。">
-    <link rel="stylesheet" href="styles.css?v=20251219-1">
+    <link rel="stylesheet" href="styles.css?v=20251221-1">
     <link rel="icon" href="images/icons/favicon.svg" type="image/svg+xml">
-    <link rel="manifest" href="manifest.webmanifest?v=20251219-1">
-    <meta name="theme-color" content="#5d3fd3">
+    <link rel="manifest" href="manifest.webmanifest?v=20251221-1">
+    <meta name="theme-color" content="#f6f1ea">
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'; manifest-src 'self'; worker-src 'self'; frame-ancestors 'none'">
     <meta name="referrer" content="strict-origin-when-cross-origin">
     <meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=()">
-    <script src="boot.js?v=20251219-1"></script>
+    <script src="boot.js?v=20251221-1"></script>
 </head>
 <body data-page="game">
     <a class="skip-link" href="#main">跳到正文</a>
@@ -27,7 +27,7 @@
                 <p>你的专业游戏指南</p>
             </div>
 
-            <button class="mobile-nav-toggle" aria-label="切换导航菜单" aria-controls="site-nav" aria-expanded="false">☰</button>
+            <button class="mobile-nav-toggle" aria-label="切换导航菜单" aria-controls="site-nav" aria-expanded="false"><span class="nav-toggle-icon" aria-hidden="true"></span></button>
 
             <nav id="site-nav" aria-label="主导航">
                 <ul>
@@ -69,6 +69,7 @@
                 <a id="game-primary-action" href="all-games.html" class="btn">返回游戏库</a>
                 <a id="game-community-action" href="community.html" class="btn btn-secondary">去社区看看</a>
                 <button type="button" class="btn btn-outline" data-action="copy-link" aria-label="复制当前页面链接">复制链接</button>
+                <button type="button" class="btn btn-outline" id="game-save" aria-pressed="false">收藏游戏</button>
             </div>
         </div>
     </div>
@@ -80,11 +81,30 @@
                     <article class="bento-card">
                         <h2 class="bento-title">概览</h2>
                         <div class="meta-list" id="game-meta">
-                            <div class="meta-item"><span class="meta-label">类型</span><span class="meta-value">—</span></div>
-                            <div class="meta-item"><span class="meta-label">评分</span><span class="meta-value">—</span></div>
-                            <div class="meta-item"><span class="meta-label">平台</span><span class="meta-value">—</span></div>
+                            <div class="meta-item"><span class="meta-label">类型</span><span class="meta-value" id="game-meta-genre">—</span></div>
+                            <div class="meta-item"><span class="meta-label">评分</span><span class="meta-value" id="game-meta-rating">—</span></div>
+                            <div class="meta-item"><span class="meta-label">平台</span><span class="meta-value" id="game-meta-platforms">—</span></div>
+                            <div class="meta-item"><span class="meta-label">难度</span><span class="meta-value" id="game-meta-difficulty">—</span></div>
+                            <div class="meta-item"><span class="meta-label">通关时长</span><span class="meta-value" id="game-meta-playtime">—</span></div>
+                            <div class="meta-item"><span class="meta-label">模式</span><span class="meta-value" id="game-meta-modes">—</span></div>
+                            <div class="meta-item"><span class="meta-label">最近更新</span><span class="meta-value" id="game-meta-updated">—</span></div>
+                        </div>
+                        <div class="rating-meter" aria-hidden="true">
+                            <span id="game-rating-meter"></span>
                         </div>
                         <p class="bento-text" id="game-summary">我们会在这里持续补全更完整的攻略体系，包括入门、流派与关键机制。</p>
+                    </article>
+
+                    <article class="bento-card">
+                        <h2 class="bento-title">玩法重点</h2>
+                        <p class="bento-text">关键机制、节奏与策略侧重点。</p>
+                        <div class="chips" id="game-highlights"></div>
+                    </article>
+
+                    <article class="bento-card">
+                        <h2 class="bento-title">标签与关键词</h2>
+                        <p class="bento-text">帮助你快速定位玩法风格与定位。</p>
+                        <div class="chips" id="game-tags"></div>
                     </article>
 
                     <article class="bento-card">
@@ -106,6 +126,18 @@
                         <div class="empty-actions">
                             <a class="btn btn-small" id="game-topic-link" href="forum-topic.html?id=upcoming-games">进入话题</a>
                         </div>
+                    </article>
+
+                    <article class="bento-card note-panel">
+                        <h2 class="bento-title">我的进度笔记</h2>
+                        <p class="bento-text">记录你当前的进度、Build、卡点与下次要做的事情。</p>
+                        <label class="sr-only" for="game-notes">游戏进度笔记</label>
+                        <textarea id="game-notes" placeholder="例如：完成第一章主线 / 需要刷某件装备 / Boss 卡点"></textarea>
+                        <div class="note-actions">
+                            <button type="button" class="btn btn-small" id="game-notes-save">保存笔记</button>
+                            <button type="button" class="btn btn-small btn-outline" id="game-notes-clear">清空</button>
+                        </div>
+                        <div class="note-status" id="game-notes-status">自动保存已开启</div>
                     </article>
                 </div>
             </div>
@@ -153,7 +185,9 @@
 
     <button id="back-to-top" class="back-to-top" aria-label="返回顶部">↑</button>
 
-    <script src="data.js?v=20251219-1" defer></script>
-    <script src="scripts.js?v=20251219-1" defer></script>
+    <script src="data.js?v=20251221-1" defer></script>
+    <script src="scripts.js?v=20251221-1" defer></script>
 </body>
 </html>
+
+

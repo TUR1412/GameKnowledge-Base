@@ -14,11 +14,22 @@
     allGamesState: "gkb-all-games-state",
     allGuidesState: "gkb-all-guides-state",
     savedGuides: "gkb-saved-guides",
+    savedGames: "gkb-saved-games",
+    savedTopics: "gkb-saved-topics",
+    communityTopicsState: "gkb-community-topics-state",
     forumRepliesPrefix: "gkb-forum-replies:",
     recentGames: "gkb-recent-games",
     recentGuides: "gkb-recent-guides",
     swSeenPrefix: "gkb-sw-seen:",
     pwaInstallTipPrefix: "gkb-pwa-install-tip:",
+    gameNotesPrefix: "gkb-game-notes:",
+    guideNotesPrefix: "gkb-guide-notes:",
+    guideChecklistPrefix: "gkb-guide-checklist:",
+    guideReadingMode: "gkb-guide-reading-mode",
+    guideFontSize: "gkb-guide-font-size",
+    guideLineHeight: "gkb-guide-line-height",
+    guideLastSectionPrefix: "gkb-guide-last-section:",
+    forumSortPrefix: "gkb-forum-sort:",
   };
 
   const $ = (selector, root = document) => root.querySelector(selector);
@@ -72,6 +83,47 @@
     return next;
   };
 
+  const parseDateKey = (value) => {
+    const raw = String(value || "").trim();
+    if (!raw) return 0;
+    const digits = raw.replace(/[^\d]/g, "");
+    if (digits.length >= 8) return Number(digits.slice(0, 8)) || 0;
+    return 0;
+  };
+
+  const formatDate = (value) => {
+    const raw = String(value || "").trim();
+    if (!raw) return "—";
+    const digits = raw.replace(/[^\d]/g, "");
+    if (digits.length >= 8) {
+      const year = digits.slice(0, 4);
+      const month = digits.slice(4, 6);
+      const day = digits.slice(6, 8);
+      return `${year}-${month}-${day}`;
+    }
+    const dt = new Date(raw);
+    if (Number.isNaN(dt.getTime())) return raw;
+    return dt.toLocaleDateString("zh-CN");
+  };
+
+  const difficultyRank = (value) => {
+    const label = String(value || "").trim();
+    const map = {
+      入门: 1,
+      新手: 1,
+      简单: 1,
+      中等: 2,
+      中等偏高: 3,
+      进阶: 3,
+      策略向: 3,
+      高: 4,
+      高阶: 4,
+      极高: 5,
+      硬核: 5,
+    };
+    return map[label] || 3;
+  };
+
   const pushRecent = (key, id, limit = 10) => {
     if (!id) return [];
     const current = readStringList(key).filter((x) => x !== id);
@@ -110,6 +162,83 @@
     } catch (_) {
       return false;
     }
+  };
+
+  const setGuideReadingMode = (on) => {
+    document.body.classList.toggle("reading-mode", on);
+    storage.set(STORAGE_KEYS.guideReadingMode, on ? "1" : "0");
+    const toggle = $("#guide-reading-toggle");
+    if (toggle) {
+      toggle.setAttribute("aria-pressed", on ? "true" : "false");
+      toggle.textContent = on ? "退出专注" : "专注阅读";
+    }
+  };
+
+  const setGuideFont = (value) => {
+    const next = value || "md";
+    document.body.dataset.guideFont = next;
+    storage.set(STORAGE_KEYS.guideFontSize, next);
+    $$("[data-guide-font]").forEach((btn) => {
+      btn.setAttribute("aria-pressed", btn.dataset.guideFont === next ? "true" : "false");
+    });
+  };
+
+  const setGuideLine = (value) => {
+    const next = value || "normal";
+    document.body.dataset.guideLine = next;
+    storage.set(STORAGE_KEYS.guideLineHeight, next);
+    $$("[data-guide-line]").forEach((btn) => {
+      btn.setAttribute("aria-pressed", btn.dataset.guideLine === next ? "true" : "false");
+    });
+  };
+
+  const formatTime = () => {
+    try {
+      return new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" });
+    } catch (_) {
+      return new Date().toISOString().slice(11, 16);
+    }
+  };
+
+  const initNotesPanel = ({ id, textarea, saveBtn, clearBtn, statusEl, storageKey }) => {
+    if (!id || !textarea || !storageKey) return;
+    const key = `${storageKey}${id}`;
+
+    const setStatus = (text) => {
+      if (statusEl) statusEl.textContent = text;
+    };
+
+    const load = () => {
+      const saved = storage.get(key) || "";
+      textarea.value = saved;
+      setStatus(saved ? `已载入 · ${formatTime()}` : "自动保存已开启");
+    };
+
+    const persist = (value, { toastOnSave = false } = {}) => {
+      storage.set(key, String(value || ""));
+      if (toastOnSave) {
+        toast({ title: "已保存", message: "笔记已写入本地浏览器。", tone: "success" });
+      }
+      setStatus(`已保存 · ${formatTime()}`);
+    };
+
+    load();
+
+    let t = 0;
+    textarea.addEventListener("input", () => {
+      window.clearTimeout(t);
+      t = window.setTimeout(() => persist(textarea.value), 240);
+    });
+
+    saveBtn?.addEventListener("click", () => persist(textarea.value, { toastOnSave: true }));
+
+    clearBtn?.addEventListener("click", () => {
+      const ok = window.confirm("确认清空这条笔记吗？");
+      if (!ok) return;
+      textarea.value = "";
+      storage.remove(key);
+      setStatus("已清空");
+    });
   };
 
   // -------------------------
@@ -349,6 +478,25 @@
     });
   };
 
+  const copySectionLink = (hash) => {
+    let url = String(window.location.href || "");
+    try {
+      const next = new URL(window.location.href);
+      next.hash = hash || "";
+      url = next.toString();
+    } catch (_) {
+      const base = url.split("#")[0];
+      url = hash ? `${base}${hash}` : base;
+    }
+    copyTextToClipboard(url).then((ok) => {
+      toast({
+        title: ok ? "小节链接已复制" : "复制失败",
+        message: ok ? "已复制到剪贴板，可直接分享该段落。" : "当前环境不支持剪贴板访问。",
+        tone: ok ? "success" : "warn",
+      });
+    });
+  };
+
   const initCopyLinkButtons = () => {
     $$('[data-action="copy-link"]').forEach((btn) => {
       btn.addEventListener("click", copyCurrentPageLink);
@@ -426,7 +574,7 @@
     try {
       const meta = document.querySelector('meta[name="theme-color"]');
       if (!meta) return;
-      meta.setAttribute("content", theme === "dark" ? "#070a12" : "#f6f7fb");
+      meta.setAttribute("content", theme === "dark" ? "#0b0f14" : "#f6f1ea");
     } catch (_) {}
   };
 
@@ -583,9 +731,69 @@
       return current === "dark" ? "切换到浅色主题" : "切换到深色主题";
     };
 
+    const getReadingLabel = () => {
+      const active = document.body.classList.contains("reading-mode");
+      return active ? "退出专注阅读" : "进入专注阅读";
+    };
+
     const buildGroups = (query) => {
       const data = getData();
       const q = String(query || "").trim().toLowerCase();
+
+      const guideId = getPage() === "guide" ? getParam("id") : "";
+      const lastKey = guideId ? `${STORAGE_KEYS.guideLastSectionPrefix}${guideId}` : "";
+      const lastSaved = lastKey ? safeJsonParse(storage.get(lastKey), null) : null;
+      const lastHash = typeof lastSaved === "string" ? lastSaved : lastSaved?.hash;
+      const lastTitle = lastSaved?.title;
+
+      const guideActions = getPage() === "guide"
+        ? [
+            ...(lastHash
+              ? [
+                  {
+                    kind: "action",
+                    badge: "阅读",
+                    title: lastTitle ? `继续阅读：${lastTitle}` : "继续阅读上一小节",
+                    subtitle: "回到你上次阅读的位置",
+                    run: () => {
+                      const target = document.querySelector(lastHash);
+                      if (target) {
+                        target.scrollIntoView({ behavior: prefersReducedMotion() ? "auto" : "smooth" });
+                      }
+                    },
+                  },
+                ]
+              : []),
+            {
+              kind: "action",
+              badge: "阅读",
+              title: getReadingLabel(),
+              subtitle: "隐藏侧栏并提升阅读舒适度",
+              run: () => setGuideReadingMode(!document.body.classList.contains("reading-mode")),
+            },
+            {
+              kind: "action",
+              badge: "阅读",
+              title: "字号：小",
+              subtitle: "更紧凑的字号",
+              run: () => setGuideFont("sm"),
+            },
+            {
+              kind: "action",
+              badge: "阅读",
+              title: "字号：大",
+              subtitle: "更易阅读的字号",
+              run: () => setGuideFont("lg"),
+            },
+            {
+              kind: "action",
+              badge: "阅读",
+              title: "行距：舒适",
+              subtitle: "提高段落呼吸感",
+              run: () => setGuideLine("relaxed"),
+            },
+          ]
+        : [];
 
       const actions = [
         {
@@ -661,6 +869,7 @@
         },
         { kind: "link", badge: "导航", title: "打开游戏库", subtitle: "筛选与排序全部游戏", href: "all-games.html" },
         { kind: "link", badge: "导航", title: "打开攻略库", subtitle: "搜索与标签筛选", href: "all-guides.html" },
+        ...guideActions,
       ];
 
       const withHighlight = (groups) => {
@@ -678,6 +887,8 @@
         const recentGames = readStringList(STORAGE_KEYS.recentGames);
         const recentGuides = readStringList(STORAGE_KEYS.recentGuides);
         const savedGuides = readStringList(STORAGE_KEYS.savedGuides);
+        const savedGames = readStringList(STORAGE_KEYS.savedGames);
+        const savedTopics = readStringList(STORAGE_KEYS.savedTopics);
 
         const recent = [];
         recentGames.slice(0, 6).forEach((id) => {
@@ -712,9 +923,33 @@
           };
         });
 
+        const savedGameItems = savedGames.slice(0, 6).map((id) => {
+          const g = data?.games?.[id] || null;
+          return {
+            kind: "link",
+            badge: "收藏·游戏",
+            title: g?.title || `游戏：${id}`,
+            subtitle: g?.genre || "打开游戏详情",
+            href: `game.html?id=${encodeURIComponent(id)}`,
+          };
+        });
+
+        const savedTopicItems = savedTopics.slice(0, 6).map((id) => {
+          const t = data?.topics?.[id] || null;
+          return {
+            kind: "link",
+            badge: "收藏·话题",
+            title: t?.title || `话题：${id}`,
+            subtitle: t?.summary || "进入话题讨论",
+            href: `forum-topic.html?id=${encodeURIComponent(id)}`,
+          };
+        });
+
         const groups = [{ title: "快捷操作", items: actions }];
         if (recent.length > 0) groups.push({ title: "最近访问", items: recent });
-        if (saved.length > 0) groups.push({ title: "本地收藏", items: saved });
+        if (savedGameItems.length > 0) groups.push({ title: "本地收藏·游戏", items: savedGameItems });
+        if (savedTopicItems.length > 0) groups.push({ title: "本地收藏·话题", items: savedTopicItems });
+        if (saved.length > 0) groups.push({ title: "本地收藏·攻略", items: saved });
         return withHighlight(groups);
       }
 
@@ -975,19 +1210,15 @@
     }
 
     if (toggle && nav) {
-      const close = () => {
-        nav.classList.remove("active");
-        toggle.setAttribute("aria-expanded", "false");
-        toggle.setAttribute("aria-label", "打开导航菜单");
-        toggle.textContent = "☰";
+      const setToggleState = (isOpen) => {
+        nav.classList.toggle("active", isOpen);
+        toggle.classList.toggle("is-open", isOpen);
+        toggle.setAttribute("aria-expanded", isOpen ? "true" : "false");
+        toggle.setAttribute("aria-label", isOpen ? "关闭导航菜单" : "打开导航菜单");
       };
 
-      const open = () => {
-        nav.classList.add("active");
-        toggle.setAttribute("aria-expanded", "true");
-        toggle.setAttribute("aria-label", "关闭导航菜单");
-        toggle.textContent = "✕";
-      };
+      const close = () => setToggleState(false);
+      const open = () => setToggleState(true);
 
       toggle.addEventListener("click", () => {
         if (nav.classList.contains("active")) close();
@@ -1279,6 +1510,80 @@
   };
 
   // -------------------------
+  // Home: Recently Viewed
+  // -------------------------
+
+  const initHomeRecent = () => {
+    if (getPage() !== "home") return;
+    const data = getData();
+    if (!data) return;
+
+    const gamesRoot = $("#recent-games");
+    const guidesRoot = $("#recent-guides");
+    if (!gamesRoot && !guidesRoot) return;
+
+    const renderEmpty = (root, message) => {
+      if (!root) return;
+      root.innerHTML = `
+        <div class="empty-state small">
+          <p class="empty-title">暂无记录</p>
+          <p class="empty-desc">${escapeHtml(message)}</p>
+        </div>
+      `;
+    };
+
+    const renderCards = (root, items, type) => {
+      if (!root) return;
+      if (!items || items.length === 0) {
+        renderEmpty(root, "浏览内容后会自动出现在这里。");
+        return;
+      }
+      root.innerHTML = items
+        .map(({ id, title, desc, icon, href }) => {
+          return `
+            <a class="mini-card" href="${href}">
+              <img src="${icon}" alt="${escapeHtml(title)}">
+              <div class="mini-card-body">
+                <div class="mini-card-title">${escapeHtml(title)}</div>
+                <div class="mini-card-desc">${escapeHtml(desc || (type === "game" ? "打开游戏详情" : "打开攻略详情"))}</div>
+              </div>
+            </a>
+          `;
+        })
+        .join("");
+    };
+
+    const recentGames = readStringList(STORAGE_KEYS.recentGames)
+      .slice(0, 4)
+      .map((id) => {
+        const g = data.games?.[id] || null;
+        return {
+          id,
+          title: g?.title || `游戏：${id}`,
+          desc: g?.genre || "打开游戏详情",
+          icon: g?.icon || "images/icons/game-cover.svg",
+          href: `game.html?id=${encodeURIComponent(id)}`,
+        };
+      });
+
+    const recentGuides = readStringList(STORAGE_KEYS.recentGuides)
+      .slice(0, 4)
+      .map((id) => {
+        const g = data.guides?.[id] || null;
+        return {
+          id,
+          title: g?.title || `攻略：${id}`,
+          desc: g?.summary || "打开攻略详情",
+          icon: g?.icon || "images/icons/guide-icon.svg",
+          href: `guide-detail.html?id=${encodeURIComponent(id)}`,
+        };
+      });
+
+    renderCards(gamesRoot, recentGames, "game");
+    renderCards(guidesRoot, recentGuides, "guide");
+  };
+
+  // -------------------------
   // All Games Page
   // -------------------------
 
@@ -1314,6 +1619,7 @@
     const cards = $$(".game-card", listEl);
     const emptyEl = $("#games-empty", root);
     const countEl = $("#result-count", root);
+    const activeFiltersEl = $("#active-filters", root);
 
     const searchInput = $(".search-box input", root);
     const searchBtn = $(".search-btn", root);
@@ -1332,6 +1638,7 @@
           platforms: [],
           years: [],
           ratings: [],
+          savedOnly: false,
           sort: sortSelect?.value || "popular",
           view: "grid",
         }
@@ -1349,6 +1656,7 @@
       setChecked("platform", s.platforms);
       setChecked("year", s.years);
       setChecked("rating", s.ratings);
+      setChecked("saved", s.savedOnly ? ["saved"] : []);
 
       if (sortSelect) sortSelect.value = s.sort || "popular";
 
@@ -1364,6 +1672,7 @@
       platforms: getCheckedValues("platform", root),
       years: getCheckedValues("year", root),
       ratings: getCheckedValues("rating", root),
+      savedOnly: getCheckedValues("saved", root).includes("saved"),
       sort: sortSelect?.value || "popular",
       view: listEl.classList.contains("list-view-active") ? "list" : "grid",
     });
@@ -1375,6 +1684,9 @@
         const rb = Number(b.dataset.rating || 0);
         const ya = Number(a.dataset.year || 0);
         const yb = Number(b.dataset.year || 0);
+        const ua = Number(a.dataset.updated || a.dataset.year || 0);
+        const ub = Number(b.dataset.updated || b.dataset.year || 0);
+        if (sortKey === "latest") return ub - ua;
         if (sortKey === "rating-desc") return rb - ra;
         if (sortKey === "rating-asc") return ra - rb;
         if (sortKey === "year-desc") return yb - ya;
@@ -1386,6 +1698,7 @@
 
     const filter = (s) => {
       const q = (s.query || "").toLowerCase();
+      const savedSet = new Set(readStringList(STORAGE_KEYS.savedGames));
       let shown = 0;
 
       cards.forEach((card) => {
@@ -1394,6 +1707,7 @@
         const blob = `${title} ${desc}`;
 
         const genre = card.dataset.genre || "";
+        const gid = card.dataset.id || "";
         const platformTokens = (card.dataset.platform || "").split(/\s+/).filter(Boolean);
         const year = card.dataset.year || "";
         const rating = card.dataset.rating || "0";
@@ -1405,7 +1719,9 @@
         const okYear = matchesYear(year, s.years);
         const okRating = matchesRating(rating, s.ratings);
 
-        const visible = okQuery && okGenre && okPlatform && okYear && okRating;
+        const okSaved = !s.savedOnly || (gid && savedSet.has(gid));
+        card.dataset.saved = gid && savedSet.has(gid) ? "true" : "false";
+        const visible = okQuery && okGenre && okPlatform && okYear && okRating && okSaved;
         card.hidden = !visible;
         if (visible) shown += 1;
       });
@@ -1414,11 +1730,106 @@
       if (countEl) countEl.textContent = `共 ${shown} 个结果`;
     };
 
+    const renderActiveFilters = (s) => {
+      if (!activeFiltersEl) return;
+      const chips = [];
+
+      const pushChip = (label, onClear) => {
+        chips.push({ label, onClear });
+      };
+
+      if (s.query) {
+        pushChip(`关键词：${s.query}`, () => {
+          if (searchInput) searchInput.value = "";
+        });
+      }
+
+      s.genres.forEach((g) =>
+        pushChip(`类型：${g}`, () => {
+          $$('input[name="genre"]', root).forEach((el) => {
+            if (el.value === g) el.checked = false;
+          });
+        })
+      );
+
+      s.platforms.forEach((p) =>
+        pushChip(`平台：${p}`, () => {
+          $$('input[name="platform"]', root).forEach((el) => {
+            if (el.value === p) el.checked = false;
+          });
+        })
+      );
+
+      s.years.forEach((y) =>
+        pushChip(`年份：${y}`, () => {
+          $$('input[name="year"]', root).forEach((el) => {
+            if (el.value === y) el.checked = false;
+          });
+        })
+      );
+
+      s.ratings.forEach((r) =>
+        pushChip(`评分：${r}`, () => {
+          $$('input[name="rating"]', root).forEach((el) => {
+            if (el.value === r) el.checked = false;
+          });
+        })
+      );
+
+      if (s.savedOnly) {
+        pushChip("只看收藏", () => {
+          $$('input[name="saved"]', root).forEach((el) => (el.checked = false));
+        });
+      }
+
+      if (chips.length === 0) {
+        activeFiltersEl.innerHTML = "";
+        return;
+      }
+
+      activeFiltersEl.innerHTML = chips
+        .map((chip, idx) => {
+          return `<button type="button" class="filter-chip" data-chip="${idx}">${escapeHtml(
+            chip.label
+          )}<span class="chip-x">×</span></button>`;
+        })
+        .join("");
+
+      $$("[data-chip]", activeFiltersEl).forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const idx = Number(btn.dataset.chip || 0);
+          const chip = chips[idx];
+          if (!chip) return;
+          chip.onClear?.();
+          sync();
+        });
+      });
+    };
+
+    const syncUrl = (s) => {
+      try {
+        const params = new URLSearchParams();
+        if (s.query) params.set("q", s.query);
+        if (s.genres.length > 0) params.set("genre", s.genres.join(","));
+        if (s.platforms.length > 0) params.set("platform", s.platforms.join(","));
+        if (s.years.length > 0) params.set("year", s.years.join(","));
+        if (s.ratings.length > 0) params.set("rating", s.ratings.join(","));
+        if (s.savedOnly) params.set("saved", "1");
+        if (s.sort && s.sort !== "popular") params.set("sort", s.sort);
+        if (s.view === "list") params.set("view", "list");
+        const next = params.toString();
+        const url = next ? `${window.location.pathname}?${next}` : window.location.pathname;
+        window.history.replaceState(null, "", url);
+      } catch (_) {}
+    };
+
     const sync = () => {
       const s = stateFromUi();
       sort(s.sort);
       filter(s);
+      renderActiveFilters(s);
       writeState(s);
+      syncUrl(s);
     };
 
     // 初始化状态：URL > localStorage > default
@@ -1440,6 +1851,7 @@
         const q = String(params.get("q") || params.get("query") || "").trim();
         const reset = params.get("reset") === "1";
         const sortKey = String(params.get("sort") || "").trim();
+        const savedOnly = params.get("saved") === "1";
         const view = String(params.get("view") || "").trim();
 
         return {
@@ -1449,6 +1861,7 @@
           platforms: readList("platform"),
           years: readList("year"),
           ratings: readList("rating"),
+          savedOnly,
           sort: sortKey,
           view,
         };
@@ -1460,6 +1873,7 @@
           platforms: [],
           years: [],
           ratings: [],
+          savedOnly: false,
           sort: "",
           view: "",
         };
@@ -1474,6 +1888,7 @@
         platforms: [],
         years: [],
         ratings: [],
+        savedOnly: false,
         sort: sortSelect?.value || "popular",
         view: "grid",
       };
@@ -1502,6 +1917,8 @@
       const nextRatings = filterKnown("rating", url.ratings);
       if (nextRatings.length > 0) s.ratings = nextRatings;
     }
+
+    if (url.savedOnly) s.savedOnly = true;
 
     if (sortSelect) {
       const sortOptions = new Set($$("option", sortSelect).map((opt) => opt.value).filter(Boolean));
@@ -1571,6 +1988,8 @@
     const tagRoot = $("#guide-tags");
     const searchInput = $("#guide-search");
     const searchBtn = $("#guide-search-btn");
+    const sortSelect = $("#guide-sort");
+    const countEl = $("#guides-count");
 
     const items = Object.entries(guides).map(([id, guide]) => ({ id, guide }));
     const allTags = Array.from(
@@ -1582,11 +2001,12 @@
     const readState = () => {
       const raw = storage.get(STORAGE_KEYS.allGuidesState);
       const parsed = safeJsonParse(raw, null);
-      if (!parsed || typeof parsed !== "object") return { query: "", tags: [], savedOnly: false };
+      if (!parsed || typeof parsed !== "object") return { query: "", tags: [], savedOnly: false, sort: "default" };
       return {
         query: String(parsed.query || ""),
         tags: Array.isArray(parsed.tags) ? parsed.tags.map(String) : [],
         savedOnly: Boolean(parsed.savedOnly),
+        sort: String(parsed.sort || "default"),
       };
     };
     const writeState = (s) => storage.set(STORAGE_KEYS.allGuidesState, JSON.stringify(s));
@@ -1613,15 +2033,16 @@
         const reset = params.get("reset") === "1";
         const savedOnlyRaw = String(params.get("saved") || params.get("savedOnly") || "").trim().toLowerCase();
         const savedOnly = savedOnlyRaw === "1" || savedOnlyRaw === "true";
+        const sort = String(params.get("sort") || "").trim();
 
-        return { reset, query: q, tags, savedOnly };
+        return { reset, query: q, tags, savedOnly, sort };
       } catch (_) {
-        return { reset: false, query: "", tags: [], savedOnly: false };
+        return { reset: false, query: "", tags: [], savedOnly: false, sort: "" };
       }
     };
 
     const url = readUrlParams();
-    if (url.reset) state = { query: "", tags: [], savedOnly: false };
+    if (url.reset) state = { query: "", tags: [], savedOnly: false, sort: "default" };
 
     if (url.query) state = { ...state, query: url.query };
     if (url.tags.length > 0) {
@@ -1630,6 +2051,7 @@
       if (nextTags.length > 0) state = { ...state, tags: nextTags };
     }
     if (url.savedOnly) state = { ...state, savedOnly: true };
+    if (url.sort) state = { ...state, sort: url.sort };
 
     const renderTags = () => {
       if (!tagRoot) return;
@@ -1664,11 +2086,30 @@
       });
     };
 
+    const syncUrl = () => {
+      try {
+        const params = new URLSearchParams();
+        if (state.query) params.set("q", state.query);
+        if (state.tags.length > 0) params.set("tag", state.tags.join(","));
+        if (state.savedOnly) params.set("saved", "1");
+        if (state.sort && state.sort !== "default") params.set("sort", state.sort);
+        const next = params.toString();
+        const url = next ? `${window.location.pathname}?${next}` : window.location.pathname;
+        window.history.replaceState(null, "", url);
+      } catch (_) {}
+    };
+
     const renderCard = (id, guide) => {
       const icon = guide.icon || "images/icons/guide-icon.svg";
       const title = guide.title || id;
       const summary = guide.summary || "该攻略正在整理中。";
       const tags = Array.isArray(guide.tags) ? guide.tags : [];
+      const updated = guide.updated ? `更新 ${formatDate(guide.updated)}` : "更新待补";
+      const difficulty = guide.difficulty ? `难度 ${guide.difficulty}` : "难度 待补";
+      const readingTime =
+        typeof guide.readingTime === "number" && Number.isFinite(guide.readingTime)
+          ? `${guide.readingTime} 分钟`
+          : `${Math.max(3, Math.round(String(summary).length / 18))} 分钟`;
       const isSaved = saved.has(id);
       const saveLabel = isSaved ? "取消收藏" : "收藏";
       const saveStar = isSaved ? "★" : "☆";
@@ -1676,6 +2117,13 @@
         tags.length > 0
           ? `<div class="chips-inline">${tags.slice(0, 4).map((t) => `<span class="chip">${escapeHtml(t)}</span>`).join("")}</div>`
           : "";
+      const meta = `
+        <div class="meta-pills">
+          <span class="meta-pill small">${escapeHtml(updated)}</span>
+          <span class="meta-pill small">${escapeHtml(difficulty)}</span>
+          <span class="meta-pill small">阅读 ${escapeHtml(readingTime)}</span>
+        </div>
+      `;
 
       return `
         <div class="game-card guide-card fade-in-up ${isSaved ? "is-saved" : ""}">
@@ -1686,6 +2134,7 @@
             <h3 class="game-card-title">${escapeHtml(title)}</h3>
             <p class="game-card-description">${escapeHtml(summary)}</p>
             ${chips}
+            ${meta}
             <div class="card-actions">
               <a href="guide-detail.html?id=${encodeURIComponent(id)}" class="btn btn-small">阅读全文</a>
               <button type="button" class="save-pill ${isSaved ? "active" : ""}" data-guide-id="${escapeHtml(id)}" aria-pressed="${isSaved ? "true" : "false"}" aria-label="${escapeHtml(saveLabel)}">
@@ -1697,6 +2146,16 @@
         </div>
       `;
     };
+
+    const getGuideReading = (guide) => {
+      if (typeof guide?.readingTime === "number" && Number.isFinite(guide.readingTime)) {
+        return guide.readingTime;
+      }
+      const summary = String(guide?.summary || "");
+      return Math.max(3, Math.round(summary.length / 18));
+    };
+
+    const getGuideUpdated = (guide) => parseDateKey(guide?.updated);
 
     const apply = () => {
       saved = new Set(readStringList(STORAGE_KEYS.savedGuides));
@@ -1713,7 +2172,21 @@
         return okQuery && okTags && okSaved;
       });
 
-      grid.innerHTML = filtered.map(({ id, guide }) => renderCard(id, guide)).join("");
+      const sorted = [...filtered];
+      const sortKey = state.sort || "default";
+      if (sortKey !== "default") {
+        sorted.sort((a, b) => {
+          if (sortKey === "updated-desc") return getGuideUpdated(b.guide) - getGuideUpdated(a.guide);
+          if (sortKey === "reading-asc") return getGuideReading(a.guide) - getGuideReading(b.guide);
+          if (sortKey === "reading-desc") return getGuideReading(b.guide) - getGuideReading(a.guide);
+          if (sortKey === "difficulty-asc") return difficultyRank(a.guide?.difficulty) - difficultyRank(b.guide?.difficulty);
+          if (sortKey === "difficulty-desc") return difficultyRank(b.guide?.difficulty) - difficultyRank(a.guide?.difficulty);
+          return 0;
+        });
+      }
+
+      grid.innerHTML = sorted.map(({ id, guide }) => renderCard(id, guide)).join("");
+      if (countEl) countEl.textContent = `共 ${sorted.length} 条攻略`;
       $$(".save-pill", grid).forEach((btn) => {
         btn.addEventListener("click", (e) => {
           e.preventDefault();
@@ -1733,11 +2206,17 @@
           apply();
         });
       });
-      if (empty) empty.hidden = filtered.length !== 0;
-      if (empty && filtered.length === 0) grid.innerHTML = "";
+      if (empty) empty.hidden = sorted.length !== 0;
+      if (empty && sorted.length === 0) grid.innerHTML = "";
+      syncUrl();
     };
 
     if (searchInput) searchInput.value = state.query || "";
+    if (sortSelect) {
+      const options = new Set($$("option", sortSelect).map((opt) => opt.value).filter(Boolean));
+      if (!options.has(state.sort)) state.sort = "default";
+      sortSelect.value = state.sort || "default";
+    }
     renderTags();
     apply();
 
@@ -1748,6 +2227,11 @@
     };
 
     searchBtn?.addEventListener("click", syncFromInput);
+    sortSelect?.addEventListener("change", () => {
+      state = { ...state, sort: String(sortSelect.value || "default") };
+      writeState(state);
+      apply();
+    });
     if (searchInput) {
       searchInput.addEventListener("keydown", (e) => {
         if (e.key === "Enter") {
@@ -1763,9 +2247,10 @@
     }
 
     clearBtn?.addEventListener("click", () => {
-      state = { query: "", tags: [], savedOnly: false };
+      state = { query: "", tags: [], savedOnly: false, sort: "default" };
       writeState(state);
       if (searchInput) searchInput.value = "";
+      if (sortSelect) sortSelect.value = "default";
       renderTags();
       apply();
     });
@@ -1788,6 +2273,22 @@
     const contentEl = $("#guide-content");
     const tocEl = $("#guide-toc");
     const saveBtn = $("#guide-save");
+    const updatedEl = $("#guide-updated");
+    const difficultyEl = $("#guide-difficulty");
+    const readingTimeEl = $("#guide-reading-time");
+    const readingToggle = $("#guide-reading-toggle");
+    const progressPill = $("#guide-progress-pill");
+    const continueBtn = $("#guide-continue");
+    const outlineEl = $("#guide-outline");
+    const fontButtons = $$("[data-guide-font]");
+    const lineButtons = $$("[data-guide-line]");
+    const checklistEl = $("#guide-checklist");
+    const progressBar = $("#guide-progress-bar");
+    const progressMeta = $("#guide-progress-meta");
+    const notesTextarea = $("#guide-notes");
+    const notesSaveBtn = $("#guide-notes-save");
+    const notesClearBtn = $("#guide-notes-clear");
+    const notesStatus = $("#guide-notes-status");
 
     const title = guide?.title || (id ? `攻略：${id}` : "攻略详情");
     const summary =
@@ -1797,6 +2298,8 @@
     if (summaryEl) summaryEl.textContent = summary;
     if (iconEl) iconEl.src = guide?.icon || "images/icons/guide-icon.svg";
     if (tagEl) tagEl.textContent = (guide?.tags && guide.tags[0]) || "攻略";
+    if (updatedEl) updatedEl.textContent = `更新：${formatDate(guide?.updated)}`;
+    if (difficultyEl) difficultyEl.textContent = `难度：${guide?.difficulty || "通用"}`;
     document.title = `${title} - 游戏攻略网`;
     syncShareMeta({
       title: document.title,
@@ -1840,6 +2343,17 @@
       `;
     }
 
+    if (readingTimeEl && contentEl) {
+      const fallbackText = contentEl.textContent || "";
+      const words = fallbackText.replace(/\s+/g, "").length;
+      const fallbackMinutes = Math.max(1, Math.round(words / 320));
+      const minutes =
+        typeof guide?.readingTime === "number" && Number.isFinite(guide.readingTime)
+          ? Math.max(1, Math.round(guide.readingTime))
+          : fallbackMinutes;
+      readingTimeEl.textContent = `阅读时长：约 ${minutes} 分钟`;
+    }
+
     if (tocEl && contentEl) {
       const headings = $$("h2, h3", contentEl);
       if (headings.length === 0) {
@@ -1856,6 +2370,257 @@
           .join("");
       }
     }
+
+    if (outlineEl && contentEl) {
+      const headings = $$("h2", contentEl);
+      if (headings.length === 0) {
+        outlineEl.innerHTML = "";
+      } else {
+        outlineEl.innerHTML = headings
+          .slice(0, 6)
+          .map((h, idx) => {
+            if (!h.id) h.id = `sec-${idx + 1}`;
+            return `<a class="outline-chip" href="#${h.id}">${escapeHtml(h.textContent || "")}</a>`;
+          })
+          .join("");
+      }
+    }
+
+    const lastSectionKey = id ? `${STORAGE_KEYS.guideLastSectionPrefix}${id}` : "";
+
+    if (continueBtn && lastSectionKey) {
+      const savedRaw = storage.get(lastSectionKey);
+      const saved = safeJsonParse(savedRaw, null);
+      const savedHash = typeof saved === "string" ? saved : saved?.hash;
+      const savedTitle = saved?.title;
+      if (savedHash) {
+        continueBtn.hidden = false;
+        if (savedTitle) continueBtn.textContent = `继续阅读：${savedTitle}`;
+        continueBtn.addEventListener("click", () => {
+          const target = document.querySelector(savedHash);
+          if (target) {
+            target.scrollIntoView({ behavior: prefersReducedMotion() ? "auto" : "smooth" });
+          }
+        });
+      }
+    }
+
+    const initHeadingAnchors = () => {
+      if (!contentEl) return;
+      const headings = $$("h2, h3", contentEl);
+      headings.forEach((h, idx) => {
+        if (!h.id) h.id = `sec-${idx + 1}`;
+        if ($(".heading-anchor", h)) return;
+        h.classList.add("heading-with-anchor");
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "heading-anchor";
+        btn.setAttribute("aria-label", "复制小节链接");
+        btn.innerHTML = `
+          <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+            <path fill="currentColor" d="M10 13a5 5 0 0 0 7.07 0l2.83-2.83a5 5 0 0 0-7.07-7.07L11 4.86a5 5 0 0 0-1.46 3.54h2a3 3 0 0 1 .88-2.12l1.83-1.83a3 3 0 1 1 4.24 4.24l-2.83 2.83a3 3 0 0 1-4.24 0l-1-1-1.41 1.41 1 1zM14 11a5 5 0 0 0-7.07 0L4.1 13.83a5 5 0 1 0 7.07 7.07l1.83-1.83A5 5 0 0 0 14.82 15h-2a3 3 0 0 1-.88 2.12l-1.83 1.83a3 3 0 1 1-4.24-4.24l2.83-2.83a3 3 0 0 1 4.24 0l1 1 1.41-1.41-1-1z"/>
+          </svg>
+        `;
+        btn.addEventListener("click", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          copySectionLink(`#${h.id}`);
+        });
+        h.appendChild(btn);
+      });
+    };
+
+    initHeadingAnchors();
+
+    const initTocHighlight = () => {
+      if (!tocEl) return;
+      const links = $$(".toc-link", tocEl);
+      if (links.length === 0) return;
+      const outlineLinks = outlineEl ? $$("a", outlineEl) : [];
+      const sections = links
+        .map((link) => {
+          const id = link.getAttribute("href") || "";
+          const target = id ? document.querySelector(id) : null;
+          return target ? { link, target } : null;
+        })
+        .filter(Boolean);
+      if (sections.length === 0) return;
+
+      const update = () => {
+        const offset = window.scrollY + 160;
+        let active = sections[0];
+        sections.forEach((item) => {
+          if (item.target.offsetTop <= offset) active = item;
+        });
+        sections.forEach((item) => item.link.classList.toggle("active", item === active));
+        if (outlineLinks.length > 0 && active?.target?.id) {
+          const hash = `#${active.target.id}`;
+          outlineLinks.forEach((link) => {
+            link.classList.toggle("active", link.getAttribute("href") === hash);
+          });
+        }
+        if (lastSectionKey && active?.target?.id) {
+          const payload = { hash: `#${active.target.id}`, title: active.target.textContent || "" };
+          storage.set(lastSectionKey, JSON.stringify(payload));
+          if (continueBtn) {
+            continueBtn.hidden = false;
+            if (payload.title) continueBtn.textContent = `继续阅读：${payload.title}`;
+          }
+        }
+      };
+
+      update();
+      window.addEventListener("scroll", update, { passive: true });
+      window.addEventListener("resize", update);
+    };
+
+    initTocHighlight();
+
+    const initChecklist = () => {
+      if (!checklistEl || !progressBar || !progressMeta) return;
+      if (!id) {
+        checklistEl.innerHTML = '<p class="toc-empty">缺少攻略 id，无法记录进度。</p>';
+        progressMeta.textContent = "已完成 0/0";
+        progressBar.style.width = "0%";
+        if (progressPill) progressPill.textContent = "完成度：—";
+        return;
+      }
+
+      const fallbackSteps = [
+        "明确目标与限制条件",
+        "标记关键机制与触发条件",
+        "准备核心资源与配置",
+        "执行路线并记录卡点",
+        "复盘并写下下一步行动",
+      ];
+      const steps = Array.isArray(guide?.steps) && guide.steps.length > 0 ? guide.steps : fallbackSteps;
+      const key = `${STORAGE_KEYS.guideChecklistPrefix}${id}`;
+      let saved = new Set(readStringList(key));
+
+      const stepIdFor = (idx) => `step-${idx + 1}`;
+
+      const syncProgress = () => {
+        const total = steps.length;
+        const done = steps.reduce((acc, _step, idx) => acc + (saved.has(stepIdFor(idx)) ? 1 : 0), 0);
+        const pct = total ? Math.round((done / total) * 100) : 0;
+        progressMeta.textContent = `已完成 ${done}/${total} · ${pct}%`;
+        progressBar.style.width = `${pct}%`;
+        if (progressPill) progressPill.textContent = `完成度：${pct}%`;
+      };
+
+      const render = () => {
+        checklistEl.innerHTML = steps
+          .map((step, idx) => {
+            const stepId = stepIdFor(idx);
+            const checked = saved.has(stepId);
+            return `
+              <label class="checklist-item">
+                <input type="checkbox" data-step="${stepId}" ${checked ? "checked" : ""}>
+                <span>${escapeHtml(step)}</span>
+              </label>
+            `;
+          })
+          .join("");
+        $$('input[type="checkbox"]', checklistEl).forEach((input) => {
+          input.addEventListener("change", () => {
+            const stepId = input.dataset.step || "";
+            if (!stepId) return;
+            if (input.checked) saved.add(stepId);
+            else saved.delete(stepId);
+            writeStringList(key, Array.from(saved));
+            syncProgress();
+          });
+        });
+        syncProgress();
+      };
+
+      render();
+    };
+
+    initChecklist();
+
+    const initReadingProgress = () => {
+      const bar = $("#guide-reading-progress");
+      if (!bar || !contentEl) return;
+
+      const update = () => {
+        const rect = contentEl.getBoundingClientRect();
+        const start = window.scrollY + rect.top - 140;
+        const height = contentEl.scrollHeight;
+        const viewport = window.innerHeight || 0;
+        const max = Math.max(1, height - viewport * 0.35);
+        const progress = (window.scrollY - start) / max;
+        const pct = Math.min(1, Math.max(0, progress));
+        bar.style.width = `${Math.round(pct * 100)}%`;
+      };
+
+      update();
+      window.addEventListener("scroll", update, { passive: true });
+      window.addEventListener("resize", update);
+    };
+
+    initReadingProgress();
+
+    const initReadingMode = () => {
+      if (!readingToggle) return;
+      const saved = storage.get(STORAGE_KEYS.guideReadingMode);
+      setGuideReadingMode(saved === "1");
+
+      readingToggle.addEventListener("click", () => {
+        const next = !document.body.classList.contains("reading-mode");
+        setGuideReadingMode(next);
+      });
+    };
+
+    initReadingMode();
+
+    const initReadingControls = () => {
+      const savedFont = storage.get(STORAGE_KEYS.guideFontSize) || "md";
+      const savedLine = storage.get(STORAGE_KEYS.guideLineHeight) || "normal";
+
+      setGuideFont(savedFont);
+      setGuideLine(savedLine);
+
+      fontButtons.forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const value = btn.dataset.guideFont || "md";
+          setGuideFont(value);
+        });
+      });
+
+      lineButtons.forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const value = btn.dataset.guideLine || "normal";
+          setGuideLine(value);
+        });
+      });
+
+      window.addEventListener("keydown", (e) => {
+        const tag = String(document.activeElement?.tagName || "").toLowerCase();
+        const isTyping = tag === "input" || tag === "textarea" || document.activeElement?.isContentEditable;
+        if (isTyping) return;
+        if (getPage() !== "guide") return;
+        if (e.key.toLowerCase() === "r") {
+          e.preventDefault();
+          setGuideReadingMode(!document.body.classList.contains("reading-mode"));
+        }
+        if (e.key === "=" || e.key === "+") {
+          e.preventDefault();
+          setGuideFont("lg");
+        }
+        if (e.key === "-") {
+          e.preventDefault();
+          setGuideFont("sm");
+        }
+        if (e.key.toLowerCase() === "l") {
+          e.preventDefault();
+          const current = storage.get(STORAGE_KEYS.guideLineHeight) || "normal";
+          setGuideLine(current === "normal" ? "relaxed" : "normal");
+        }
+      });
+    };
+
+    initReadingControls();
 
     const syncSaveButton = () => {
       if (!saveBtn) return;
@@ -1885,6 +2650,15 @@
       });
       syncSaveButton();
     });
+
+    initNotesPanel({
+      id,
+      textarea: notesTextarea,
+      saveBtn: notesSaveBtn,
+      clearBtn: notesClearBtn,
+      statusEl: notesStatus,
+      storageKey: STORAGE_KEYS.guideNotesPrefix,
+    });
   };
 
   // -------------------------
@@ -1903,11 +2677,21 @@
     const iconEl = $("#game-icon");
     const yearBadge = $("#game-year-badge");
     const metaEl = $("#game-meta");
+    const genreEl = $("#game-meta-genre");
+    const ratingEl = $("#game-meta-rating");
+    const platformsEl = $("#game-meta-platforms");
+    const difficultyEl = $("#game-meta-difficulty");
+    const playtimeEl = $("#game-meta-playtime");
+    const modesEl = $("#game-meta-modes");
+    const updatedEl = $("#game-meta-updated");
     const summaryEl = $("#game-summary");
     const guidesEl = $("#game-guides");
     const primaryAction = $("#game-primary-action");
     const communityAction = $("#game-community-action");
     const topicLink = $("#game-topic-link");
+    const saveGameBtn = $("#game-save");
+    const tagsEl = $("#game-tags");
+    const highlightsEl = $("#game-highlights");
 
     const title = game?.title || (id ? `游戏：${id}` : "游戏详情");
     const subtitle = game?.subtitle || "该游戏详情正在建设中，我们会逐步补全攻略体系。";
@@ -1916,6 +2700,11 @@
     const genre = game?.genre || "—";
     const rating = typeof game?.rating === "number" ? String(game.rating) : "—";
     const platforms = Array.isArray(game?.platforms) ? game.platforms.join(" / ") : "—";
+    const difficulty = game?.difficulty || "—";
+    const playtime = game?.playtime || "—";
+    const modes = Array.isArray(game?.modes) ? game.modes.join(" / ") : "—";
+    const updated = game?.updated ? formatDate(game.updated) : "—";
+    const ratingValue = typeof game?.rating === "number" ? game.rating : null;
     const summary = game?.summary || "你可以先从通用攻略入手，或者在游戏库中筛选相关内容。";
 
     document.title = `${title} - 游戏攻略网`;
@@ -1931,10 +2720,19 @@
     if (summaryEl) summaryEl.textContent = summary;
 
     if (metaEl) {
-      const rows = $$(".meta-item", metaEl);
-      if (rows[0]) $(".meta-value", rows[0]).textContent = genre;
-      if (rows[1]) $(".meta-value", rows[1]).textContent = rating;
-      if (rows[2]) $(".meta-value", rows[2]).textContent = platforms;
+      if (genreEl) genreEl.textContent = genre;
+      if (ratingEl) ratingEl.textContent = rating;
+      if (platformsEl) platformsEl.textContent = platforms;
+      if (difficultyEl) difficultyEl.textContent = difficulty;
+      if (playtimeEl) playtimeEl.textContent = playtime;
+      if (modesEl) modesEl.textContent = modes;
+      if (updatedEl) updatedEl.textContent = updated;
+    }
+
+    const ratingMeter = $("#game-rating-meter");
+    if (ratingMeter) {
+      const pct = ratingValue != null ? Math.max(0, Math.min(100, Math.round((ratingValue / 10) * 100))) : 0;
+      ratingMeter.style.width = `${pct}%`;
     }
 
     if (guidesEl && data?.guides) {
@@ -1960,11 +2758,27 @@
         .join("");
     }
 
+    const renderChips = (root, list, emptyText) => {
+      if (!root) return;
+      if (!Array.isArray(list) || list.length === 0) {
+        root.innerHTML = `<span class="chip">${escapeHtml(emptyText)}</span>`;
+        return;
+      }
+      root.innerHTML = list.map((item) => `<span class="chip">${escapeHtml(item)}</span>`).join("");
+    };
+
+    renderChips(tagsEl, game?.tags, "暂无标签");
+    renderChips(highlightsEl, game?.highlights, "重点待补");
+
     const topicMap = {
+      "starlight-miracle": "starlight-leveling",
+      "baldurs-gate3": "bg3-party",
       "elden-ring": "elden-boss",
       civilization6: "civ6-leaders",
       "dark-souls3": "dark-souls",
       "devil-may-cry5": "reaction-time",
+      "crusader-kings3": "diplomacy",
+      "horizon-fw": "elden-ring-bosses",
       "god-of-war": "controller",
     };
     const topicId = topicMap[id] || "upcoming-games";
@@ -1981,6 +2795,323 @@
         primaryAction.textContent = "查看相关攻略";
       }
     }
+
+    const syncGameSave = () => {
+      if (!saveGameBtn) return;
+      if (!id) {
+        saveGameBtn.textContent = "收藏游戏";
+        saveGameBtn.setAttribute("aria-pressed", "false");
+        saveGameBtn.disabled = true;
+        return;
+      }
+      saveGameBtn.disabled = false;
+      const set = new Set(readStringList(STORAGE_KEYS.savedGames));
+      const saved = set.has(id);
+      saveGameBtn.textContent = saved ? "已收藏（点击取消）" : "收藏游戏";
+      saveGameBtn.setAttribute("aria-pressed", saved ? "true" : "false");
+      saveGameBtn.classList.toggle("btn-secondary", saved);
+    };
+
+    syncGameSave();
+
+    saveGameBtn?.addEventListener("click", () => {
+      if (!id) return;
+      const set = new Set(readStringList(STORAGE_KEYS.savedGames));
+      const saved = set.has(id);
+      if (saved) set.delete(id);
+      else set.add(id);
+      writeStringList(STORAGE_KEYS.savedGames, Array.from(set));
+      toast({
+        title: saved ? "已取消收藏" : "已收藏",
+        message: "游戏已保存到本地浏览器。",
+        tone: saved ? "info" : "success",
+      });
+      syncGameSave();
+    });
+
+    initNotesPanel({
+      id,
+      textarea: $("#game-notes"),
+      saveBtn: $("#game-notes-save"),
+      clearBtn: $("#game-notes-clear"),
+      statusEl: $("#game-notes-status"),
+      storageKey: STORAGE_KEYS.gameNotesPrefix,
+    });
+  };
+
+  // -------------------------
+  // Community Page
+  // -------------------------
+
+  const initCommunityPage = () => {
+    if (getPage() !== "community") return;
+
+    const data = getData();
+    const topics = data?.topics;
+    const grid = $("#community-topics");
+    if (!topics || !grid) return;
+
+    const searchInput = $("#community-search");
+    const searchBtn = $("#community-search-btn");
+    const tagRoot = $("#community-tags");
+    const sortSelect = $("#community-sort");
+    const countEl = $("#community-count");
+    const empty = $("#community-topics-empty");
+    const clearBtn = $("#community-clear");
+
+    const items = Object.entries(topics).map(([id, topic]) => ({ id, topic }));
+    const allTags = Array.from(
+      new Set(
+        items.flatMap(({ topic }) => {
+          const tags = Array.isArray(topic?.tags) ? topic.tags.map(String) : [];
+          const category = topic?.category ? [String(topic.category)] : [];
+          return [...category, ...tags];
+        })
+      )
+    )
+      .slice(0, 18)
+      .sort((a, b) => a.localeCompare(b, "zh-Hans-CN"));
+
+    const readState = () => {
+      const raw = storage.get(STORAGE_KEYS.communityTopicsState);
+      const parsed = safeJsonParse(raw, null);
+      if (!parsed || typeof parsed !== "object") return { query: "", tags: [], savedOnly: false, sort: "latest" };
+      return {
+        query: String(parsed.query || ""),
+        tags: Array.isArray(parsed.tags) ? parsed.tags.map(String) : [],
+        savedOnly: Boolean(parsed.savedOnly),
+        sort: String(parsed.sort || "latest"),
+      };
+    };
+    const writeState = (s) => storage.set(STORAGE_KEYS.communityTopicsState, JSON.stringify(s));
+
+    let state = readState();
+    let saved = new Set(readStringList(STORAGE_KEYS.savedTopics));
+
+    const readUrlParams = () => {
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const readList = (key) => {
+          const raw = params
+            .getAll(key)
+            .flatMap((v) => String(v || "").split(","))
+            .map((v) => v.trim())
+            .filter(Boolean);
+          return Array.from(new Set(raw));
+        };
+        const q = String(params.get("q") || params.get("query") || "").trim();
+        const tags = [...readList("tag"), ...readList("tags")];
+        const reset = params.get("reset") === "1";
+        const savedOnlyRaw = String(params.get("saved") || params.get("savedOnly") || "").trim().toLowerCase();
+        const savedOnly = savedOnlyRaw === "1" || savedOnlyRaw === "true";
+        const sort = String(params.get("sort") || "").trim();
+        return { reset, query: q, tags, savedOnly, sort };
+      } catch (_) {
+        return { reset: false, query: "", tags: [], savedOnly: false, sort: "" };
+      }
+    };
+
+    const url = readUrlParams();
+    if (url.reset) state = { query: "", tags: [], savedOnly: false, sort: "latest" };
+    if (url.query) state = { ...state, query: url.query };
+    if (url.tags.length > 0) {
+      const known = new Set(allTags);
+      const nextTags = url.tags.filter((t) => known.has(t));
+      if (nextTags.length > 0) state = { ...state, tags: nextTags };
+    }
+    if (url.savedOnly) state = { ...state, savedOnly: true };
+    if (url.sort) state = { ...state, sort: url.sort };
+
+    const renderTags = () => {
+      if (!tagRoot) return;
+      const savedActive = state.savedOnly ? "active" : "";
+      const savedChip = `<button type="button" class="chip chip-btn chip-saved ${savedActive}" data-action="saved-only">只看收藏</button>`;
+      tagRoot.innerHTML =
+        savedChip +
+        allTags
+          .map((t) => {
+            const active = state.tags.includes(t);
+            return `<button type="button" class="chip chip-btn ${active ? "active" : ""}" data-tag="${escapeHtml(t)}">${escapeHtml(t)}</button>`;
+          })
+          .join("");
+
+      $$(".chip-btn", tagRoot).forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const action = btn.dataset.action || "";
+          if (action === "saved-only") {
+            state.savedOnly = !state.savedOnly;
+            writeState(state);
+            renderTags();
+            apply();
+            return;
+          }
+          const t = btn.dataset.tag || "";
+          if (!t) return;
+          state.tags = state.tags.includes(t) ? state.tags.filter((x) => x !== t) : [...state.tags, t];
+          writeState(state);
+          renderTags();
+          apply();
+        });
+      });
+    };
+
+    const syncUrl = () => {
+      try {
+        const params = new URLSearchParams();
+        if (state.query) params.set("q", state.query);
+        if (state.tags.length > 0) params.set("tag", state.tags.join(","));
+        if (state.savedOnly) params.set("saved", "1");
+        if (state.sort && state.sort !== "latest") params.set("sort", state.sort);
+        const next = params.toString();
+        const url2 = next ? `${window.location.pathname}?${next}` : window.location.pathname;
+        window.history.replaceState(null, "", url2);
+      } catch (_) {}
+    };
+
+    const renderCard = (id, topic) => {
+      const title = topic.title || id;
+      const summary = topic.summary || "该话题正在整理中。";
+      const starter = topic.starter || "社区成员";
+      const replies = Number(topic.replies || 0);
+      const updated = topic.updated ? formatDate(topic.updated) : "—";
+      const tags = Array.isArray(topic.tags) ? topic.tags : [];
+      const category = topic.category ? [topic.category] : [];
+      const isSaved = saved.has(id);
+      const saveLabel = isSaved ? "取消收藏" : "收藏";
+      const saveStar = isSaved ? "★" : "☆";
+      const hotBadge = replies >= 150 ? '<span class="badge popular">热门</span>' : "";
+      const categoryBadge = topic.category ? `<span class="badge subtle">${escapeHtml(topic.category)}</span>` : "";
+      const tagList = [...category, ...tags]
+        .filter(Boolean)
+        .slice(0, 4)
+        .map((t) => `<span class="chip">${escapeHtml(t)}</span>`)
+        .join("");
+
+      return `
+        <article class="topic-card ${isSaved ? "is-saved" : ""}">
+          <div class="topic-header">
+            <div class="topic-badges">${hotBadge}${categoryBadge}</div>
+          </div>
+          <h3 class="topic-title">${escapeHtml(title)}</h3>
+          <p class="topic-summary">${escapeHtml(summary)}</p>
+          ${tagList ? `<div class="topic-tags">${tagList}</div>` : ""}
+          <div class="topic-stats">
+            <span>发起人：${escapeHtml(starter)}</span>
+            <span>回复：${Number.isFinite(replies) ? replies : 0}</span>
+            <span>更新：${escapeHtml(updated)}</span>
+          </div>
+          <div class="topic-actions">
+            <a class="btn btn-small" href="forum-topic.html?id=${encodeURIComponent(id)}">加入讨论</a>
+            <button type="button" class="save-pill ${isSaved ? "active" : ""}" data-topic-id="${escapeHtml(id)}" aria-pressed="${isSaved ? "true" : "false"}" aria-label="${escapeHtml(saveLabel)}">
+              <span class="save-star" aria-hidden="true">${saveStar}</span>
+              <span class="save-text">${escapeHtml(saveLabel)}</span>
+            </button>
+          </div>
+        </article>
+      `;
+    };
+
+    const apply = () => {
+      saved = new Set(readStringList(STORAGE_KEYS.savedTopics));
+      const q = (state.query || "").trim().toLowerCase();
+      const tagSet = new Set(state.tags);
+
+      const filtered = items.filter(({ id, topic }) => {
+        const title = String(topic.title || id).toLowerCase();
+        const summary = String(topic.summary || "").toLowerCase();
+        const starter = String(topic.starter || "").toLowerCase();
+        const tags = Array.isArray(topic.tags) ? topic.tags.map(String) : [];
+        const category = topic.category ? [String(topic.category)] : [];
+        const hay = `${title} ${summary} ${starter} ${tags.join(" ")} ${category.join(" ")}`;
+        const okQuery = !q || hay.includes(q);
+        const okTags = tagSet.size === 0 || [...tags, ...category].some((t) => tagSet.has(String(t)));
+        const okSaved = !state.savedOnly || saved.has(id);
+        return okQuery && okTags && okSaved;
+      });
+
+      const sorted = [...filtered];
+      const sortKey = state.sort || "latest";
+      sorted.sort((a, b) => {
+        if (sortKey === "replies-desc") return Number(b.topic?.replies || 0) - Number(a.topic?.replies || 0);
+        if (sortKey === "replies-asc") return Number(a.topic?.replies || 0) - Number(b.topic?.replies || 0);
+        if (sortKey === "title") {
+          return String(a.topic?.title || a.id).localeCompare(String(b.topic?.title || b.id), "zh-Hans-CN");
+        }
+        return parseDateKey(b.topic?.updated) - parseDateKey(a.topic?.updated);
+      });
+
+      grid.innerHTML = sorted.map(({ id, topic }) => renderCard(id, topic)).join("");
+      if (countEl) countEl.textContent = `共 ${sorted.length} 个话题`;
+      if (empty) empty.hidden = sorted.length !== 0;
+      if (empty && sorted.length === 0) grid.innerHTML = "";
+      syncUrl();
+
+      $$(".save-pill", grid).forEach((btn) => {
+        btn.addEventListener("click", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          const tid = btn.dataset.topicId || "";
+          if (!tid) return;
+          const list = new Set(readStringList(STORAGE_KEYS.savedTopics));
+          const has = list.has(tid);
+          if (has) list.delete(tid);
+          else list.add(tid);
+          writeStringList(STORAGE_KEYS.savedTopics, Array.from(list));
+          toast({
+            title: has ? "已取消收藏" : "已收藏",
+            message: "话题已保存到本地浏览器。",
+            tone: has ? "info" : "success",
+          });
+          apply();
+        });
+      });
+    };
+
+    if (searchInput) searchInput.value = state.query || "";
+    if (sortSelect) {
+      const options = new Set($$("option", sortSelect).map((opt) => opt.value).filter(Boolean));
+      if (!options.has(state.sort)) state.sort = "latest";
+      sortSelect.value = state.sort || "latest";
+    }
+
+    renderTags();
+    apply();
+
+    const syncFromInput = () => {
+      state = { ...state, query: searchInput?.value?.trim() || "" };
+      writeState(state);
+      apply();
+    };
+
+    searchBtn?.addEventListener("click", syncFromInput);
+    sortSelect?.addEventListener("change", () => {
+      state = { ...state, sort: String(sortSelect.value || "latest") };
+      writeState(state);
+      apply();
+    });
+
+    if (searchInput) {
+      searchInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          syncFromInput();
+        }
+      });
+      let t = 0;
+      searchInput.addEventListener("input", () => {
+        window.clearTimeout(t);
+        t = window.setTimeout(syncFromInput, 180);
+      });
+    }
+
+    clearBtn?.addEventListener("click", () => {
+      state = { query: "", tags: [], savedOnly: false, sort: "latest" };
+      writeState(state);
+      if (searchInput) searchInput.value = "";
+      if (sortSelect) sortSelect.value = "latest";
+      renderTags();
+      apply();
+    });
   };
 
   // -------------------------
@@ -2010,15 +3141,23 @@
 
     const titleEl = $("#topic-title");
     const metaEl = $("#topic-meta");
+    const countEl = $("#topic-count");
     const summaryEl = $("#topic-summary");
+    const tagsEl = $("#topic-tags");
+    const updatedEl = $("#topic-updated");
     const repliesEl = $("#topic-replies");
     const form = $("#replyForm");
     const clearBtn = $("#topic-clear-local");
+    const sortSelect = $("#reply-sort");
+    const saveBtn = $("#topic-save");
 
     const title = topic?.title || `话题：${id}`;
     const summary =
       topic?.summary || "该话题正在建设中。你仍然可以在这里发表本地回复进行记录。";
     const starter = topic?.starter || "站内编辑";
+    const updated = topic?.updated ? formatDate(topic.updated) : "—";
+    const topicTags = Array.isArray(topic?.tags) ? topic.tags : [];
+    const category = topic?.category ? [topic.category] : [];
 
     document.title = `${title} - 游戏攻略网`;
     syncShareMeta({
@@ -2029,21 +3168,50 @@
     if (titleEl) titleEl.textContent = title;
     if (summaryEl) summaryEl.textContent = summary;
     if (metaEl) metaEl.textContent = `发起人：${starter}`;
+    if (updatedEl) updatedEl.textContent = `更新：${updated}`;
+    if (tagsEl) {
+      const tags = [...category, ...topicTags].filter(Boolean);
+      tagsEl.innerHTML =
+        tags.length > 0
+          ? tags.map((tag) => `<span class="chip">${escapeHtml(tag)}</span>`).join("")
+          : '<span class="chip">综合讨论</span>';
+    }
 
     const key = `${STORAGE_KEYS.forumRepliesPrefix}${id}`;
+    const sortKey = `${STORAGE_KEYS.forumSortPrefix}${id}`;
     const readLocal = () => safeJsonParse(storage.get(key), []) || [];
     const writeLocal = (list) => storage.set(key, JSON.stringify(list));
+    const readSort = () => storage.get(sortKey) || "latest";
+    const writeSort = (value) => storage.set(sortKey, value);
 
+    const baseReplies = Number(topic?.replies || 0);
     const render = () => {
       if (!repliesEl) return;
       const local = readLocal();
       const seed = [
         { author: starter, tag: "楼主", content: summary, ts: Date.now() - 1000 * 60 * 60 * 2 },
       ];
-      repliesEl.innerHTML = [...seed, ...local].map(renderReply).join("");
+      const all = [...seed, ...local];
+      const sortMode = readSort();
+      all.sort((a, b) => {
+        const ta = Number(a.ts || 0);
+        const tb = Number(b.ts || 0);
+        return sortMode === "oldest" ? ta - tb : tb - ta;
+      });
+      repliesEl.innerHTML = all.map(renderReply).join("");
+      if (countEl) countEl.textContent = `${baseReplies + all.length} 条回复`;
     };
 
     render();
+
+    if (sortSelect) {
+      sortSelect.value = readSort();
+      sortSelect.addEventListener("change", () => {
+        const value = String(sortSelect.value || "latest");
+        writeSort(value);
+        render();
+      });
+    }
 
     form?.addEventListener("submit", (e) => {
       e.preventDefault();
@@ -2075,6 +3243,32 @@
       writeLocal([]);
       render();
       toast({ title: "已清空", message: "本地回复已删除。", tone: "info" });
+    });
+
+    const syncTopicSave = () => {
+      if (!saveBtn) return;
+      const set = new Set(readStringList(STORAGE_KEYS.savedTopics));
+      const saved = set.has(id);
+      saveBtn.textContent = saved ? "已收藏（点击取消）" : "收藏话题";
+      saveBtn.setAttribute("aria-pressed", saved ? "true" : "false");
+      saveBtn.classList.toggle("btn-secondary", saved);
+    };
+
+    syncTopicSave();
+
+    saveBtn?.addEventListener("click", () => {
+      if (!id) return;
+      const set = new Set(readStringList(STORAGE_KEYS.savedTopics));
+      const saved = set.has(id);
+      if (saved) set.delete(id);
+      else set.add(id);
+      writeStringList(STORAGE_KEYS.savedTopics, Array.from(set));
+      toast({
+        title: saved ? "已取消收藏" : "已收藏",
+        message: "话题已保存到本地浏览器。",
+        tone: saved ? "info" : "success",
+      });
+      syncTopicSave();
     });
   };
 
@@ -2117,12 +3311,14 @@
     run(initAllGuidesPage);
     run(initGuideDetailPage);
     run(initGamePage);
+    run(initCommunityPage);
     run(initForumTopicPage);
 
     // 视觉增强项（可延后）
     run(initPageLoaded);
     run(initScrollReveal);
     run(initHeroStats);
+    run(initHomeRecent);
     run(initNewsletterForms);
     runIdle(initParticles, { timeout: 1200 });
     runIdle(initServiceWorker, { timeout: 1500 });

@@ -9,11 +9,11 @@
 所有页面必须使用带版本号的静态资源引用：
 
 ```html
-<link rel="stylesheet" href="styles.css?v=20251219-1">
-<link rel="manifest" href="manifest.webmanifest?v=20251219-1">
-<script src="boot.js?v=20251219-1"></script>
-<script src="data.js?v=20251219-1" defer></script>
-<script src="scripts.js?v=20251219-1" defer></script>
+<link rel="stylesheet" href="styles.css?v=20251221-1">
+<link rel="manifest" href="manifest.webmanifest?v=20251221-1">
+<script src="boot.js?v=20251221-1"></script>
+<script src="data.js?v=20251221-1" defer></script>
+<script src="scripts.js?v=20251221-1" defer></script>
 ```
 
 当你修改以下任意文件时，请同步更新所有 HTML 页里的 `?v=`：
@@ -58,7 +58,12 @@ node tools/bump-version.mjs --dry-run
 
 - 主题：`localStorage["gkb-theme"]`
 - 搜索：Command Palette（`Ctrl + K` / `/`）
-- 筛选/收藏/话题回复：全部落地到 `localStorage`，刷新不丢
+- 筛选/收藏/话题回复：全部落地到 `localStorage`，刷新不丢（含 `gkb-saved-games` / `gkb-saved-guides` / `gkb-saved-topics`）
+- 游戏/攻略笔记：`gkb-game-notes:*` / `gkb-guide-notes:*`
+- 攻略进度清单：`gkb-guide-checklist:*`
+- 攻略阅读设置：`gkb-guide-font-size` / `gkb-guide-line-height` / `gkb-guide-reading-mode` / `gkb-guide-last-section:*`
+- 话题排序偏好：`gkb-forum-sort:*`
+- 话题库筛选：`gkb-community-topics-state`
 
 ---
 

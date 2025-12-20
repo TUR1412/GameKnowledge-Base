@@ -4,15 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>游戏攻略网 - 专业的游戏指南平台</title>
-    <link rel="stylesheet" href="styles.css?v=20251219-1">
+    <link rel="stylesheet" href="styles.css?v=20251221-1">
     <link rel="icon" href="images/icons/favicon.svg" type="image/svg+xml">
-    <link rel="manifest" href="manifest.webmanifest?v=20251219-1">
+    <link rel="manifest" href="manifest.webmanifest?v=20251221-1">
     <meta name="description" content="游戏攻略网是中国专业的游戏攻略平台，提供最新最全面的游戏攻略、新闻资讯、游戏评测与技巧分享。">
-    <meta name="theme-color" content="#5d3fd3">
+    <meta name="theme-color" content="#f6f1ea">
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'; manifest-src 'self'; worker-src 'self'; frame-ancestors 'none'">
     <meta name="referrer" content="strict-origin-when-cross-origin">
     <meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=()">
-    <script src="boot.js?v=20251219-1"></script>
+    <script src="boot.js?v=20251221-1"></script>
 </head>
 <body data-page="home">
     <a class="skip-link" href="#main">跳到正文</a>
@@ -25,7 +25,7 @@
                 <h1>游戏攻略网</h1>
                 <p>你的专业游戏指南</p>
             </div>
-            <button class="mobile-nav-toggle" aria-label="切换导航菜单" aria-controls="site-nav" aria-expanded="false">☰</button>
+            <button class="mobile-nav-toggle" aria-label="切换导航菜单" aria-controls="site-nav" aria-expanded="false"><span class="nav-toggle-icon" aria-hidden="true"></span></button>
             <nav id="site-nav" aria-label="主导航">
                 <ul>
                     <li><a href="index.html" class="active">首页</a></li>
@@ -253,6 +253,32 @@
                 <a href="all-games.html" class="btn">查看更多游戏</a>
             </div>
         </section>
+
+        <section class="section-container">
+            <div class="section-title">
+                <span class="section-kicker">继续你的旅程</span>
+                <h2>最近访问与灵感回到现场</h2>
+                <p>你浏览过的游戏与攻略会自动保存在本地，让你随时从上一次停下的地方继续。</p>
+            </div>
+            <div class="container">
+                <div class="recent-grid">
+                    <article class="recent-card">
+                        <div class="recent-card-header">
+                            <span>最近游戏</span>
+                            <a href="all-games.html" class="btn btn-small btn-outline">去游戏库</a>
+                        </div>
+                        <div class="mini-cards" id="recent-games" aria-live="polite"></div>
+                    </article>
+                    <article class="recent-card">
+                        <div class="recent-card-header">
+                            <span>最近攻略</span>
+                            <a href="all-guides.html" class="btn btn-small btn-outline">去攻略库</a>
+                        </div>
+                        <div class="mini-cards" id="recent-guides" aria-live="polite"></div>
+                    </article>
+                </div>
+            </div>
+        </section>
         
         <section class="section-container bg-light">
             <div class="section-title">
@@ -424,7 +450,9 @@
 
     <button id="back-to-top" class="back-to-top" aria-label="返回顶部">↑</button>
     
-    <script src="data.js?v=20251219-1" defer></script>
-    <script src="scripts.js?v=20251219-1" defer></script>
+    <script src="data.js?v=20251221-1" defer></script>
+    <script src="scripts.js?v=20251221-1" defer></script>
 </body>
 </html>
+
+

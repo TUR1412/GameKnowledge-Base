@@ -5,14 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>话题讨论 - 游戏攻略网</title>
     <meta name="description" content="加入玩家讨论：分享心得、提问卡关、交流流派与策略。">
-    <link rel="stylesheet" href="styles.css?v=20251219-1">
+    <link rel="stylesheet" href="styles.css?v=20251221-1">
     <link rel="icon" href="images/icons/favicon.svg" type="image/svg+xml">
-    <link rel="manifest" href="manifest.webmanifest?v=20251219-1">
-    <meta name="theme-color" content="#5d3fd3">
+    <link rel="manifest" href="manifest.webmanifest?v=20251221-1">
+    <meta name="theme-color" content="#f6f1ea">
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'; manifest-src 'self'; worker-src 'self'; frame-ancestors 'none'">
     <meta name="referrer" content="strict-origin-when-cross-origin">
     <meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=()">
-    <script src="boot.js?v=20251219-1"></script>
+    <script src="boot.js?v=20251221-1"></script>
 </head>
 <body data-page="forum">
     <a class="skip-link" href="#main">跳到正文</a>
@@ -27,7 +27,7 @@
                 <p>你的专业游戏指南</p>
             </div>
 
-            <button class="mobile-nav-toggle" aria-label="切换导航菜单" aria-controls="site-nav" aria-expanded="false">☰</button>
+            <button class="mobile-nav-toggle" aria-label="切换导航菜单" aria-controls="site-nav" aria-expanded="false"><span class="nav-toggle-icon" aria-hidden="true"></span></button>
 
             <nav id="site-nav" aria-label="主导航">
                 <ul>
@@ -62,13 +62,17 @@
             <div class="banner-kicker">
                 <span class="badge">话题讨论</span>
                 <span class="badge subtle" id="topic-meta">—</span>
+                <span class="badge subtle" id="topic-count">0 条回复</span>
+                <span class="badge subtle" id="topic-updated">更新：—</span>
             </div>
             <h1 id="topic-title">正在加载话题…</h1>
             <p id="topic-summary">写清楚平台、版本、流派/Build 与卡点，会让回复更精准。</p>
+            <div class="topic-tags" id="topic-tags" aria-label="话题标签"></div>
             <div class="banner-buttons">
                 <a href="#reply-form" class="btn">发表回复</a>
                 <button id="topic-clear-local" type="button" class="btn btn-secondary">清空本地回复</button>
                 <button type="button" class="btn btn-outline" data-action="copy-link" aria-label="复制当前页面链接">复制链接</button>
+                <button type="button" class="btn btn-outline" id="topic-save" aria-pressed="false">收藏话题</button>
             </div>
         </div>
     </div>
@@ -78,6 +82,13 @@
             <div class="container">
                 <div class="forum-layout">
                     <div class="forum-thread">
+                        <div class="thread-toolbar">
+                            <label class="sr-only" for="reply-sort">排序</label>
+                            <select id="reply-sort" aria-label="回复排序">
+                                <option value="latest">最新优先</option>
+                                <option value="oldest">最早优先</option>
+                            </select>
+                        </div>
                         <div class="thread-list" id="topic-replies" aria-live="polite">
                             <div class="empty-state">
                                 <p class="empty-title">还没有回复</p>
@@ -168,7 +179,9 @@
 
     <button id="back-to-top" class="back-to-top" aria-label="返回顶部">↑</button>
 
-    <script src="data.js?v=20251219-1" defer></script>
-    <script src="scripts.js?v=20251219-1" defer></script>
+    <script src="data.js?v=20251221-1" defer></script>
+    <script src="scripts.js?v=20251221-1" defer></script>
 </body>
 </html>
+
+

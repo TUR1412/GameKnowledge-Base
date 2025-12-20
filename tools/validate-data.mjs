@@ -27,6 +27,7 @@ const loadDataFromDataJs = () => {
 
 const isNonEmptyString = (v) => typeof v === "string" && v.trim().length > 0;
 const isNumber = (v) => typeof v === "number" && Number.isFinite(v);
+const isDateString = (v) => isNonEmptyString(v) && /^\d{4}-\d{2}-\d{2}$/.test(v.trim());
 
 const validateIcon = (where, icon) => {
   if (!isNonEmptyString(icon)) return [`[DATA] ${where}: icon 不能为空`];
@@ -40,6 +41,14 @@ const validateTags = (where, tags) => {
   if (!Array.isArray(tags)) return [`[DATA] ${where}: tags 必须是数组`];
   const bad = tags.filter((t) => !isNonEmptyString(t));
   if (bad.length > 0) return [`[DATA] ${where}: tags 必须是非空字符串数组`];
+  return [];
+};
+
+const validateStringArray = (where, value, label) => {
+  if (value == null) return [];
+  if (!Array.isArray(value) || value.length === 0) return [`[DATA] ${where}: ${label} 必须是非空数组`];
+  const bad = value.filter((t) => !isNonEmptyString(t));
+  if (bad.length > 0) return [`[DATA] ${where}: ${label} 必须是非空字符串数组`];
   return [];
 };
 
@@ -68,11 +77,15 @@ const main = () => {
     if (!isNonEmptyString(g.genre)) errors.push(`[DATA] ${where}: genre 不能为空`);
     if (!isNumber(g.year)) errors.push(`[DATA] ${where}: year 必须是数字`);
     if (!isNumber(g.rating)) errors.push(`[DATA] ${where}: rating 必须是数字`);
+    if (!isDateString(g.updated)) errors.push(`[DATA] ${where}: updated 必须是 YYYY-MM-DD 格式`);
     if (!Array.isArray(g.platforms) || g.platforms.length === 0) {
       errors.push(`[DATA] ${where}: platforms 必须是非空数组`);
     }
     if (!isNonEmptyString(g.summary)) errors.push(`[DATA] ${where}: summary 不能为空`);
     errors.push(...validateIcon(where, g.icon));
+    errors.push(...validateStringArray(where, g.modes, "modes"));
+    errors.push(...validateTags(where, g.tags));
+    errors.push(...validateStringArray(where, g.highlights, "highlights"));
     if (g.hasDeepGuide === true) {
       if (!isNonEmptyString(g.deepGuideHref)) {
         errors.push(`[DATA] ${where}: hasDeepGuide=true 时必须提供 deepGuideHref`);
@@ -92,6 +105,9 @@ const main = () => {
     }
     if (!isNonEmptyString(g.title)) errors.push(`[DATA] ${where}: title 不能为空`);
     if (!isNonEmptyString(g.summary)) errors.push(`[DATA] ${where}: summary 不能为空`);
+    if (!isDateString(g.updated)) errors.push(`[DATA] ${where}: updated 必须是 YYYY-MM-DD 格式`);
+    if (!isNonEmptyString(g.difficulty)) errors.push(`[DATA] ${where}: difficulty 不能为空`);
+    if (!isNumber(g.readingTime)) errors.push(`[DATA] ${where}: readingTime 必须是数字`);
     if (g.gameId != null) {
       const gameId = String(g.gameId || "");
       if (!gameId) errors.push(`[DATA] ${where}: gameId 不能为空字符串`);
@@ -112,6 +128,10 @@ const main = () => {
     if (!isNonEmptyString(t.title)) errors.push(`[DATA] ${where}: title 不能为空`);
     if (!isNonEmptyString(t.starter)) errors.push(`[DATA] ${where}: starter 不能为空`);
     if (!isNonEmptyString(t.summary)) errors.push(`[DATA] ${where}: summary 不能为空`);
+    if (!isNonEmptyString(t.category)) errors.push(`[DATA] ${where}: category 不能为空`);
+    if (!isDateString(t.updated)) errors.push(`[DATA] ${where}: updated 必须是 YYYY-MM-DD 格式`);
+    if (!isNumber(t.replies)) errors.push(`[DATA] ${where}: replies 必须是数字`);
+    errors.push(...validateTags(where, t.tags));
   }
 
   if (errors.length > 0) {
@@ -125,4 +145,3 @@ const main = () => {
 };
 
 main();
-
