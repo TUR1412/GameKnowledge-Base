@@ -1,23 +1,20 @@
 import fs from "node:fs";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 
-const WORKSPACE_ROOT = process.cwd();
-
-const readText = (filePath) => fs.readFileSync(filePath, "utf8");
-
-const listRootHtml = () =>
+export const listRootHtml = (workspaceRoot) =>
   fs
-    .readdirSync(WORKSPACE_ROOT, { withFileTypes: true })
+    .readdirSync(workspaceRoot, { withFileTypes: true })
     .filter((d) => d.isFile() && d.name.toLowerCase().endsWith(".html"))
     .map((d) => d.name)
     .sort();
 
-const extractPrecacheBody = (swContent) => {
+export const extractPrecacheBody = (swContent) => {
   const m = String(swContent || "").match(/const\s+PRECACHE_URLS\s*=\s*\[\s*([\s\S]*?)\s*\];/);
   return m ? m[1] : "";
 };
 
-const parseDoubleQuotedStrings = (s) => {
+export const parseDoubleQuotedStrings = (s) => {
   const items = [];
   const re = /"([^"\\]*(?:\\.[^"\\]*)*)"/g;
   let m;
@@ -32,7 +29,7 @@ const parseDoubleQuotedStrings = (s) => {
   return items;
 };
 
-const parseTemplateStrings = (s) => {
+export const parseTemplateStrings = (s) => {
   const items = [];
   const re = /`([^`\\]*(?:\\.[^`\\]*)*)`/g;
   let m;
@@ -42,20 +39,23 @@ const parseTemplateStrings = (s) => {
   return items;
 };
 
-const errors = [];
+export const validateServiceWorker = ({ workspaceRoot }) => {
+  const readText = (filePath) => fs.readFileSync(filePath, "utf8");
+  const errors = [];
 
-const main = () => {
-  const swPath = path.join(WORKSPACE_ROOT, "sw.js");
+  const swPath = path.join(workspaceRoot, "sw.js");
   if (!fs.existsSync(swPath)) {
-    console.error("❌ SW 检查未通过：缺少 sw.js");
-    process.exit(1);
+    return { ok: false, errors: ["缺少 sw.js"], counts: null };
   }
 
   const sw = readText(swPath);
   const precacheBody = extractPrecacheBody(sw);
   if (!precacheBody) {
-    console.error("❌ SW 检查未通过：未找到 PRECACHE_URLS 数组（const PRECACHE_URLS = [...]）");
-    process.exit(1);
+    return {
+      ok: false,
+      errors: ["未找到 PRECACHE_URLS 数组（const PRECACHE_URLS = [...]）"],
+      counts: null,
+    };
   }
 
   const literalItems = parseDoubleQuotedStrings(precacheBody);
@@ -73,7 +73,7 @@ const main = () => {
   }
 
   // 2) HTML 预缓存覆盖：离线可打开任意入口页
-  const rootHtml = listRootHtml();
+  const rootHtml = listRootHtml(workspaceRoot);
   rootHtml.forEach((file) => {
     if (!literalSet.has(file)) {
       errors.push(`[SW] PRECACHE_URLS 缺少 HTML：${file}`);
@@ -111,16 +111,34 @@ const main = () => {
     }
   });
 
-  if (errors.length > 0) {
-    console.error("❌ SW 检查未通过：");
-    errors.forEach((e) => console.error(`- ${e}`));
-    process.exit(1);
-  }
-
-  console.log(
-    `✅ SW 检查通过：html=${rootHtml.length}, precache(literal)=${literalItems.length}, precache(template)=${templateItems.length}`
-  );
+  if (errors.length > 0) return { ok: false, errors, counts: null };
+  return {
+    ok: true,
+    errors: [],
+    counts: { html: rootHtml.length, precacheLiteral: literalItems.length, precacheTemplate: templateItems.length },
+  };
 };
 
-main();
+export const main = ({ workspaceRoot = process.cwd(), stdout = console.log, stderr = console.error } = {}) => {
+  const result = validateServiceWorker({ workspaceRoot });
+  if (!result.ok) {
+    stderr("❌ SW 检查未通过：");
+    result.errors.forEach((e) => stderr(`- ${e}`));
+    return 1;
+  }
+  stdout(
+    `✅ SW 检查通过：html=${result.counts.html}, precache(literal)=${result.counts.precacheLiteral}, precache(template)=${result.counts.precacheTemplate}`
+  );
+  return 0;
+};
 
+const isRunAsScript = () => {
+  const entry = process.argv[1];
+  if (!entry) return false;
+  return import.meta.url === pathToFileURL(entry).href;
+};
+
+/* c8 ignore next */
+if (isRunAsScript()) {
+  process.exit(main());
+}

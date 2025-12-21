@@ -4892,6 +4892,13 @@ img:hover {
 .save-star {
     font-weight: 900;
     line-height: 1;
+    display: inline-block;
+    transform: translateZ(0);
+    transition: transform 0.18s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+.save-pill.active .save-star {
+    transform: rotate(-10deg) scale(1.2);
 }
 
 .save-text {
@@ -4922,6 +4929,8 @@ img:hover {
     inset: 0;
     background: rgba(0, 0, 0, 0.35);
     backdrop-filter: blur(8px);
+    opacity: 0;
+    transition: opacity 0.16s ease;
 }
 
 .cmdk-panel {
@@ -4933,6 +4942,29 @@ img:hover {
     background: var(--surface-strong);
     box-shadow: 0 30px 80px rgba(0, 0, 0, 0.25);
     overflow: hidden;
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+    transition: transform 0.18s ease, opacity 0.18s ease;
+}
+
+.cmdk-root[data-state="opening"] .cmdk-backdrop,
+.cmdk-root[data-state="open"] .cmdk-backdrop {
+    opacity: 1;
+}
+
+.cmdk-root[data-state="opening"] .cmdk-panel,
+.cmdk-root[data-state="open"] .cmdk-panel {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+}
+
+.cmdk-root[data-state="closing"] .cmdk-backdrop {
+    opacity: 0;
+}
+
+.cmdk-root[data-state="closing"] .cmdk-panel {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.985);
 }
 
 .cmdk-bar {
@@ -5070,12 +5102,27 @@ body.cmdk-open {
     .cmdk-backdrop {
         backdrop-filter: none;
     }
+    .cmdk-backdrop,
+    .cmdk-panel,
+    .compare-backdrop,
+    .compare-panel,
+    .compare-bar {
+        transition: none !important;
+    }
+    .cmdk-panel,
+    .compare-panel {
+        transform: none !important;
+    }
     .cmdk-item,
-    .save-pill {
+    .save-pill,
+    .save-star {
         transition: none;
     }
     .cmdk-item:hover,
     .save-pill:hover {
+        transform: none;
+    }
+    .save-pill.active .save-star {
         transform: none;
     }
 }
@@ -5083,6 +5130,30 @@ body.cmdk-open {
 /* -------------------------
    Update Badge（NEW / UPDATED）
 ------------------------- */
+
+/* 页面切换淡入淡出（跨页过渡，降级安全） */
+body::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 6500;
+    opacity: 0;
+    background:
+        radial-gradient(1200px 800px at 12% 12%, rgba(93, 63, 211, 0.22), transparent 55%),
+        radial-gradient(900px 700px at 86% 18%, rgba(0, 194, 255, 0.18), transparent 60%),
+        rgba(8, 10, 18, 0.12);
+    transition: opacity 0.18s ease;
+}
+
+body.is-navigating::after {
+    opacity: 1;
+    backdrop-filter: blur(10px);
+}
+
+body.is-navigating {
+    cursor: progress;
+}
 
 .update-badge {
     display: inline-flex;
@@ -5155,6 +5226,20 @@ body.cmdk-open {
     background: var(--surface-strong);
     box-shadow: var(--box-shadow-lg);
     backdrop-filter: blur(14px);
+    opacity: 0;
+    transform: translateY(16px);
+    transition: transform 0.18s ease, opacity 0.18s ease;
+}
+
+.compare-bar[data-state="opening"],
+.compare-bar[data-state="open"] {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.compare-bar[data-state="closing"] {
+    opacity: 0;
+    transform: translateY(16px);
 }
 
 .compare-bar-inner {
@@ -5209,6 +5294,8 @@ body.cmdk-open {
     inset: 0;
     background: rgba(0, 0, 0, 0.35);
     backdrop-filter: blur(10px);
+    opacity: 0;
+    transition: opacity 0.18s ease;
 }
 
 .compare-panel {
@@ -5220,6 +5307,29 @@ body.cmdk-open {
     background: var(--surface-strong);
     box-shadow: 0 30px 90px rgba(0, 0, 0, 0.35);
     overflow: hidden;
+    opacity: 0;
+    transform: translateY(-8px) scale(0.985);
+    transition: transform 0.20s ease, opacity 0.20s ease;
+}
+
+.compare-root[data-state="opening"] .compare-backdrop,
+.compare-root[data-state="open"] .compare-backdrop {
+    opacity: 1;
+}
+
+.compare-root[data-state="opening"] .compare-panel,
+.compare-root[data-state="open"] .compare-panel {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+}
+
+.compare-root[data-state="closing"] .compare-backdrop {
+    opacity: 0;
+}
+
+.compare-root[data-state="closing"] .compare-panel {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.985);
 }
 
 .compare-header {

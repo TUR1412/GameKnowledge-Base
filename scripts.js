@@ -276,6 +276,19 @@
     }
   };
 
+  const withViewTransition = (fn) => {
+    const start = document.startViewTransition;
+    if (prefersReducedMotion() || typeof start !== "function") {
+      fn();
+      return;
+    }
+    try {
+      start.call(document, fn);
+    } catch (_) {
+      fn();
+    }
+  };
+
   const setGuideReadingMode = (on) => {
     document.body.classList.toggle("reading-mode", on);
     storage.set(STORAGE_KEYS.guideReadingMode, on ? "1" : "0");
@@ -798,6 +811,7 @@
     const root = document.createElement("div");
     root.className = "cmdk-root";
     root.hidden = true;
+    root.dataset.state = "closed";
     root.innerHTML = `
       <div class="cmdk-backdrop" data-action="cmdk-close" aria-hidden="true"></div>
       <div class="cmdk-panel" role="dialog" aria-modal="true" aria-label="全站搜索">
@@ -866,6 +880,42 @@
     const getReadingLabel = () => {
       const active = document.body.classList.contains("reading-mode");
       return active ? "退出专注阅读" : "进入专注阅读";
+    };
+
+    // 搜索索引缓存：避免每次输入都重复构造全文字符串（性能压榨）
+    let searchPool = null;
+    let searchPoolVersion = "";
+
+    const getSearchPool = () => {
+      const data = getData();
+      const version = String(data?.version || "");
+
+      if (searchPool && version && searchPoolVersion === version) return searchPool;
+      if (!data) return { games: [], guides: [], topics: [] };
+
+      const next = {
+        games: Object.entries(data.games || {}).map(([id, g]) => {
+          const title = String(g?.title || id);
+          const genre = String(g?.genre || "");
+          const year = g?.year ? `${g.year}` : "";
+          return { id, g, blob: `${id} ${title} ${genre} ${year}` };
+        }),
+        guides: Object.entries(data.guides || {}).map(([id, g]) => {
+          const title = String(g?.title || id);
+          const summary = String(g?.summary || "");
+          const tags = Array.isArray(g?.tags) ? g.tags.map(String).join(" ") : "";
+          return { id, g, blob: `${id} ${title} ${summary} ${tags}` };
+        }),
+        topics: Object.entries(data.topics || {}).map(([id, t]) => {
+          const title = String(t?.title || id);
+          const summary = String(t?.summary || "");
+          return { id, t, blob: `${id} ${title} ${summary}` };
+        }),
+      };
+
+      searchPool = next;
+      searchPoolVersion = version || searchPoolVersion;
+      return next;
     };
 
     const buildGroups = (query) => {
@@ -1118,12 +1168,11 @@
         return withHighlight(groups);
       }
 
-      const gameItems = Object.entries(data?.games || {})
-        .map(([id, g]) => {
-          const title = String(g?.title || id);
-          const genre = String(g?.genre || "");
-          const year = g?.year ? `${g.year}` : "";
-          const score = fuzzyScore(`${id} ${title} ${genre} ${year}`, q);
+      const pool = getSearchPool();
+
+      const gameItems = pool.games
+        .map(({ id, g, blob }) => {
+          const score = fuzzyScore(blob, q);
           return { id, g, score };
         })
         .filter((x) => x.score != null)
@@ -1137,12 +1186,9 @@
           href: `game.html?id=${encodeURIComponent(id)}`,
         }));
 
-      const guideItems = Object.entries(data?.guides || {})
-        .map(([id, g]) => {
-          const title = String(g?.title || id);
-          const summary = String(g?.summary || "");
-          const tags = Array.isArray(g?.tags) ? g.tags.map(String).join(" ") : "";
-          const score = fuzzyScore(`${id} ${title} ${summary} ${tags}`, q);
+      const guideItems = pool.guides
+        .map(({ id, g, blob }) => {
+          const score = fuzzyScore(blob, q);
           return { id, g, score };
         })
         .filter((x) => x.score != null)
@@ -1156,12 +1202,10 @@
           href: `guide-detail.html?id=${encodeURIComponent(id)}`,
         }));
 
-      const topicItems = Object.entries(data?.topics || {})
-        .map(([id, g]) => {
-          const title = String(g?.title || id);
-          const summary = String(g?.summary || "");
-          const score = fuzzyScore(`${id} ${title} ${summary}`, q);
-          return { id, g, score };
+      const topicItems = pool.topics
+        .map(({ id, t, blob }) => {
+          const score = fuzzyScore(blob, q);
+          return { id, g: t, score };
         })
         .filter((x) => x.score != null)
         .sort((a, b) => (b.score || 0) - (a.score || 0))
@@ -1245,20 +1289,6 @@
       const buttons = $$(".cmdk-item", list);
       selected = 0;
       if (buttons.length > 0) buttons[0].setAttribute("aria-selected", "true");
-
-      buttons.forEach((btn) => {
-        btn.addEventListener("click", () => {
-          const i = Number(btn.dataset.idx || 0);
-          const item = flatItems[i];
-          if (!item) return;
-          if (item.kind === "action" && typeof item.run === "function") {
-            item.run();
-            close();
-            return;
-          }
-          if (item.href) window.location.href = item.href;
-        });
-      });
     };
 
     const syncSelection = (next) => {
@@ -1273,7 +1303,11 @@
       if (!root.hidden) return;
       lastActive = document.activeElement;
       root.hidden = false;
+      root.dataset.state = "opening";
       document.body.classList.add("cmdk-open");
+      window.requestAnimationFrame(() => {
+        root.dataset.state = "open";
+      });
       if (input) {
         input.value = "";
         render("");
@@ -1285,12 +1319,33 @@
 
     const close = () => {
       if (root.hidden) return;
-      root.hidden = true;
+      root.dataset.state = prefersReducedMotion() ? "closed" : "closing";
       document.body.classList.remove("cmdk-open");
-      try {
-        lastActive?.focus?.();
-      } catch (_) {}
+      const finalize = () => {
+        root.hidden = true;
+        root.dataset.state = "closed";
+        try {
+          lastActive?.focus?.();
+        } catch (_) {}
+      };
+      if (prefersReducedMotion()) finalize();
+      else window.setTimeout(finalize, 160);
     };
+
+    // 事件委托：避免每次 render 都给每个 item 重新绑定 click
+    list?.addEventListener("click", (e) => {
+      const btn = e.target?.closest?.(".cmdk-item");
+      if (!btn) return;
+      const i = Number(btn.dataset.idx || 0);
+      const item = flatItems[i];
+      if (!item) return;
+      if (item.kind === "action" && typeof item.run === "function") {
+        item.run();
+        close();
+        return;
+      }
+      if (item.href) window.location.href = item.href;
+    });
 
     root.addEventListener("click", (e) => {
       const el = e.target;
@@ -1298,7 +1353,13 @@
       if (el.dataset.action === "cmdk-close") close();
     });
 
-    input?.addEventListener("input", () => render(input.value));
+    if (input) {
+      let t = 0;
+      input.addEventListener("input", () => {
+        window.clearTimeout(t);
+        t = window.setTimeout(() => render(input.value), 60);
+      });
+    }
 
     root.addEventListener("keydown", (e) => {
       if (e.key === "Escape") {
@@ -1409,6 +1470,74 @@
       a.classList.toggle("active", isActive);
       if (isActive) a.setAttribute("aria-current", "page");
       else a.removeAttribute("aria-current");
+    });
+  };
+
+  // -------------------------
+  // Soft Navigation（跨页淡入淡出：微交互增强，降级安全）
+  // -------------------------
+
+  const initSoftNavigation = () => {
+    if (prefersReducedMotion()) return;
+
+    let inFlight = false;
+
+    const canIntercept = (e, a, url) => {
+      if (!e || e.defaultPrevented) return false;
+      if (!a || !(a instanceof HTMLAnchorElement)) return false;
+      if (!url) return false;
+
+      // 仅处理“同页签普通点击”
+      if (e.button !== 0) return false;
+      if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return false;
+      if (a.target && a.target !== "_self") return false;
+      if (a.hasAttribute("download")) return false;
+      if (a.dataset.noTransition === "1") return false;
+
+      // 仅同源（避免外链被劫持）
+      if (url.origin !== window.location.origin) return false;
+
+      // hash 变化（同页锚点）不拦截
+      const sameDoc = url.pathname === window.location.pathname && url.search === window.location.search;
+      if (sameDoc && url.hash && url.hash !== window.location.hash) return false;
+
+      // 相同 URL 不拦截
+      if (url.href === window.location.href) return false;
+
+      return true;
+    };
+
+    document.addEventListener(
+      "click",
+      (e) => {
+        if (inFlight) return;
+        const a = e.target?.closest?.("a[href]");
+        if (!a) return;
+
+        let url = null;
+        try {
+          url = new URL(a.getAttribute("href") || "", window.location.href);
+        } catch (_) {
+          url = null;
+        }
+
+        if (!canIntercept(e, a, url)) return;
+
+        inFlight = true;
+        e.preventDefault();
+
+        document.body.classList.add("is-navigating");
+        window.setTimeout(() => {
+          window.location.href = url.href;
+        }, 140);
+      },
+      { capture: true }
+    );
+
+    // BFCache / 返回：确保不会卡在“离场态”
+    window.addEventListener("pageshow", () => {
+      inFlight = false;
+      document.body.classList.remove("is-navigating");
     });
   };
 
@@ -1904,9 +2033,7 @@
   const readCompareGames = () => readStringList(STORAGE_KEYS.compareGames).slice(0, COMPARE_LIMIT);
 
   const writeCompareGames = (list) => {
-    const next = writeStringList(STORAGE_KEYS.compareGames, list).slice(0, COMPARE_LIMIT);
-    storage.set(STORAGE_KEYS.compareGames, JSON.stringify(next));
-    return next;
+    return writeStringList(STORAGE_KEYS.compareGames, list).slice(0, COMPARE_LIMIT);
   };
 
   const clearCompareGames = () => writeCompareGames([]);
@@ -1946,6 +2073,7 @@
     const root = document.createElement("div");
     root.className = "compare-root";
     root.hidden = true;
+    root.dataset.state = "closed";
     root.innerHTML = `
       <div class="compare-backdrop" data-action="compare-close" aria-hidden="true"></div>
       <div class="compare-panel" role="dialog" aria-modal="true" aria-label="游戏对比">
@@ -1964,11 +2092,18 @@
     `;
 
     const close = () => {
-      root.hidden = true;
+      if (root.hidden) return;
+      root.dataset.state = prefersReducedMotion() ? "closed" : "closing";
       document.body.classList.remove("compare-open");
-      try {
-        compareDialogLastActive?.focus?.();
-      } catch (_) {}
+      const finalize = () => {
+        root.hidden = true;
+        root.dataset.state = "closed";
+        try {
+          compareDialogLastActive?.focus?.();
+        } catch (_) {}
+      };
+      if (prefersReducedMotion()) finalize();
+      else window.setTimeout(finalize, 170);
     };
 
     root.addEventListener("click", (e) => {
@@ -1984,6 +2119,26 @@
     window.addEventListener("keydown", (e) => {
       if (root.hidden) return;
       if (e.key === "Escape") close();
+    });
+
+    // Focus trap（避免 Tab 跑到弹窗外）
+    root.addEventListener("keydown", (e) => {
+      if (root.hidden) return;
+      if (e.key !== "Tab") return;
+      const focusable = $$(
+        'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        root
+      );
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
     });
 
     document.body.appendChild(root);
@@ -2074,7 +2229,11 @@
     compareDialogLastActive = document.activeElement;
     body.innerHTML = renderCompareTable(ids);
     root.hidden = false;
+    root.dataset.state = "opening";
     document.body.classList.add("compare-open");
+    window.requestAnimationFrame(() => {
+      root.dataset.state = "open";
+    });
 
     const closeBtn = $(".compare-close", root);
     closeBtn?.focus?.();
@@ -2154,6 +2313,7 @@
       bar.id = "compare-bar";
       bar.className = "compare-bar";
       bar.hidden = true;
+      bar.dataset.state = "closed";
       bar.innerHTML = `
         <div class="compare-bar-inner">
           <div class="compare-bar-left">
@@ -2213,35 +2373,34 @@
         btn.setAttribute("aria-pressed", "false");
         btn.textContent = "对比";
 
-        btn.addEventListener("click", (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-
-          const current = readCompareGames();
-          const set = new Set(current);
-
-          if (set.has(id)) {
-            set.delete(id);
-            writeCompareGames(Array.from(set));
-            toast({ title: "已移除", message: `已从对比栏移除「${getGameTitle(id)}」。`, tone: "info" });
-          } else {
-            if (current.length >= COMPARE_LIMIT) {
-              toast({ title: "选择已达上限", message: `最多同时对比 ${COMPARE_LIMIT} 款游戏。`, tone: "warn" });
-              return;
-            }
-            set.add(id);
-            writeCompareGames(Array.from(set));
-            toast({ title: "已加入对比", message: `已加入「${getGameTitle(id)}」。`, tone: "success" });
-          }
-
-          syncCompareUi();
-        });
-
         const info = $(".game-info", card) || card;
         const anchor = $(".btn", info);
         if (anchor) anchor.insertAdjacentElement("beforebegin", btn);
         else info.appendChild(btn);
       });
+    };
+
+    const setCompareBarVisible = (bar, visible) => {
+      if (!bar) return;
+
+      if (visible) {
+        if (!bar.hidden) return;
+        bar.hidden = false;
+        bar.dataset.state = "opening";
+        window.requestAnimationFrame(() => {
+          bar.dataset.state = "open";
+        });
+        return;
+      }
+
+      if (bar.hidden) return;
+      bar.dataset.state = prefersReducedMotion() ? "closed" : "closing";
+      const finalize = () => {
+        bar.hidden = true;
+        bar.dataset.state = "closed";
+      };
+      if (prefersReducedMotion()) finalize();
+      else window.setTimeout(finalize, 190);
     };
 
     const syncCompareUi = () => {
@@ -2260,7 +2419,7 @@
       });
 
       const bar = ensureCompareBar();
-      bar.hidden = compareIds.length === 0;
+      setCompareBarVisible(bar, compareIds.length > 0);
 
       const count = $(".compare-bar-count", bar);
       if (count) count.textContent = `已选 ${compareIds.length}/${COMPARE_LIMIT}`;
@@ -2278,6 +2437,36 @@
 
     ensureCompareButtons();
     syncCompareUi();
+
+    // 事件委托：避免为每张卡片单独绑定 click listener（规模上来更稳）
+    listEl.addEventListener("click", (e) => {
+      const btn = e.target?.closest?.(".compare-toggle");
+      if (!btn) return;
+      e.preventDefault();
+      e.stopPropagation();
+
+      const id = String(btn.dataset.compareId || "").trim();
+      if (!id) return;
+
+      const current = readCompareGames();
+      const set = new Set(current);
+
+      if (set.has(id)) {
+        set.delete(id);
+        writeCompareGames(Array.from(set));
+        toast({ title: "已移除", message: `已从对比栏移除「${getGameTitle(id)}」。`, tone: "info" });
+      } else {
+        if (current.length >= COMPARE_LIMIT) {
+          toast({ title: "选择已达上限", message: `最多同时对比 ${COMPARE_LIMIT} 款游戏。`, tone: "warn" });
+          return;
+        }
+        set.add(id);
+        writeCompareGames(Array.from(set));
+        toast({ title: "已加入对比", message: `已加入「${getGameTitle(id)}」。`, tone: "success" });
+      }
+
+      syncCompareUi();
+    });
 
     const searchInput = $(".search-box input", root);
     const searchBtn = $(".search-btn", root);
@@ -2335,8 +2524,19 @@
       view: listEl.classList.contains("list-view-active") ? "list" : "grid",
     });
 
+    const originalCards = cards.slice();
+    let lastSortKey = "";
+
     const sort = (sortKey) => {
-      if (!sortKey || sortKey === "popular") return;
+      const key = sortKey || "popular";
+      if (key === lastSortKey) return;
+      lastSortKey = key;
+
+      if (key === "popular") {
+        originalCards.forEach((c) => listEl.appendChild(c));
+        return;
+      }
+
       const comparator = (a, b) => {
         const ra = Number(a.dataset.rating || 0);
         const rb = Number(b.dataset.rating || 0);
@@ -2344,14 +2544,33 @@
         const yb = Number(b.dataset.year || 0);
         const ua = Number(a.dataset.updated || a.dataset.year || 0);
         const ub = Number(b.dataset.updated || b.dataset.year || 0);
-        if (sortKey === "latest") return ub - ua;
-        if (sortKey === "rating-desc") return rb - ra;
-        if (sortKey === "rating-asc") return ra - rb;
-        if (sortKey === "year-desc") return yb - ya;
-        if (sortKey === "year-asc") return ya - yb;
+        if (key === "latest") return ub - ua;
+        if (key === "rating-desc") return rb - ra;
+        if (key === "rating-asc") return ra - rb;
+        if (key === "year-desc") return yb - ya;
+        if (key === "year-asc") return ya - yb;
         return 0;
       };
       cards.sort(comparator).forEach((c) => listEl.appendChild(c));
+    };
+
+    let activeFilterChips = [];
+    let activeFilterBound = false;
+
+    const ensureActiveFilterDelegate = () => {
+      if (activeFilterBound) return;
+      if (!activeFiltersEl) return;
+      activeFilterBound = true;
+
+      activeFiltersEl.addEventListener("click", (e) => {
+        const btn = e.target?.closest?.("[data-chip]");
+        if (!btn || !activeFiltersEl.contains(btn)) return;
+        const idx = Number(btn.dataset.chip || 0);
+        const chip = activeFilterChips[idx];
+        if (!chip) return;
+        chip.onClear?.();
+        sync();
+      });
     };
 
     const filter = (s) => {
@@ -2390,6 +2609,7 @@
 
     const renderActiveFilters = (s) => {
       if (!activeFiltersEl) return;
+      ensureActiveFilterDelegate();
       const chips = [];
 
       const pushChip = (label, onClear) => {
@@ -2442,9 +2662,11 @@
 
       if (chips.length === 0) {
         activeFiltersEl.innerHTML = "";
+        activeFilterChips = [];
         return;
       }
 
+      activeFilterChips = chips;
       activeFiltersEl.innerHTML = chips
         .map((chip, idx) => {
           return `<button type="button" class="filter-chip" data-chip="${idx}">${escapeHtml(
@@ -2452,16 +2674,6 @@
           )}<span class="chip-x">×</span></button>`;
         })
         .join("");
-
-      $$("[data-chip]", activeFiltersEl).forEach((btn) => {
-        btn.addEventListener("click", () => {
-          const idx = Number(btn.dataset.chip || 0);
-          const chip = chips[idx];
-          if (!chip) return;
-          chip.onClear?.();
-          sync();
-        });
-      });
     };
 
     const syncUrl = (s) => {
@@ -2723,26 +2935,29 @@
             return `<button type="button" class="chip chip-btn ${active ? "active" : ""}" data-tag="${escapeHtml(t)}">${escapeHtml(t)}</button>`;
           })
           .join("");
-
-      $$(".chip-btn", tagRoot).forEach((btn) => {
-        btn.addEventListener("click", () => {
-          const action = btn.dataset.action || "";
-          if (action === "saved-only") {
-            state.savedOnly = !state.savedOnly;
-            writeState(state);
-            renderTags();
-            apply();
-            return;
-          }
-          const t = btn.dataset.tag || "";
-          if (!t) return;
-          state.tags = state.tags.includes(t) ? state.tags.filter((x) => x !== t) : [...state.tags, t];
-          writeState(state);
-          renderTags();
-          apply();
-        });
-      });
     };
+
+    // 事件委托：避免每次 renderTags 都为每个 chip 绑定 click
+    tagRoot?.addEventListener("click", (e) => {
+      const btn = e.target?.closest?.(".chip-btn");
+      if (!btn || !tagRoot.contains(btn)) return;
+
+      const action = btn.dataset.action || "";
+      if (action === "saved-only") {
+        state.savedOnly = !state.savedOnly;
+        writeState(state);
+        renderTags();
+        apply();
+        return;
+      }
+
+      const t = btn.dataset.tag || "";
+      if (!t) return;
+      state.tags = state.tags.includes(t) ? state.tags.filter((x) => x !== t) : [...state.tags, t];
+      writeState(state);
+      renderTags();
+      apply();
+    });
 
     const syncUrl = () => {
       try {
@@ -2816,6 +3031,49 @@
 
     const getGuideUpdated = (guide) => parseDateKey(guide?.updated);
 
+    const syncGuideSaveUi = (btn, isSaved) => {
+      if (!btn) return;
+      btn.classList.toggle("active", Boolean(isSaved));
+      btn.setAttribute("aria-pressed", isSaved ? "true" : "false");
+      btn.setAttribute("aria-label", isSaved ? "取消收藏" : "收藏");
+
+      const star = $(".save-star", btn);
+      if (star) star.textContent = isSaved ? "★" : "☆";
+      const text = $(".save-text", btn);
+      if (text) text.textContent = isSaved ? "取消收藏" : "收藏";
+    };
+
+    // 事件委托：避免每次 apply 重新绑定 N 个按钮监听器
+    grid.addEventListener("click", (e) => {
+      const btn = e.target?.closest?.(".save-pill");
+      if (!btn || !grid.contains(btn)) return;
+      e.preventDefault();
+      e.stopPropagation();
+
+      const gid = btn.dataset.guideId || "";
+      if (!gid) return;
+
+      const had = saved.has(gid);
+      if (had) saved.delete(gid);
+      else saved.add(gid);
+      writeStringList(STORAGE_KEYS.savedGuides, Array.from(saved));
+
+      toast({
+        title: had ? "已取消收藏" : "已收藏",
+        message: "偏好已保存到本地浏览器。",
+        tone: had ? "info" : "success",
+      });
+
+      // 只看收藏：取消收藏会导致当前卡片需要被移除（直接重算列表）
+      if (state.savedOnly && had) {
+        apply();
+        return;
+      }
+
+      syncGuideSaveUi(btn, !had);
+      btn.closest?.(".guide-card")?.classList.toggle("is-saved", !had);
+    });
+
     const apply = () => {
       saved = new Set(readStringList(STORAGE_KEYS.savedGuides));
       const q = (state.query || "").trim().toLowerCase();
@@ -2844,29 +3102,11 @@
         });
       }
 
-      grid.innerHTML = sorted.map(({ id, guide }) => renderCard(id, guide)).join("");
-      if (countEl) countEl.textContent = `共 ${sorted.length} 条攻略`;
-      $$(".save-pill", grid).forEach((btn) => {
-        btn.addEventListener("click", (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          const gid = btn.dataset.guideId || "";
-          if (!gid) return;
-          const list = new Set(readStringList(STORAGE_KEYS.savedGuides));
-          const has = list.has(gid);
-          if (has) list.delete(gid);
-          else list.add(gid);
-          writeStringList(STORAGE_KEYS.savedGuides, Array.from(list));
-          toast({
-            title: has ? "已取消收藏" : "已收藏",
-            message: "偏好已保存到本地浏览器。",
-            tone: has ? "info" : "success",
-          });
-          apply();
-        });
+      withViewTransition(() => {
+        grid.innerHTML = sorted.length > 0 ? sorted.map(({ id, guide }) => renderCard(id, guide)).join("") : "";
+        if (countEl) countEl.textContent = `共 ${sorted.length} 条攻略`;
+        if (empty) empty.hidden = sorted.length !== 0;
       });
-      if (empty) empty.hidden = sorted.length !== 0;
-      if (empty && sorted.length === 0) grid.innerHTML = "";
       syncUrl();
     };
 
@@ -3595,26 +3835,29 @@
             return `<button type="button" class="chip chip-btn ${active ? "active" : ""}" data-tag="${escapeHtml(t)}">${escapeHtml(t)}</button>`;
           })
           .join("");
-
-      $$(".chip-btn", tagRoot).forEach((btn) => {
-        btn.addEventListener("click", () => {
-          const action = btn.dataset.action || "";
-          if (action === "saved-only") {
-            state.savedOnly = !state.savedOnly;
-            writeState(state);
-            renderTags();
-            apply();
-            return;
-          }
-          const t = btn.dataset.tag || "";
-          if (!t) return;
-          state.tags = state.tags.includes(t) ? state.tags.filter((x) => x !== t) : [...state.tags, t];
-          writeState(state);
-          renderTags();
-          apply();
-        });
-      });
     };
+
+    // 事件委托：避免每次 renderTags 都为每个 chip 绑定 click
+    tagRoot?.addEventListener("click", (e) => {
+      const btn = e.target?.closest?.(".chip-btn");
+      if (!btn || !tagRoot.contains(btn)) return;
+
+      const action = btn.dataset.action || "";
+      if (action === "saved-only") {
+        state.savedOnly = !state.savedOnly;
+        writeState(state);
+        renderTags();
+        apply();
+        return;
+      }
+
+      const t = btn.dataset.tag || "";
+      if (!t) return;
+      state.tags = state.tags.includes(t) ? state.tags.filter((x) => x !== t) : [...state.tags, t];
+      writeState(state);
+      renderTags();
+      apply();
+    });
 
     const syncUrl = () => {
       try {
@@ -3674,6 +3917,49 @@
       `;
     };
 
+    const syncTopicSaveUi = (btn, isSaved) => {
+      if (!btn) return;
+      btn.classList.toggle("active", Boolean(isSaved));
+      btn.setAttribute("aria-pressed", isSaved ? "true" : "false");
+      btn.setAttribute("aria-label", isSaved ? "取消收藏" : "收藏");
+
+      const star = $(".save-star", btn);
+      if (star) star.textContent = isSaved ? "★" : "☆";
+      const text = $(".save-text", btn);
+      if (text) text.textContent = isSaved ? "取消收藏" : "收藏";
+    };
+
+    // 事件委托：避免每次 apply 重新绑定 N 个按钮监听器
+    grid.addEventListener("click", (e) => {
+      const btn = e.target?.closest?.(".save-pill");
+      if (!btn || !grid.contains(btn)) return;
+      e.preventDefault();
+      e.stopPropagation();
+
+      const tid = btn.dataset.topicId || "";
+      if (!tid) return;
+
+      const had = saved.has(tid);
+      if (had) saved.delete(tid);
+      else saved.add(tid);
+      writeStringList(STORAGE_KEYS.savedTopics, Array.from(saved));
+
+      toast({
+        title: had ? "已取消收藏" : "已收藏",
+        message: "话题已保存到本地浏览器。",
+        tone: had ? "info" : "success",
+      });
+
+      // 只看收藏：取消收藏会导致当前卡片需要被移除（直接重算列表）
+      if (state.savedOnly && had) {
+        apply();
+        return;
+      }
+
+      syncTopicSaveUi(btn, !had);
+      btn.closest?.(".topic-card")?.classList.toggle("is-saved", !had);
+    });
+
     const apply = () => {
       saved = new Set(readStringList(STORAGE_KEYS.savedTopics));
       const q = (state.query || "").trim().toLowerCase();
@@ -3703,31 +3989,12 @@
         return parseDateKey(b.topic?.updated) - parseDateKey(a.topic?.updated);
       });
 
-      grid.innerHTML = sorted.map(({ id, topic }) => renderCard(id, topic)).join("");
-      if (countEl) countEl.textContent = `共 ${sorted.length} 个话题`;
-      if (empty) empty.hidden = sorted.length !== 0;
-      if (empty && sorted.length === 0) grid.innerHTML = "";
-      syncUrl();
-
-      $$(".save-pill", grid).forEach((btn) => {
-        btn.addEventListener("click", (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          const tid = btn.dataset.topicId || "";
-          if (!tid) return;
-          const list = new Set(readStringList(STORAGE_KEYS.savedTopics));
-          const has = list.has(tid);
-          if (has) list.delete(tid);
-          else list.add(tid);
-          writeStringList(STORAGE_KEYS.savedTopics, Array.from(list));
-          toast({
-            title: has ? "已取消收藏" : "已收藏",
-            message: "话题已保存到本地浏览器。",
-            tone: has ? "info" : "success",
-          });
-          apply();
-        });
+      withViewTransition(() => {
+        grid.innerHTML = sorted.length > 0 ? sorted.map(({ id, topic }) => renderCard(id, topic)).join("") : "";
+        if (countEl) countEl.textContent = `共 ${sorted.length} 个话题`;
+        if (empty) empty.hidden = sorted.length !== 0;
       });
+      syncUrl();
     };
 
     if (searchInput) searchInput.value = state.query || "";
@@ -3968,6 +4235,7 @@
     run(seedUpdateRadarIfNeeded);
     run(initCommandPalette);
     run(initNavigation);
+    run(initSoftNavigation);
     run(initBackToTop);
     run(initCopyLinkButtons);
     run(initPwaInstall);

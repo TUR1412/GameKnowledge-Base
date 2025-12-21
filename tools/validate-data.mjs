@@ -1,21 +1,16 @@
 import fs from "node:fs";
 import path from "node:path";
 import vm from "node:vm";
+import { pathToFileURL } from "node:url";
 
-const WORKSPACE_ROOT = process.cwd();
+export const readText = (filePath) => fs.readFileSync(filePath, "utf8");
 
-const readText = (filePath) => fs.readFileSync(filePath, "utf8");
+export const isNonEmptyString = (v) => typeof v === "string" && v.trim().length > 0;
+export const isNumber = (v) => typeof v === "number" && Number.isFinite(v);
+export const isDateString = (v) => isNonEmptyString(v) && /^\d{4}-\d{2}-\d{2}$/.test(v.trim());
 
-const existsRel = (relPath) => {
-  try {
-    return fs.existsSync(path.join(WORKSPACE_ROOT, relPath));
-  } catch (_) {
-    return false;
-  }
-};
-
-const loadDataFromDataJs = () => {
-  const dataPath = path.join(WORKSPACE_ROOT, "data.js");
+export const loadDataFromDataJs = ({ workspaceRoot }) => {
+  const dataPath = path.join(workspaceRoot, "data.js");
   if (!fs.existsSync(dataPath)) return null;
 
   const code = readText(dataPath);
@@ -25,18 +20,16 @@ const loadDataFromDataJs = () => {
   return context.window?.GKB?.data || null;
 };
 
-const isNonEmptyString = (v) => typeof v === "string" && v.trim().length > 0;
-const isNumber = (v) => typeof v === "number" && Number.isFinite(v);
-const isDateString = (v) => isNonEmptyString(v) && /^\d{4}-\d{2}-\d{2}$/.test(v.trim());
-
-const validateIcon = (where, icon) => {
+export const validateIcon = ({ where, icon, existsRel }) => {
   if (!isNonEmptyString(icon)) return [`[DATA] ${where}: icon 不能为空`];
-  if (!icon.startsWith("images/")) return [`[DATA] ${where}: icon 必须是 images/ 下的相对路径 -> ${icon}`];
-  if (!existsRel(icon)) return [`[DATA] ${where}: icon 文件不存在 -> ${icon}`];
+  if (!String(icon).startsWith("images/")) {
+    return [`[DATA] ${where}: icon 必须是 images/ 下的相对路径 -> ${icon}`];
+  }
+  if (!existsRel(String(icon))) return [`[DATA] ${where}: icon 文件不存在 -> ${icon}`];
   return [];
 };
 
-const validateTags = (where, tags) => {
+export const validateTags = ({ where, tags }) => {
   if (tags == null) return [];
   if (!Array.isArray(tags)) return [`[DATA] ${where}: tags 必须是数组`];
   const bad = tags.filter((t) => !isNonEmptyString(t));
@@ -44,7 +37,7 @@ const validateTags = (where, tags) => {
   return [];
 };
 
-const validateStringArray = (where, value, label) => {
+export const validateStringArray = ({ where, value, label }) => {
   if (value == null) return [];
   if (!Array.isArray(value) || value.length === 0) return [`[DATA] ${where}: ${label} 必须是非空数组`];
   const bad = value.filter((t) => !isNonEmptyString(t));
@@ -52,18 +45,23 @@ const validateStringArray = (where, value, label) => {
   return [];
 };
 
-const main = () => {
-  const data = loadDataFromDataJs();
-  if (!data) {
-    console.error("❌ 无法读取 data.js（请在仓库根目录运行）");
-    process.exit(1);
-  }
-
+export const validateData = ({ data, existsRel, workspaceRoot }) => {
   const errors = [];
 
-  const games = data.games || {};
-  const guides = data.guides || {};
-  const topics = data.topics || {};
+  const safeExistsRel =
+    typeof existsRel === "function"
+      ? existsRel
+      : (relPath) => {
+          try {
+            return fs.existsSync(path.join(workspaceRoot, relPath));
+          } catch (_) {
+            return false;
+          }
+        };
+
+  const games = data?.games || {};
+  const guides = data?.guides || {};
+  const topics = data?.topics || {};
 
   // Games
   for (const [id, g] of Object.entries(games)) {
@@ -82,14 +80,14 @@ const main = () => {
       errors.push(`[DATA] ${where}: platforms 必须是非空数组`);
     }
     if (!isNonEmptyString(g.summary)) errors.push(`[DATA] ${where}: summary 不能为空`);
-    errors.push(...validateIcon(where, g.icon));
-    errors.push(...validateStringArray(where, g.modes, "modes"));
-    errors.push(...validateTags(where, g.tags));
-    errors.push(...validateStringArray(where, g.highlights, "highlights"));
+    errors.push(...validateIcon({ where, icon: g.icon, existsRel: safeExistsRel }));
+    errors.push(...validateStringArray({ where, value: g.modes, label: "modes" }));
+    errors.push(...validateTags({ where, tags: g.tags }));
+    errors.push(...validateStringArray({ where, value: g.highlights, label: "highlights" }));
     if (g.hasDeepGuide === true) {
       if (!isNonEmptyString(g.deepGuideHref)) {
         errors.push(`[DATA] ${where}: hasDeepGuide=true 时必须提供 deepGuideHref`);
-      } else if (!existsRel(g.deepGuideHref)) {
+      } else if (!safeExistsRel(g.deepGuideHref)) {
         errors.push(`[DATA] ${where}: deepGuideHref 指向不存在页面 -> ${g.deepGuideHref}`);
       }
     }
@@ -113,8 +111,8 @@ const main = () => {
       if (!gameId) errors.push(`[DATA] ${where}: gameId 不能为空字符串`);
       else if (!(gameId in games)) errors.push(`[DATA] ${where}: gameId 不存在 -> ${gameId}`);
     }
-    if (g.icon != null) errors.push(...validateIcon(where, g.icon));
-    errors.push(...validateTags(where, g.tags));
+    if (g.icon != null) errors.push(...validateIcon({ where, icon: g.icon, existsRel: safeExistsRel }));
+    errors.push(...validateTags({ where, tags: g.tags }));
   }
 
   // Topics
@@ -131,17 +129,45 @@ const main = () => {
     if (!isNonEmptyString(t.category)) errors.push(`[DATA] ${where}: category 不能为空`);
     if (!isDateString(t.updated)) errors.push(`[DATA] ${where}: updated 必须是 YYYY-MM-DD 格式`);
     if (!isNumber(t.replies)) errors.push(`[DATA] ${where}: replies 必须是数字`);
-    errors.push(...validateTags(where, t.tags));
+    errors.push(...validateTags({ where, tags: t.tags }));
   }
 
-  if (errors.length > 0) {
-    console.error("❌ data.js 数据校验未通过：");
-    errors.forEach((e) => console.error(`- ${e}`));
-    process.exit(1);
-  }
-
-  const counts = `games=${Object.keys(games).length}, guides=${Object.keys(guides).length}, topics=${Object.keys(topics).length}`;
-  console.log(`✅ data.js 数据校验通过：${counts}`);
+  return {
+    errors,
+    counts: {
+      games: Object.keys(games).length,
+      guides: Object.keys(guides).length,
+      topics: Object.keys(topics).length,
+    },
+  };
 };
 
-main();
+export const main = ({ workspaceRoot = process.cwd(), stdout = console.log, stderr = console.error } = {}) => {
+  const data = loadDataFromDataJs({ workspaceRoot });
+  if (!data) {
+    stderr("❌ 无法读取 data.js（请在仓库根目录运行）");
+    return 1;
+  }
+
+  const result = validateData({ data, workspaceRoot });
+  if (result.errors.length > 0) {
+    stderr("❌ data.js 数据校验未通过：");
+    result.errors.forEach((e) => stderr(`- ${e}`));
+    return 1;
+  }
+
+  const counts = `games=${result.counts.games}, guides=${result.counts.guides}, topics=${result.counts.topics}`;
+  stdout(`✅ data.js 数据校验通过：${counts}`);
+  return 0;
+};
+
+const isRunAsScript = () => {
+  const entry = process.argv[1];
+  if (!entry) return false;
+  return import.meta.url === pathToFileURL(entry).href;
+};
+
+/* c8 ignore next */
+if (isRunAsScript()) {
+  process.exit(main());
+}

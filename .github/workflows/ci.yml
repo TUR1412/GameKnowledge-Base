@@ -30,6 +30,10 @@ jobs:
           node --check tools/generate-sitemap.mjs
           node --check tools/validate-data.mjs
 
+      - name: Unit Tests (Node Test Runner + Coverage)
+        run: |
+          node --test --experimental-test-coverage --test-coverage-lines=95 --test-coverage-functions=95 --test-coverage-branches=90
+
       - name: Link / Asset / Cache Busting Check
         run: node tools/check-links.mjs
 
