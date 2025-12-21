@@ -59,4 +59,4 @@
 - [x] 5. PWA：Manifest shortcuts + SW 预缓存补齐新入口页
 - [x] 6. README：新增 3 张动态演示 SVG + 功能清单/架构图更新
 - [x] 7. bump 版本号：`20251222-1 -> 20251222-2` + 本地校验通过（check-links/check-sw/validate-data）
-- [ ] 8. 提交并推送（待执行）
+- [x] 8. 提交并推送（已完成）
