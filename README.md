@@ -1,80 +1,165 @@
 # 游戏攻略网 · GameKnowledge-Base
 
 <p align="center">
-  <strong>纯静态 · 无框架 · 离线可用 · 数据驱动</strong><br>
-  游戏知识库与攻略站点，一次构建，轻松部署到 GitHub Pages。
+  <strong>纯静态 · 无框架 · 数据驱动 · PWA 离线 · 本地状态持久化</strong><br>
+  一次维护数据，多页统一渲染。适合 GitHub Pages / 任意静态托管。
 </p>
 
 <p align="center">
   <a href="https://github.com/TUR1412/GameKnowledge-Base/actions/workflows/ci.yml">
     <img src="https://github.com/TUR1412/GameKnowledge-Base/actions/workflows/ci.yml/badge.svg" alt="CI">
   </a>
+  <img src="https://img.shields.io/github/last-commit/TUR1412/GameKnowledge-Base" alt="Last Commit">
+  <img src="https://img.shields.io/github/repo-size/TUR1412/GameKnowledge-Base" alt="Repo Size">
+  <img src="https://img.shields.io/github/languages/top/TUR1412/GameKnowledge-Base" alt="Top Language">
   <img src="https://img.shields.io/badge/PWA-Offline%20Ready-5d3fd3" alt="PWA">
   <img src="https://img.shields.io/badge/Static-No%20Framework-00c2ff" alt="Static">
 </p>
 
 <p align="center">
-  <img src="images/placeholders/screenshot-ui.svg" alt="界面预览" width="840">
+  <img src="images/placeholders/screenshot-ui.svg" alt="界面预览" width="860">
 </p>
 
 ---
 
-## 核心定位
+## 1) 这是什么？
 
-- 纯静态交付：HTML/CSS/JS 即开即用，无需后端
-- 结构化知识库：`data.js` 数据驱动，统一渲染入口
-- 离线增强：Service Worker + PWA Manifest
-- 本地进度系统：攻略清单 + 个人笔记，刷新不丢
-- 可访问性与稳健性：JS 失效仍可浏览，动效可降级
+这是一个 **纯静态** 的游戏知识库/攻略站点：
 
----
+- **内容由 `data.js` 驱动**：游戏 / 攻略 / 话题统一数据源，动态页按 `id` 渲染
+- **全站交互集中在 `scripts.js`**：收藏、筛选、阅读设置、笔记、对比等全部在前端完成
+- **离线能力（PWA）**：`sw.js` 缓存核心资源，支持断网浏览模板页与已缓存内容
 
-## 功能矩阵
-
-- **Command Palette 全站搜索**：Ctrl + K / “/” 直达，搜游戏/攻略/话题
-- **收藏体系**：游戏/攻略/话题收藏本地持久化，支持“只看收藏”
-- **最近访问**：主页自动展示最近浏览的游戏与攻略
-- **攻略进度清单**：可勾选步骤并显示完成度
-- **阅读进度条**：攻略页顶部展示阅读进度
-- **专注阅读模式**：一键隐藏侧栏、提升行距与字号
-- **阅读时长估算**：支持数据字段 + 自动估算双模式
-- **阅读设置**：字号/行距可自定义并记忆
-- **小节链接复制**：攻略标题支持一键复制定位链接
-- **继续阅读**：自动记忆最近阅读的小节位置
-- **章节导航 Chips**：攻略页顶部快速跳转
-- **筛选标签 Chips**：游戏库/攻略库/话题库快速筛选与移除
-- **攻略排序**：按更新时间/阅读时长/难度排序
-- **话题排序**：按最新/回复数快速切换
-- **游戏收藏**：在游戏详情页收藏/取消收藏
-- **收藏筛选**：游戏库可只看收藏
-- **评分可视条**：游戏详情页评分直观展示
-- **玩法重点卡**：游戏详情页展示玩法重点与关键词
-- **筛选链接记忆**：游戏库/攻略库筛选可分享链接
-- **话题回复计数**：讨论页实时显示回复数量
-- **回复排序**：话题页支持最新/最早排序
-- **话题收藏**：论坛话题页支持收藏/取消收藏
-- **个人笔记**：游戏/攻略页内置笔记面板，自动保存
-- **本地备份/迁移**：导出/导入/清空 localStorage 数据
-- **主题切换**：深浅主题自动记忆
-- **数据驱动页面**：`game.html?id=...` / `guide-detail.html?id=...` / `forum-topic.html?id=...`
-- **PWA 离线**：断网仍能访问已缓存页面
-- **CI 自动审查**：语法/断链/缓存穿透检查
+目标是：**不引框架、不依赖后端，也能做出“产品级”体验**。
 
 ---
 
-## 快速开始
+## 2) 功能速览（核心体验）
 
-### 1) 本地直接打开
-
-双击打开 `index.html` 即可预览。若浏览器对 `file://` 的 `localStorage` 有限制，可使用任意静态服务器打开。
-
-### 2) GitHub Pages 部署
-
-详见：`docs/DEPLOYMENT.md`
+- **Command Palette 全站搜索**：`Ctrl + K` / `/` 搜索游戏、攻略、话题 + 快捷操作
+- **本地收藏体系**：游戏/攻略/话题收藏，支持“只看收藏”
+- **最近访问**：主页展示最近浏览的游戏/攻略
+- **攻略进度清单**：步骤勾选 + 完成度
+- **阅读增强**：阅读进度条、专注阅读、字号/行距记忆、继续阅读、复制小节链接
+- **游戏对比（Compare）**：在“所有游戏”页多选对比，底部对比栏 + 对比弹窗（最多 4 项）
+- **更新雷达（NEW / UPDATED）**：为数据条目建立“已读基线”，后续新增/更新自动标记
+- **无障碍高对比度模式**：全站可切换更清晰的文本与边界（适合强光环境）
+- **离线包一键缓存**：在命令面板中触发缓存图标/封面/深度页资源，提高离线可用性
+- **本地备份/迁移**：导出/导入/清空 `localStorage` 数据（收藏/筛选/回复等）
 
 ---
 
-## 数据扩展（从这里开始）
+## 3) 架构（可视化）
+
+```mermaid
+flowchart TB
+  subgraph Browser[浏览器（无框架）]
+    H[HTML 页面（多页入口）]
+    CSS[styles.css（玻璃拟态 / Aurora / Bento）]
+    Boot[boot.js（早期主题/对比度/No-JS）]
+    Data[data.js（数据源：games/guides/topics）]
+    App[scripts.js（交互：搜索/收藏/筛选/对比/笔记/阅读）]
+    LS[(localStorage)]
+    SW[sw.js（Service Worker）]
+    Cache[(Cache Storage)]
+  end
+
+  subgraph CI[GitHub Actions / tools]
+    Tools[tools/*.mjs（断链/缓存穿透/数据校验/SW 检查）]
+  end
+
+  H --> CSS
+  H --> Boot
+  H --> Data
+  H --> App
+
+  App <--> LS
+  App <--> SW
+  SW <--> Cache
+
+  CI --> Tools
+  Tools --> H
+```
+
+---
+
+## 4) 页面与数据（动态页约定）
+
+- `game.html?id=xxx` 读取 `data.games[xxx]`
+- `guide-detail.html?id=yyy` 读取 `data.guides[yyy]`
+- `forum-topic.html?id=zzz` 读取 `data.topics[zzz]`
+
+未收录的 `id` 也会友好兜底，避免断链导致“硬 404”。
+
+---
+
+## 5) 项目结构
+
+```text
+.
+├─ boot.js                 # 启动脚本：早期主题/高对比度/No-JS 处理
+├─ data.js                 # 站点数据：games/guides/topics + version
+├─ scripts.js              # 全站交互：搜索/收藏/进度/对比/离线包等
+├─ styles.css              # 全站样式：Aurora/Glass/Bento + 组件覆盖策略
+├─ sw.js                   # Service Worker：离线缓存 + 更新 + 扩展预缓存
+├─ manifest.webmanifest    # PWA 元信息
+├─ *.html                  # 多页入口（静态外壳）
+├─ images/                 # 图标与占位图（尽量本地，离线更稳）
+├─ docs/                   # 规范与部署文档
+└─ tools/                  # CI/检查/生成脚本（Node.js）
+```
+
+---
+
+## 6) 本地预览
+
+### 6.1 直接打开（最快）
+
+双击打开 `index.html` 即可预览（纯静态）。
+
+说明：部分浏览器对 `file://` 的 `localStorage` / Service Worker 有限制；若需要完整体验（离线/缓存/持久化），建议用静态服务器打开。
+
+### 6.2 使用任意静态服务器（推荐）
+
+你可以使用任意静态服务器（例如 VSCode Live Server、Python `http.server`、Node 任何静态服务等）。
+
+---
+
+## 7) 部署到 GitHub Pages（推荐）
+
+1. 仓库 `Settings` → `Pages`
+2. `Build and deployment` → `Source` 选择 `Deploy from a branch`
+3. `Branch` 选择 `master`（或默认分支） + `/ (root)`
+4. 保存后等待几分钟，GitHub 会生成 Pages 访问地址
+
+完整细节见：`docs/DEPLOYMENT.md`。
+
+---
+
+## 8) 缓存穿透（非常重要）
+
+本项目对核心资源使用 `?v=` 版本号来避免缓存“幽灵更新”：
+
+```html
+<link rel="stylesheet" href="styles.css?v=20251221-1">
+<script src="boot.js?v=20251221-1"></script>
+<script src="data.js?v=20251221-1" defer></script>
+<script src="scripts.js?v=20251221-1" defer></script>
+```
+
+当你修改 `styles.css` / `scripts.js` / `data.js` / `sw.js` / `manifest.webmanifest` 时，务必同步 bump 版本号。
+
+推荐使用脚本一键升级版本号：
+
+```bash
+node tools/bump-version.mjs
+```
+
+规范说明：`docs/STYLE_GUIDE.md`
+
+---
+
+## 9) 数据扩展（从这里开始）
 
 核心数据集中在 `data.js`：
 
@@ -82,22 +167,13 @@
 version: "20251221-1",
 
 games: {
-  "elden-ring": {
-    title: "艾尔登法环",
-    rating: 9.7,
-    updated: "2025-10-05",
-    difficulty: "硬核",
-    playtime: "70-110 小时",
-    ...
-  }
+  "elden-ring": { title: "艾尔登法环", updated: "2025-10-05", ... }
 },
-
 guides: {
-  "civ6-science": { title: "文明6：科技胜利的终极战略", steps: [...], ... }
+  "civ6-science": { title: "文明6：科技胜利的终极战略", gameId: "civilization6", ... }
 },
-
 topics: {
-  "upcoming-games": { title: "2025 年最值得期待的游戏", ... }
+  "upcoming-games": { title: "2025 年最值得期待的游戏", updated: "2025-12-01", ... }
 }
 ```
 
@@ -105,7 +181,7 @@ topics: {
 
 ---
 
-## 命令与脚本
+## 10) 工具与校验（CI 同款）
 
 ```bash
 # JS 语法检查
@@ -114,54 +190,28 @@ node --check scripts.js
 node --check data.js
 node --check sw.js
 
-# 断链/资源/缓存穿透检查
-node tools/check-links.mjs
-
 # 数据模型校验
 node tools/validate-data.mjs
 
-# 统一升级资源版本号（推荐）
-node tools/bump-version.mjs
+# 断链/资源/缓存穿透检查（CI 会跑）
+node tools/check-links.mjs
 
-# 重新生成 Sitemap（如启用自定义域名）
-node tools/generate-sitemap.mjs --base https://your-domain.example/
+# SW 预缓存策略检查
+node tools/check-sw.mjs
 ```
 
 ---
 
-## 项目结构
+## 11) 安全与稳健性（设计原则）
 
-```text
-.
-├─ boot.js                   # 启动脚本（早期主题/No-JS 处理）
-├─ index.html                # 首页
-├─ all-games.html            # 游戏库（筛选/排序/视图）
-├─ all-guides.html           # 攻略库（搜索/标签/收藏）
-├─ game.html                 # 游戏详情（通过 id 参数渲染）
-├─ guide-detail.html         # 攻略详情（通过 id 参数渲染）
-├─ forum-topic.html          # 话题页（通过 id 参数渲染 + 本地回复）
-├─ 404.html                  # 友好 404
-├─ offline.html              # 离线兜底页
-├─ data.js                   # 站点数据
-├─ scripts.js                # 全站交互脚本
-├─ sw.js                     # Service Worker
-├─ manifest.webmanifest      # PWA Manifest
-├─ styles.css                # 全站样式
-├─ images/                   # 图标与占位图
-├─ tools/                    # CI/检查/生成脚本
-└─ .github/workflows/ci.yml  # CI 工作流
-```
+- **默认可用**：核心内容不依赖 JS 才可见（动效为增强项）
+- **CSP + 权限策略**：限制资源来源，减少被注入风险
+- **本地数据隔离**：所有状态仅写入浏览器存储，不包含任何密钥
+- **离线增强可降级**：PWA 失败不影响基础浏览
 
 ---
 
-## 设计与体验规范
-
-- 视觉与交互规范：`docs/STYLE_GUIDE.md`
-- 数据模型规范：`docs/DATA_MODEL.md`
-- 部署指南：`docs/DEPLOYMENT.md`
-
----
-
-## 变更记录
+## 12) 变更记录
 
 详见：`CHANGELOG.md`
+

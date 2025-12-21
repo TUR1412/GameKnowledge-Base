@@ -9,6 +9,7 @@
   "use strict";
 
   const THEME_KEY = "gkb-theme";
+  const CONTRAST_KEY = "gkb-contrast";
   const root = document.documentElement;
 
   const readStoredTheme = () => {
@@ -31,6 +32,17 @@
 
   const stored = readStoredTheme();
   const theme = stored === "light" || stored === "dark" ? stored : getSystemTheme();
+
+  const readStoredContrast = () => {
+    try {
+      return localStorage.getItem(CONTRAST_KEY);
+    } catch (_) {
+      return null;
+    }
+  };
+
+  const contrast = readStoredContrast();
+  if (contrast === "high") root.dataset.contrast = "high";
 
   const syncThemeColor = (next) => {
     try {

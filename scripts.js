@@ -11,17 +11,20 @@
 
   const STORAGE_KEYS = {
     theme: "gkb-theme",
+    contrast: "gkb-contrast",
     allGamesState: "gkb-all-games-state",
     allGuidesState: "gkb-all-guides-state",
     savedGuides: "gkb-saved-guides",
     savedGames: "gkb-saved-games",
     savedTopics: "gkb-saved-topics",
+    compareGames: "gkb-compare-games",
     communityTopicsState: "gkb-community-topics-state",
     forumRepliesPrefix: "gkb-forum-replies:",
     recentGames: "gkb-recent-games",
     recentGuides: "gkb-recent-guides",
     swSeenPrefix: "gkb-sw-seen:",
     pwaInstallTipPrefix: "gkb-pwa-install-tip:",
+    offlinePackPrefix: "gkb-offline-pack:",
     gameNotesPrefix: "gkb-game-notes:",
     guideNotesPrefix: "gkb-guide-notes:",
     guideChecklistPrefix: "gkb-guide-checklist:",
@@ -30,6 +33,7 @@
     guideLineHeight: "gkb-guide-line-height",
     guideLastSectionPrefix: "gkb-guide-last-section:",
     forumSortPrefix: "gkb-forum-sort:",
+    updateRadar: "gkb-update-radar",
   };
 
   const $ = (selector, root = document) => root.querySelector(selector);
@@ -104,6 +108,114 @@
     const dt = new Date(raw);
     if (Number.isNaN(dt.getTime())) return raw;
     return dt.toLocaleDateString("zh-CN");
+  };
+
+  // -------------------------
+  // Update Radar（NEW / UPDATED）
+  // -------------------------
+
+  const normalizeRadarMap = (value) => {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+    const out = {};
+    Object.entries(value).forEach(([k, v]) => {
+      const num = Number(v);
+      if (!Number.isFinite(num)) return;
+      const next = Math.max(0, Math.floor(num));
+      if (next > 0) out[String(k)] = next;
+    });
+    return out;
+  };
+
+  const readUpdateRadar = () => {
+    const parsed = safeJsonParse(storage.get(STORAGE_KEYS.updateRadar), null);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return null;
+    return {
+      version: String(parsed.version || ""),
+      seededAt: Number(parsed.seededAt || 0) || 0,
+      games: normalizeRadarMap(parsed.games),
+      guides: normalizeRadarMap(parsed.guides),
+      topics: normalizeRadarMap(parsed.topics),
+    };
+  };
+
+  const writeUpdateRadar = (radar) => {
+    if (!radar || typeof radar !== "object") return false;
+    return storage.set(STORAGE_KEYS.updateRadar, JSON.stringify(radar));
+  };
+
+  const seedUpdateRadarIfNeeded = () => {
+    const existing = readUpdateRadar();
+    if (existing) return existing;
+
+    const data = getData();
+    if (!data) return null;
+
+    const radar = {
+      version: String(data.version || ""),
+      seededAt: Date.now(),
+      games: {},
+      guides: {},
+      topics: {},
+    };
+
+    const seed = (source, target) => {
+      if (!source || typeof source !== "object") return;
+      Object.entries(source).forEach(([id, item]) => {
+        const updatedKey = parseDateKey(item?.updated);
+        if (updatedKey) target[String(id)] = updatedKey;
+      });
+    };
+
+    seed(data.games, radar.games);
+    seed(data.guides, radar.guides);
+    seed(data.topics, radar.topics);
+
+    writeUpdateRadar(radar);
+    return radar;
+  };
+
+  const getUpdateStatus = (type, id, updatedValue) => {
+    const radar = seedUpdateRadarIfNeeded();
+    if (!radar) return null;
+
+    const t = String(type || "");
+    if (t !== "games" && t !== "guides" && t !== "topics") return null;
+
+    const itemId = String(id || "").trim();
+    const updatedKey = parseDateKey(updatedValue);
+    if (!itemId || !updatedKey) return null;
+
+    const map = radar[t] || {};
+    if (!Object.prototype.hasOwnProperty.call(map, itemId)) return "new";
+    const seenKey = Number(map[itemId] || 0) || 0;
+    return updatedKey > seenKey ? "updated" : null;
+  };
+
+  const markItemSeen = (type, id, updatedValue) => {
+    const radar = seedUpdateRadarIfNeeded();
+    if (!radar) return false;
+
+    const t = String(type || "");
+    if (t !== "games" && t !== "guides" && t !== "topics") return false;
+
+    const itemId = String(id || "").trim();
+    const updatedKey = parseDateKey(updatedValue);
+    if (!itemId || !updatedKey) return false;
+
+    const current = radar[t] || {};
+    if (Number(current[itemId] || 0) === updatedKey) return true;
+    radar[t] = { ...current, [itemId]: updatedKey };
+    return writeUpdateRadar(radar);
+  };
+
+  const renderUpdateBadge = (status) => {
+    if (status === "new") {
+      return '<span class="update-badge update-badge-new" title="新内容">NEW</span>';
+    }
+    if (status === "updated") {
+      return '<span class="update-badge update-badge-updated" title="最近更新">UPDATED</span>';
+    }
+    return "";
   };
 
   const difficultyRank = (value) => {
@@ -591,6 +703,21 @@
 
   const setTheme = (theme) => applyTheme(theme, { persist: true });
 
+  const applyContrast = (contrast, { persist = false } = {}) => {
+    const next = contrast === "high" ? "high" : "normal";
+    if (next === "high") document.documentElement.dataset.contrast = "high";
+    else delete document.documentElement.dataset.contrast;
+
+    if (persist) storage.set(STORAGE_KEYS.contrast, next);
+  };
+
+  const setContrast = (contrast) => applyContrast(contrast, { persist: true });
+
+  const getContrastLabel = () => {
+    const active = document.documentElement.dataset.contrast === "high";
+    return active ? "关闭高对比度" : "开启高对比度";
+  };
+
   const checkServiceWorkerUpdate = () => {
     if (!("serviceWorker" in navigator)) {
       toast({ title: "当前环境不支持", message: "该浏览器不支持 Service Worker。", tone: "warn" });
@@ -631,6 +758,11 @@
         setTheme(current === "dark" ? "light" : "dark");
       });
     });
+  };
+
+  const initContrast = () => {
+    const saved = storage.get(STORAGE_KEYS.contrast);
+    applyContrast(saved === "high" ? "high" : "normal", { persist: false });
   };
 
   // -------------------------
@@ -809,6 +941,32 @@
         },
         {
           kind: "action",
+          badge: "无障碍",
+          title: getContrastLabel(),
+          subtitle: "提升对比度与边界（强光环境更清晰）",
+          run: () => {
+            const active = document.documentElement.dataset.contrast === "high";
+            setContrast(active ? "normal" : "high");
+            toast({
+              title: "对比度已切换",
+              message: active ? "已恢复默认对比度。" : "已开启高对比度模式。",
+              tone: "info",
+            });
+          },
+        },
+        ...(readCompareGames().length > 0
+          ? [
+              {
+                kind: "action",
+                badge: "对比",
+                title: `打开游戏对比（${readCompareGames().length}）`,
+                subtitle: "查看已选择的游戏差异（最多 4 个）",
+                run: () => openGameCompare(readCompareGames()),
+              },
+            ]
+          : []),
+        {
+          kind: "action",
           badge: "操作",
           title: "回到顶部",
           subtitle: "快速回到页面顶部",
@@ -827,6 +985,13 @@
           title: "检查离线缓存更新",
           subtitle: "手动触发 Service Worker 更新检查",
           run: checkServiceWorkerUpdate,
+        },
+        {
+          kind: "action",
+          badge: "PWA",
+          title: "下载离线包（图标/封面/深度页）",
+          subtitle: "让离线时也能显示大部分图标与封面资源",
+          run: precacheOfflinePack,
         },
         ...(deferredPwaInstallPrompt
           ? [
@@ -1335,7 +1500,7 @@
         storage.set(key, "1");
         toast({
           title: "离线缓存已启用",
-          message: "已为你缓存核心资源；断网时仍可打开已访问过的页面。",
+          message: "已为你缓存核心资源；断网时仍可打开模板页与已缓存资源。",
           tone: "success",
           timeout: 3400,
         });
@@ -1343,6 +1508,147 @@
       .catch(() => {
         // 离线能力是增强项：注册失败不影响基本可用性
       });
+  };
+
+  let offlinePackInFlight = false;
+  let offlinePackRequestId = 0;
+  let offlinePackStorageKey = "";
+
+  const normalizeRelativeAssetUrl = (value) => {
+    const raw = String(value || "").trim();
+    if (!raw) return null;
+    if (raw.startsWith("//")) return null;
+
+    try {
+      // 允许传入绝对 URL（但必须同源）
+      if (raw.startsWith("http://") || raw.startsWith("https://")) {
+        const u = new URL(raw);
+        if (u.origin !== window.location.origin) return null;
+        const path = u.pathname.replace(/^\/+/, "");
+        if (!path || path.includes("..")) return null;
+        return `${path}${u.search || ""}`;
+      }
+    } catch (_) {
+      // ignore
+    }
+
+    const path = raw.replace(/^\/+/, "");
+    if (!path || path.includes("..")) return null;
+    return path;
+  };
+
+  const collectOfflinePackUrls = () => {
+    const data = getData();
+    if (!data) return [];
+
+    const urls = [];
+    const add = (u) => {
+      const normalized = normalizeRelativeAssetUrl(u);
+      if (!normalized) return;
+      urls.push(normalized);
+    };
+
+    // 常用占位图（首屏/空状态/预览）
+    add("images/placeholders/screenshot-ui.svg");
+    add("images/placeholders/cover-starlight.svg");
+    add("images/placeholders/avatar-class.svg");
+
+    // 图标：游戏/攻略
+    Object.values(data.games || {}).forEach((game) => add(game?.icon));
+    Object.values(data.guides || {}).forEach((guide) => add(guide?.icon));
+
+    // 深度攻略页（如存在）
+    Object.values(data.games || {}).forEach((game) => {
+      if (game?.hasDeepGuide && game?.deepGuideHref) add(game.deepGuideHref);
+    });
+
+    return Array.from(new Set(urls));
+  };
+
+  const requestSwPrecache = async (urls) => {
+    if (!("serviceWorker" in navigator)) return false;
+    if (window.location.protocol !== "https:" && window.location.hostname !== "localhost") return false;
+
+    const reg = await navigator.serviceWorker.getRegistration();
+    const sw = reg?.active || reg?.waiting || reg?.installing;
+    if (!sw) return false;
+
+    sw.postMessage({
+      type: "GKB_PRECACHE",
+      requestId: offlinePackRequestId,
+      urls,
+    });
+
+    return true;
+  };
+
+  const precacheOfflinePack = async () => {
+    if (offlinePackInFlight) {
+      toast({ title: "正在缓存中", message: "离线包正在准备，请稍候。", tone: "info" });
+      return;
+    }
+
+    const v = detectAssetVersion() || String(getData()?.version || "") || "unknown";
+    offlinePackStorageKey = `${STORAGE_KEYS.offlinePackPrefix}${v}`;
+    if (storage.get(offlinePackStorageKey) === "1") {
+      toast({ title: "离线包已就绪", message: "常用图标与页面已缓存。", tone: "success" });
+      return;
+    }
+
+    const urls = collectOfflinePackUrls();
+    if (urls.length === 0) {
+      toast({ title: "无可缓存资源", message: "当前页面未加载数据，稍后再试。", tone: "warn" });
+      return;
+    }
+
+    offlinePackInFlight = true;
+    offlinePackRequestId = Date.now();
+    toast({
+      title: "开始缓存离线包",
+      message: `正在准备 ${urls.length} 项资源（图标/封面/深度页）。`,
+      tone: "info",
+      timeout: 3200,
+    });
+
+    const ok = await requestSwPrecache(urls);
+    if (!ok) {
+      offlinePackInFlight = false;
+      toast({ title: "缓存失败", message: "当前环境未启用 Service Worker（需要 HTTPS/localhost）。", tone: "warn" });
+      return;
+    }
+
+    // 若 SW 未回消息，避免永远锁死
+    window.setTimeout(() => {
+      if (!offlinePackInFlight) return;
+      offlinePackInFlight = false;
+      toast({ title: "缓存进行中", message: "可能仍在后台缓存，稍后可再试。", tone: "info" });
+    }, 12000);
+  };
+
+  const initServiceWorkerMessaging = () => {
+    if (!("serviceWorker" in navigator)) return;
+
+    navigator.serviceWorker.addEventListener("message", (event) => {
+      const data = event?.data;
+      if (!data || typeof data !== "object") return;
+      if (data.type !== "GKB_PRECACHE_DONE") return;
+      if (Number(data.requestId || 0) !== offlinePackRequestId) return;
+
+      offlinePackInFlight = false;
+
+      const ok = Number(data.ok || 0) || 0;
+      const fail = Number(data.fail || 0) || 0;
+      const total = Number(data.total || ok + fail) || ok + fail;
+
+      if (offlinePackStorageKey) storage.set(offlinePackStorageKey, "1");
+
+      toast({
+        title: "离线包已缓存",
+        message: fail > 0 ? `已缓存 ${ok}/${total} 项，${fail} 项失败（可稍后重试）。` : `已缓存 ${ok}/${total} 项资源。`,
+        tone: fail > 0 ? "warn" : "success",
+        timeout: 4200,
+      });
+    });
   };
 
   const initConnectivityToasts = () => {
@@ -1587,6 +1893,194 @@
   // All Games Page
   // -------------------------
 
+  // -------------------------
+  // Game Compare（多选对比，localStorage 持久化）
+  // -------------------------
+
+  const COMPARE_LIMIT = 4;
+  let compareDialogRoot = null;
+  let compareDialogLastActive = null;
+
+  const readCompareGames = () => readStringList(STORAGE_KEYS.compareGames).slice(0, COMPARE_LIMIT);
+
+  const writeCompareGames = (list) => {
+    const next = writeStringList(STORAGE_KEYS.compareGames, list).slice(0, COMPARE_LIMIT);
+    storage.set(STORAGE_KEYS.compareGames, JSON.stringify(next));
+    return next;
+  };
+
+  const clearCompareGames = () => writeCompareGames([]);
+
+  const formatMaybe = (value, fallback = "—") => {
+    const raw = String(value ?? "").trim();
+    return raw ? raw : fallback;
+  };
+
+  const getCompareGame = (id) => {
+    const data = getData();
+    const game = data?.games?.[id] || null;
+    const title = game?.title || id;
+
+    return {
+      id,
+      title,
+      icon: game?.icon || "images/icons/game-cover.svg",
+      genre: game?.genre || "—",
+      rating: typeof game?.rating === "number" ? String(game.rating) : "—",
+      year: game?.year ? String(game.year) : "—",
+      difficulty: game?.difficulty || "—",
+      playtime: game?.playtime || "—",
+      platforms: Array.isArray(game?.platforms) ? game.platforms.join(" / ") : "—",
+      modes: Array.isArray(game?.modes) ? game.modes.join(" / ") : "—",
+      updated: game?.updated ? formatDate(game.updated) : "—",
+      tags: Array.isArray(game?.tags) ? game.tags.join("、") : "—",
+      highlights: Array.isArray(game?.highlights) ? game.highlights.join("、") : "—",
+      summary: game?.summary || "",
+      deepGuideHref: game?.hasDeepGuide && game?.deepGuideHref ? String(game.deepGuideHref) : "",
+    };
+  };
+
+  const ensureCompareDialog = () => {
+    if (compareDialogRoot) return compareDialogRoot;
+
+    const root = document.createElement("div");
+    root.className = "compare-root";
+    root.hidden = true;
+    root.innerHTML = `
+      <div class="compare-backdrop" data-action="compare-close" aria-hidden="true"></div>
+      <div class="compare-panel" role="dialog" aria-modal="true" aria-label="游戏对比">
+        <div class="compare-header">
+          <div class="compare-header-title">
+            <div class="compare-title">游戏对比</div>
+            <div class="compare-subtitle">最多支持 ${COMPARE_LIMIT} 款游戏并排对照</div>
+          </div>
+          <div class="compare-header-actions">
+            <button type="button" class="btn btn-small btn-secondary" data-action="compare-clear">清空对比</button>
+            <button type="button" class="compare-close" data-action="compare-close" aria-label="关闭">Esc</button>
+          </div>
+        </div>
+        <div class="compare-body"></div>
+      </div>
+    `;
+
+    const close = () => {
+      root.hidden = true;
+      document.body.classList.remove("compare-open");
+      try {
+        compareDialogLastActive?.focus?.();
+      } catch (_) {}
+    };
+
+    root.addEventListener("click", (e) => {
+      const action = e.target?.dataset?.action || "";
+      if (action === "compare-close") close();
+      if (action === "compare-clear") {
+        clearCompareGames();
+        close();
+        toast({ title: "已清空", message: "对比列表已重置。", tone: "info" });
+      }
+    });
+
+    window.addEventListener("keydown", (e) => {
+      if (root.hidden) return;
+      if (e.key === "Escape") close();
+    });
+
+    document.body.appendChild(root);
+    compareDialogRoot = root;
+    return root;
+  };
+
+  const renderCompareTable = (ids) => {
+    const selected = Array.from(new Set((Array.isArray(ids) ? ids : []).map(String).filter(Boolean))).slice(
+      0,
+      COMPARE_LIMIT
+    );
+
+    if (selected.length < 2) {
+      return `
+        <div class="compare-empty">
+          <div class="empty-title">至少选择 2 款游戏才能对比</div>
+          <div class="empty-sub">去“所有游戏”页面勾选对比按钮即可。</div>
+          <div class="empty-actions">
+            <a class="btn btn-small" href="all-games.html">打开游戏库</a>
+          </div>
+        </div>
+      `;
+    }
+
+    const games = selected.map(getCompareGame);
+
+    const headCells = games
+      .map((g) => {
+        const detailHref = `game.html?id=${encodeURIComponent(g.id)}`;
+        const primaryHref = g.deepGuideHref ? g.deepGuideHref : detailHref;
+        const primaryLabel = g.deepGuideHref ? "完整攻略" : "详情页";
+
+        return `
+          <th class="compare-game">
+            <div class="compare-game-head">
+              <img class="compare-game-icon" src="${escapeHtml(g.icon)}" alt="${escapeHtml(g.title)}">
+              <div class="compare-game-meta">
+                <div class="compare-game-title">${escapeHtml(g.title)}</div>
+                <div class="compare-game-links">
+                  <a class="compare-link" href="${detailHref}">打开详情</a>
+                  <span class="dot" aria-hidden="true">·</span>
+                  <a class="compare-link" href="${escapeHtml(primaryHref)}">${escapeHtml(primaryLabel)}</a>
+                </div>
+              </div>
+            </div>
+          </th>
+        `;
+      })
+      .join("");
+
+    const row = (label, getter) => {
+      const tds = games.map((g) => `<td>${escapeHtml(formatMaybe(getter(g)))}</td>`).join("");
+      return `<tr><th class="compare-key">${escapeHtml(label)}</th>${tds}</tr>`;
+    };
+
+    return `
+      <div class="compare-scroll">
+        <table class="compare-table">
+          <thead>
+            <tr>
+              <th class="compare-key">字段</th>
+              ${headCells}
+            </tr>
+          </thead>
+          <tbody>
+            ${row("评分", (g) => g.rating)}
+            ${row("类型", (g) => g.genre)}
+            ${row("年份", (g) => g.year)}
+            ${row("难度", (g) => g.difficulty)}
+            ${row("通关时长", (g) => g.playtime)}
+            ${row("平台", (g) => g.platforms)}
+            ${row("模式", (g) => g.modes)}
+            ${row("更新日期", (g) => g.updated)}
+            ${row("标签", (g) => g.tags)}
+            ${row("玩法重点", (g) => g.highlights)}
+          </tbody>
+        </table>
+      </div>
+    `;
+  };
+
+  const openGameCompare = (ids) => {
+    const root = ensureCompareDialog();
+    const body = $(".compare-body", root);
+    if (!body) return false;
+
+    compareDialogLastActive = document.activeElement;
+    body.innerHTML = renderCompareTable(ids);
+    root.hidden = false;
+    document.body.classList.add("compare-open");
+
+    const closeBtn = $(".compare-close", root);
+    closeBtn?.focus?.();
+    return true;
+  };
+
   const getCheckedValues = (name, root) =>
     $$(`input[name="${name}"]:checked`, root).map((el) => el.value);
 
@@ -1620,6 +2114,170 @@
     const emptyEl = $("#games-empty", root);
     const countEl = $("#result-count", root);
     const activeFiltersEl = $("#active-filters", root);
+
+    // NEW / UPDATED 标记（更新雷达）
+    const applyUpdateBadges = () => {
+      const data = getData();
+      cards.forEach((card) => {
+        const id = String(card.dataset.id || "").trim();
+        const updatedValue = data?.games?.[id]?.updated || card.dataset.updated || "";
+        const status = getUpdateStatus("games", id, updatedValue);
+
+        const existing = $(".update-badge", card);
+        if (existing) existing.remove();
+        if (!status) return;
+
+        const host = $(".game-image", card) || $(".game-overlay", card) || card;
+        host.insertAdjacentHTML("beforeend", renderUpdateBadge(status));
+      });
+    };
+
+    applyUpdateBadges();
+
+    // 游戏对比（Compare Bar + 对比弹窗）
+    let compareIds = readCompareGames();
+
+    const getGameTitle = (id) => {
+      const data = getData();
+      const titleFromData = data?.games?.[id]?.title;
+      if (titleFromData) return String(titleFromData);
+      const card = cards.find((c) => String(c.dataset.id || "") === String(id));
+      const titleFromCard = $("h3", card)?.textContent;
+      return String(titleFromCard || id || "—");
+    };
+
+    const ensureCompareBar = () => {
+      let bar = $("#compare-bar");
+      if (bar) return bar;
+
+      bar = document.createElement("div");
+      bar.id = "compare-bar";
+      bar.className = "compare-bar";
+      bar.hidden = true;
+      bar.innerHTML = `
+        <div class="compare-bar-inner">
+          <div class="compare-bar-left">
+            <div class="compare-bar-title">对比栏</div>
+            <div class="compare-bar-count" aria-live="polite"></div>
+            <div class="compare-bar-chips" aria-label="已选择的游戏"></div>
+          </div>
+          <div class="compare-bar-actions">
+            <button type="button" class="btn btn-small" data-action="compare-open">开始对比</button>
+            <button type="button" class="btn btn-small btn-secondary" data-action="compare-clear">清空</button>
+          </div>
+        </div>
+      `;
+
+      bar.addEventListener("click", (e) => {
+        const action = e.target?.dataset?.action || e.target?.closest?.("[data-action]")?.dataset?.action || "";
+        if (action === "compare-open") {
+          const ids = readCompareGames();
+          if (ids.length < 2) {
+            toast({ title: "还差一点", message: "至少选择 2 款游戏才能对比。", tone: "warn" });
+            return;
+          }
+          openGameCompare(ids);
+          return;
+        }
+
+        if (action === "compare-clear") {
+          clearCompareGames();
+          syncCompareUi();
+          toast({ title: "已清空", message: "对比列表已重置。", tone: "info" });
+          return;
+        }
+
+        const removeBtn = e.target?.closest?.("[data-remove-id]");
+        const removeId = removeBtn?.dataset?.removeId || "";
+        if (removeId) {
+          const next = readCompareGames().filter((x) => x !== removeId);
+          writeCompareGames(next);
+          syncCompareUi();
+        }
+      });
+
+      document.body.appendChild(bar);
+      return bar;
+    };
+
+    const ensureCompareButtons = () => {
+      cards.forEach((card) => {
+        const id = String(card.dataset.id || "").trim();
+        if (!id) return;
+        if ($(".compare-toggle", card)) return;
+
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "btn btn-small btn-outline compare-toggle";
+        btn.dataset.compareId = id;
+        btn.setAttribute("aria-pressed", "false");
+        btn.textContent = "对比";
+
+        btn.addEventListener("click", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+
+          const current = readCompareGames();
+          const set = new Set(current);
+
+          if (set.has(id)) {
+            set.delete(id);
+            writeCompareGames(Array.from(set));
+            toast({ title: "已移除", message: `已从对比栏移除「${getGameTitle(id)}」。`, tone: "info" });
+          } else {
+            if (current.length >= COMPARE_LIMIT) {
+              toast({ title: "选择已达上限", message: `最多同时对比 ${COMPARE_LIMIT} 款游戏。`, tone: "warn" });
+              return;
+            }
+            set.add(id);
+            writeCompareGames(Array.from(set));
+            toast({ title: "已加入对比", message: `已加入「${getGameTitle(id)}」。`, tone: "success" });
+          }
+
+          syncCompareUi();
+        });
+
+        const info = $(".game-info", card) || card;
+        const anchor = $(".btn", info);
+        if (anchor) anchor.insertAdjacentElement("beforebegin", btn);
+        else info.appendChild(btn);
+      });
+    };
+
+    const syncCompareUi = () => {
+      compareIds = readCompareGames();
+
+      cards.forEach((card) => {
+        const id = String(card.dataset.id || "").trim();
+        if (!id) return;
+        const btn = $(".compare-toggle", card);
+        if (!btn) return;
+        const active = compareIds.includes(id);
+        btn.classList.toggle("btn-secondary", active);
+        btn.classList.toggle("btn-outline", !active);
+        btn.setAttribute("aria-pressed", active ? "true" : "false");
+        btn.textContent = active ? "已选对比" : "对比";
+      });
+
+      const bar = ensureCompareBar();
+      bar.hidden = compareIds.length === 0;
+
+      const count = $(".compare-bar-count", bar);
+      if (count) count.textContent = `已选 ${compareIds.length}/${COMPARE_LIMIT}`;
+
+      const chips = $(".compare-bar-chips", bar);
+      if (chips) {
+        chips.innerHTML = compareIds
+          .map((id) => {
+            const title = getGameTitle(id);
+            return `<button type="button" class="chip chip-btn compare-chip" data-remove-id="${escapeHtml(id)}" aria-label="移除 ${escapeHtml(title)}">${escapeHtml(title)}<span class="chip-x" aria-hidden="true">×</span></button>`;
+          })
+          .join("");
+      }
+    };
+
+    ensureCompareButtons();
+    syncCompareUi();
 
     const searchInput = $(".search-box input", root);
     const searchBtn = $(".search-btn", root);
@@ -2104,6 +2762,7 @@
       const title = guide.title || id;
       const summary = guide.summary || "该攻略正在整理中。";
       const tags = Array.isArray(guide.tags) ? guide.tags : [];
+      const status = getUpdateStatus("guides", id, guide.updated);
       const updated = guide.updated ? `更新 ${formatDate(guide.updated)}` : "更新待补";
       const difficulty = guide.difficulty ? `难度 ${guide.difficulty}` : "难度 待补";
       const readingTime =
@@ -2131,7 +2790,7 @@
             <img src="${icon}" alt="${escapeHtml(title)}">
           </div>
           <div class="game-card-content">
-            <h3 class="game-card-title">${escapeHtml(title)}</h3>
+            <h3 class="game-card-title">${escapeHtml(title)} ${renderUpdateBadge(status)}</h3>
             <p class="game-card-description">${escapeHtml(summary)}</p>
             ${chips}
             ${meta}
@@ -2307,6 +2966,7 @@
       image: guide?.icon || "images/icons/guide-icon.svg",
     });
     if (id) pushRecent(STORAGE_KEYS.recentGuides, id, 12);
+    if (id) markItemSeen("guides", id, guide?.updated);
 
     if (contentEl) {
       const tags = Array.isArray(guide?.tags) ? guide.tags : [];
@@ -2710,6 +3370,7 @@
     document.title = `${title} - 游戏攻略网`;
     syncShareMeta({ title: document.title, description: summary, image: icon });
     if (id) pushRecent(STORAGE_KEYS.recentGames, id, 12);
+    if (id) markItemSeen("games", id, game?.updated);
     if (titleEl) titleEl.textContent = title;
     if (subtitleEl) subtitleEl.textContent = subtitle;
     if (iconEl) {
@@ -2974,6 +3635,7 @@
       const starter = topic.starter || "社区成员";
       const replies = Number(topic.replies || 0);
       const updated = topic.updated ? formatDate(topic.updated) : "—";
+      const status = getUpdateStatus("topics", id, topic.updated);
       const tags = Array.isArray(topic.tags) ? topic.tags : [];
       const category = topic.category ? [topic.category] : [];
       const isSaved = saved.has(id);
@@ -2981,6 +3643,7 @@
       const saveStar = isSaved ? "★" : "☆";
       const hotBadge = replies >= 150 ? '<span class="badge popular">热门</span>' : "";
       const categoryBadge = topic.category ? `<span class="badge subtle">${escapeHtml(topic.category)}</span>` : "";
+      const updateBadge = renderUpdateBadge(status);
       const tagList = [...category, ...tags]
         .filter(Boolean)
         .slice(0, 4)
@@ -2990,7 +3653,7 @@
       return `
         <article class="topic-card ${isSaved ? "is-saved" : ""}">
           <div class="topic-header">
-            <div class="topic-badges">${hotBadge}${categoryBadge}</div>
+            <div class="topic-badges">${updateBadge}${hotBadge}${categoryBadge}</div>
           </div>
           <h3 class="topic-title">${escapeHtml(title)}</h3>
           <p class="topic-summary">${escapeHtml(summary)}</p>
@@ -3159,6 +3822,8 @@
     const topicTags = Array.isArray(topic?.tags) ? topic.tags : [];
     const category = topic?.category ? [topic.category] : [];
 
+    markItemSeen("topics", id, topic?.updated);
+
     document.title = `${title} - 游戏攻略网`;
     syncShareMeta({
       title: document.title,
@@ -3299,12 +3964,15 @@
 
     // 关键交互优先：主题 / 导航 / 搜索
     run(initThemeToggle);
+    run(initContrast);
+    run(seedUpdateRadarIfNeeded);
     run(initCommandPalette);
     run(initNavigation);
     run(initBackToTop);
     run(initCopyLinkButtons);
     run(initPwaInstall);
     run(initConnectivityToasts);
+    run(initServiceWorkerMessaging);
 
     // 页面逻辑尽早执行，保证后续动效能覆盖动态内容
     run(initAllGamesPage);

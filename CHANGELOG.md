@@ -10,9 +10,15 @@
 - 攻略排序：按更新时间/阅读时长/难度切换
 - 游戏玩法重点与标签卡：展示核心机制与关键词
 - 数据模型扩展：`modes` / `tags` / `highlights` / `replies`
+- 游戏对比（Compare）：游戏库多选对比 + 对比栏 + 对比弹窗（最多 4 项）
+- 更新雷达（NEW / UPDATED）：为条目建立已读基线，新增/更新自动标记
+- 高对比度模式：提升文本与边界可读性（强光环境更清晰）
+- 离线包一键缓存：缓存常用图标/封面/深度页资源，离线体验更完整
 
 ### Changed
 - 话题页信息密度提升：更新日期 + 标签展示
+- Service Worker：离线回退支持忽略 search（动态渲染页断网可直接打开模板页）
+- 安全性：收紧 CSP（移除 `style-src 'unsafe-inline'`，补齐 `form-action 'self'`）
 
 ## 2025-12-20
 
@@ -81,4 +87,3 @@
 ### Changed
 - 动效与可访问性：`prefers-reduced-motion` 下自动降级；JS 失效时滚动 reveal 组件默认可见
 - 工程化：新增 `.editorconfig` / `.gitattributes` 统一编码与换行
-
