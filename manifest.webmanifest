@@ -8,6 +8,44 @@
   "display": "standalone",
   "background_color": "#0b0f14",
   "theme_color": "#ff6b4a",
+  "shortcuts": [
+    {
+      "name": "指挥舱",
+      "short_name": "指挥舱",
+      "description": "收藏/进度/更新汇总面板",
+      "url": "dashboard.html",
+      "icons": [
+        { "src": "images/icons/favicon.svg", "type": "image/svg+xml", "sizes": "any", "purpose": "any" }
+      ]
+    },
+    {
+      "name": "路线规划",
+      "short_name": "路线",
+      "description": "拖拽排序的可执行路线",
+      "url": "planner.html",
+      "icons": [
+        { "src": "images/icons/favicon.svg", "type": "image/svg+xml", "sizes": "any", "purpose": "any" }
+      ]
+    },
+    {
+      "name": "更新中心",
+      "short_name": "更新",
+      "description": "NEW / UPDATED 内容雷达",
+      "url": "updates.html",
+      "icons": [
+        { "src": "images/icons/favicon.svg", "type": "image/svg+xml", "sizes": "any", "purpose": "any" }
+      ]
+    },
+    {
+      "name": "探索",
+      "short_name": "探索",
+      "description": "本地个性化推荐与一键路线",
+      "url": "discover.html",
+      "icons": [
+        { "src": "images/icons/favicon.svg", "type": "image/svg+xml", "sizes": "any", "purpose": "any" }
+      ]
+    }
+  ],
   "icons": [
     {
       "src": "images/icons/favicon.svg",

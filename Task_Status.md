@@ -40,3 +40,23 @@
 - [x] 6. 工具链：补齐分支覆盖率，CI 覆盖率阈值通过（lines/functions/branches）
 - [x] 7. bump 版本号：`20251221-2 -> 20251222-1` + 本地校验通过
 - [x] 8. 提交并推送（已完成）
+
+---
+
+# [GKB-20251222-R3] 视觉与功能裂变：影院级动效 × 三大商业模块
+> **环境**: Windows 11 (pwsh -NoLogo wrapper) | **框架**: Static HTML/CSS/JS | **档位**: 4档 (动效 & 产品模块)
+> **已激活矩阵**: [模块 A: 视觉矫正] + [模块 E: 幽灵防御] + [模块 F: 需求镜像]
+
+## 1. 需求镜像 (Requirement Mirroring)
+> **我的理解**: 在保持“纯静态/无框架/无后台服务”的前提下，引入更高级动效编排（Motion / Framer 出品）并新增 3 个高商业价值模块（更新中心 / 路线规划 / 探索推荐），同时深度润色 README 加入动态演示图。
+> **不做什么**: 不启动任何后台服务；不抢占端口；不删除本地克隆环境。
+
+## 2. 执行清单 (Execution)
+- [x] 1. 新模块：更新中心 `updates.html`（NEW/UPDATED 聚合 + 一键标为已读）
+- [x] 2. 新模块：路线规划 `planner.html`（拖拽排序 + 分享链接导入/导出 + 进度汇总）
+- [x] 3. 新模块：探索 `discover.html`（本地个性化推荐 + 一键生成路线）
+- [x] 4. 动效升级：Command Palette 开合动效 + Toast 进出场动效（Motion）
+- [x] 5. PWA：Manifest shortcuts + SW 预缓存补齐新入口页
+- [x] 6. README：新增 3 张动态演示 SVG + 功能清单/架构图更新
+- [x] 7. bump 版本号：`20251222-1 -> 20251222-2` + 本地校验通过（check-links/check-sw/validate-data）
+- [ ] 8. 提交并推送（待执行）

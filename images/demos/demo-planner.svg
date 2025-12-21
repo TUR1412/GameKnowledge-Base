@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="960" height="420" viewBox="0 0 960 420" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg3" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0b0f14"/>
+      <stop offset="50%" stop-color="#141a2a"/>
+      <stop offset="100%" stop-color="#101827"/>
+    </linearGradient>
+    <linearGradient id="card3" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="rgba(255,255,255,0.16)"/>
+      <stop offset="100%" stop-color="rgba(255,255,255,0.06)"/>
+    </linearGradient>
+    <linearGradient id="accent3" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#00c2ff"/>
+      <stop offset="100%" stop-color="#ff5757"/>
+    </linearGradient>
+  </defs>
+
+  <rect x="0" y="0" width="960" height="420" rx="28" fill="url(#bg3)"/>
+
+  <!-- left meta card -->
+  <rect x="58" y="62" width="330" height="308" rx="18" fill="url(#card3)" stroke="rgba(255,255,255,0.14)"/>
+  <rect x="86" y="92" width="220" height="16" rx="8" fill="rgba(255,255,255,0.22)"/>
+  <rect x="86" y="122" width="260" height="12" rx="6" fill="rgba(255,255,255,0.12)"/>
+  <rect x="86" y="168" width="274" height="44" rx="14" fill="rgba(255,255,255,0.08)" stroke="rgba(255,255,255,0.12)"/>
+  <rect x="86" y="226" width="274" height="44" rx="14" fill="rgba(255,255,255,0.08)" stroke="rgba(255,255,255,0.12)"/>
+  <rect x="86" y="284" width="274" height="44" rx="14" fill="rgba(255,255,255,0.08)" stroke="rgba(255,255,255,0.12)"/>
+
+  <!-- right list card -->
+  <rect x="408" y="62" width="494" height="308" rx="18" fill="url(#card3)" stroke="rgba(255,255,255,0.14)"/>
+  <rect x="436" y="92" width="360" height="16" rx="8" fill="rgba(255,255,255,0.22)"/>
+  <rect x="436" y="122" width="430" height="12" rx="6" fill="rgba(255,255,255,0.12)"/>
+
+  <!-- list items -->
+  <g id="list">
+    <rect x="436" y="166" width="438" height="58" rx="16" fill="rgba(255,255,255,0.08)" stroke="rgba(255,255,255,0.12)"/>
+    <rect x="436" y="236" width="438" height="58" rx="16" fill="rgba(255,255,255,0.08)" stroke="rgba(255,255,255,0.12)"/>
+    <rect x="436" y="306" width="438" height="58" rx="16" fill="rgba(255,255,255,0.08)" stroke="rgba(255,255,255,0.12)"/>
+
+    <rect x="456" y="184" width="40" height="40" rx="12" fill="rgba(255,255,255,0.10)" stroke="rgba(255,255,255,0.12)"/>
+    <rect x="456" y="254" width="40" height="40" rx="12" fill="rgba(255,255,255,0.10)" stroke="rgba(255,255,255,0.12)"/>
+    <rect x="456" y="324" width="40" height="40" rx="12" fill="rgba(255,255,255,0.10)" stroke="rgba(255,255,255,0.12)"/>
+
+    <rect x="510" y="186" width="220" height="14" rx="7" fill="rgba(255,255,255,0.20)"/>
+    <rect x="510" y="208" width="300" height="12" rx="6" fill="rgba(255,255,255,0.12)"/>
+
+    <rect x="510" y="256" width="240" height="14" rx="7" fill="rgba(255,255,255,0.20)"/>
+    <rect x="510" y="278" width="280" height="12" rx="6" fill="rgba(255,255,255,0.12)"/>
+
+    <rect x="510" y="326" width="260" height="14" rx="7" fill="rgba(255,255,255,0.20)"/>
+    <rect x="510" y="348" width="260" height="12" rx="6" fill="rgba(255,255,255,0.12)"/>
+  </g>
+
+  <!-- dragging highlight -->
+  <rect id="drag" x="436" y="166" width="438" height="58" rx="16" fill="url(#accent3)" opacity="0.18"/>
+  <animate xlink:href="#drag" attributeName="y" dur="3.2s" repeatCount="indefinite"
+    values="166;166;236;306;166" keyTimes="0;0.2;0.45;0.7;1"/>
+
+  <text x="64" y="384" font-family="Arial, sans-serif" font-size="16" fill="rgba(255,255,255,0.82)">
+    Planner · Drag & Drop · Share Link
+  </text>
+</svg>
+

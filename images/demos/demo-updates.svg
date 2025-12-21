@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="960" height="420" viewBox="0 0 960 420" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg2" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0b0f14"/>
+      <stop offset="100%" stop-color="#101827"/>
+    </linearGradient>
+    <linearGradient id="card" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="rgba(255,255,255,0.16)"/>
+      <stop offset="100%" stop-color="rgba(255,255,255,0.06)"/>
+    </linearGradient>
+    <linearGradient id="new" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#00c2ff"/>
+      <stop offset="100%" stop-color="#5d3fd3"/>
+    </linearGradient>
+    <linearGradient id="upd" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#fbbf24"/>
+      <stop offset="100%" stop-color="#ff5757"/>
+    </linearGradient>
+  </defs>
+
+  <rect x="0" y="0" width="960" height="420" rx="28" fill="url(#bg2)"/>
+
+  <!-- cards -->
+  <g opacity="0.92">
+    <rect x="58" y="62" width="844" height="92" rx="18" fill="url(#card)" stroke="rgba(255,255,255,0.14)"/>
+    <rect x="58" y="170" width="844" height="92" rx="18" fill="url(#card)" stroke="rgba(255,255,255,0.14)"/>
+    <rect x="58" y="278" width="844" height="92" rx="18" fill="url(#card)" stroke="rgba(255,255,255,0.14)"/>
+
+    <!-- content lines -->
+    <rect x="110" y="92" width="320" height="16" rx="8" fill="rgba(255,255,255,0.22)"/>
+    <rect x="110" y="118" width="540" height="12" rx="6" fill="rgba(255,255,255,0.12)"/>
+
+    <rect x="110" y="200" width="280" height="16" rx="8" fill="rgba(255,255,255,0.22)"/>
+    <rect x="110" y="226" width="520" height="12" rx="6" fill="rgba(255,255,255,0.12)"/>
+
+    <rect x="110" y="308" width="300" height="16" rx="8" fill="rgba(255,255,255,0.22)"/>
+    <rect x="110" y="334" width="510" height="12" rx="6" fill="rgba(255,255,255,0.12)"/>
+
+    <!-- icons -->
+    <rect x="80" y="86" width="44" height="44" rx="12" fill="rgba(255,255,255,0.10)" stroke="rgba(255,255,255,0.12)"/>
+    <rect x="80" y="194" width="44" height="44" rx="12" fill="rgba(255,255,255,0.10)" stroke="rgba(255,255,255,0.12)"/>
+    <rect x="80" y="302" width="44" height="44" rx="12" fill="rgba(255,255,255,0.10)" stroke="rgba(255,255,255,0.12)"/>
+  </g>
+
+  <!-- badges with pulse -->
+  <g>
+    <rect x="734" y="84" width="92" height="24" rx="12" fill="url(#new)" opacity="0.92"/>
+    <rect x="708" y="192" width="118" height="24" rx="12" fill="url(#upd)" opacity="0.92"/>
+    <rect x="734" y="300" width="92" height="24" rx="12" fill="url(#new)" opacity="0.92"/>
+
+    <animate attributeName="opacity" dur="2.2s" repeatCount="indefinite" values="0.55;0.95;0.55"/>
+  </g>
+
+  <text x="64" y="384" font-family="Arial, sans-serif" font-size="16" fill="rgba(255,255,255,0.82)">
+    Updates Center · NEW / UPDATED Radar
+  </text>
+</svg>
+

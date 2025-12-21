@@ -5,14 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>所有游戏 - 游戏攻略网</title>
     <meta name="description" content="浏览所有游戏：支持搜索、类型/平台/年份/评分筛选，并自动记忆你的筛选偏好。">
-    <link rel="stylesheet" href="styles.css?v=20251222-1">
+    <link rel="stylesheet" href="styles.css?v=20251222-2">
     <link rel="icon" href="images/icons/favicon.svg" type="image/svg+xml">
-    <link rel="manifest" href="manifest.webmanifest?v=20251222-1">
+    <link rel="manifest" href="manifest.webmanifest?v=20251222-2">
     <meta name="theme-color" content="#f6f1ea">
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; form-action 'self'; object-src 'none'; img-src 'self' data:; style-src 'self'; script-src 'self'; connect-src 'self'; manifest-src 'self'; worker-src 'self'; frame-ancestors 'none'">
     <meta name="referrer" content="strict-origin-when-cross-origin">
     <meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=()">
-    <script src="boot.js?v=20251222-1"></script>
+    <script src="boot.js?v=20251222-2"></script>
 </head>
 <body data-page="all-games">
     <a class="skip-link" href="#main">跳到正文</a>
@@ -179,7 +179,25 @@
                         </label>
                     </div>
                 </div>
-                
+
+                <div class="filters-section">
+                    <h3>我的游戏库</h3>
+                    <div class="filter-options">
+                        <label class="filter-option">
+                            <input type="checkbox" name="library" value="wishlist"> 想玩
+                        </label>
+                        <label class="filter-option">
+                            <input type="checkbox" name="library" value="playing"> 在玩
+                        </label>
+                        <label class="filter-option">
+                            <input type="checkbox" name="library" value="done"> 已通关
+                        </label>
+                        <label class="filter-option">
+                            <input type="checkbox" name="library" value="none"> 未设置
+                        </label>
+                    </div>
+                </div>
+                 
                 <button class="btn primary-btn filter-apply-btn">应用筛选</button>
                 <button class="btn secondary-btn filter-reset-btn">重置筛选</button>
             </aside>
@@ -438,8 +456,8 @@
 
     <button id="back-to-top" class="back-to-top" aria-label="返回顶部">↑</button>
 
-    <script src="data.js?v=20251222-1" defer></script>
-    <script src="scripts.js?v=20251222-1" defer></script>
+    <script src="data.js?v=20251222-2" defer></script>
+    <script src="vendor/motion.js?v=20251222-2" defer></script>
+    <script src="scripts.js?v=20251222-2" defer></script>
 </body>
 </html>
-

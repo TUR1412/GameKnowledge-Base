@@ -22,6 +22,7 @@
     forumRepliesPrefix: "gkb-forum-replies:",
     recentGames: "gkb-recent-games",
     recentGuides: "gkb-recent-guides",
+    gameLibrary: "gkb-game-library",
     swSeenPrefix: "gkb-sw-seen:",
     pwaInstallTipPrefix: "gkb-pwa-install-tip:",
     offlinePackPrefix: "gkb-offline-pack:",
@@ -34,6 +35,8 @@
     guideLastSectionPrefix: "gkb-guide-last-section:",
     forumSortPrefix: "gkb-forum-sort:",
     updateRadar: "gkb-update-radar",
+    plans: "gkb-plans",
+    discoverPrefs: "gkb-discover-prefs",
   };
 
   const $ = (selector, root = document) => root.querySelector(selector);
@@ -85,6 +88,55 @@
     );
     storage.set(key, JSON.stringify(next));
     return next;
+  };
+
+  const normalizeGameLibraryStatus = (value) => {
+    const v = String(value || "").trim().toLowerCase();
+    if (v === "wishlist" || v === "playing" || v === "done") return v;
+    return "none";
+  };
+
+  const readGameLibraryMap = () => {
+    const parsed = safeJsonParse(storage.get(STORAGE_KEYS.gameLibrary), null);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
+    const out = {};
+    Object.entries(parsed).forEach(([id, entry]) => {
+      const gid = String(id || "").trim();
+      if (!gid) return;
+      if (!entry || typeof entry !== "object" || Array.isArray(entry)) return;
+      const status = normalizeGameLibraryStatus(entry.status);
+      if (status === "none") return;
+      out[gid] = { status, updatedAt: Number(entry.updatedAt || 0) || 0 };
+    });
+    return out;
+  };
+
+  const writeGameLibraryMap = (map) => {
+    if (!map || typeof map !== "object" || Array.isArray(map)) return false;
+    return storage.set(STORAGE_KEYS.gameLibrary, JSON.stringify(map));
+  };
+
+  const setGameLibraryStatus = (id, status) => {
+    const gid = String(id || "").trim();
+    if (!gid) return "none";
+    const next = normalizeGameLibraryStatus(status);
+
+    const map = readGameLibraryMap();
+    if (next === "none") {
+      if (Object.prototype.hasOwnProperty.call(map, gid)) delete map[gid];
+    } else {
+      map[gid] = { status: next, updatedAt: Date.now() };
+    }
+    writeGameLibraryMap(map);
+    return next;
+  };
+
+  const getGameLibraryStatus = (id, map) => {
+    const gid = String(id || "").trim();
+    if (!gid) return "none";
+    const m = map && typeof map === "object" ? map : readGameLibraryMap();
+    const s = m && Object.prototype.hasOwnProperty.call(m, gid) ? m[gid]?.status : "";
+    return normalizeGameLibraryStatus(s);
   };
 
   const parseDateKey = (value) => {
@@ -276,6 +328,13 @@
     }
   };
 
+  const getMotion = () => {
+    const api = window.Motion;
+    if (!api || typeof api !== "object") return null;
+    if (typeof api.animate !== "function") return null;
+    return api;
+  };
+
   const withViewTransition = (fn) => {
     const start = document.startViewTransition;
     if (prefersReducedMotion() || typeof start !== "function") {
@@ -323,6 +382,53 @@
     } catch (_) {
       return new Date().toISOString().slice(11, 16);
     }
+  };
+
+  const renderMetaList = (host, items, emptyText = "") => {
+    if (!host) return;
+    if (!items || items.length === 0) {
+      host.innerHTML = emptyText
+        ? `<div class="meta-item"><div class="meta-label">${escapeHtml(emptyText)}</div><div class="meta-value">—</div></div>`
+        : "";
+      return;
+    }
+    host.innerHTML = items
+      .map(
+        (item) => `
+          <div class="meta-item">
+            <div class="meta-label">${escapeHtml(item.label)}</div>
+            <div class="meta-value">${escapeHtml(item.value)}</div>
+          </div>
+        `
+      )
+      .join("");
+  };
+
+  const renderMiniCards = (host, items, emptyText) => {
+    if (!host) return;
+    if (!items || items.length === 0) {
+      host.innerHTML = `<div class="mini-card"><div><div class="mini-card-title">${escapeHtml(
+        emptyText || "暂无内容"
+      )}</div><div class="mini-card-desc">试试去游戏库/攻略库收藏一些内容。</div></div></div>`;
+      return;
+    }
+    host.innerHTML = items
+      .map((item) => {
+        const icon = item.icon || "images/icons/rpg-icon.svg";
+        const title = item.title || "未命名";
+        const desc = item.desc || "";
+        const href = item.href || "#";
+        return `
+          <a class="mini-card" href="${href}">
+            <img src="${icon}" alt="${escapeHtml(title)}">
+            <div class="mini-card-body">
+              <div class="mini-card-title">${escapeHtml(title)}</div>
+              <div class="mini-card-desc">${escapeHtml(desc)}</div>
+            </div>
+          </a>
+        `;
+      })
+      .join("");
   };
 
   const initNotesPanel = ({ id, textarea, saveBtn, clearBtn, statusEl, storageKey }) => {
@@ -392,7 +498,37 @@
       `;
       host.appendChild(item);
 
+      const Motion = prefersReducedMotion() ? null : getMotion();
+      if (Motion) {
+        try {
+          Motion.animate(
+            item,
+            { opacity: [0, 1], y: [10, 0], filter: ["blur(10px)", "blur(0px)"] },
+            { duration: 0.28, easing: [0.22, 1, 0.36, 1] }
+          );
+        } catch (_) {
+          // ignore
+        }
+      }
+
+      let removed = false;
       const remove = () => {
+        if (removed) return;
+        removed = true;
+
+        if (Motion) {
+          try {
+            const anim = Motion.animate(
+              item,
+              { opacity: [1, 0], y: [0, -8], scale: [1, 0.98], filter: ["blur(0px)", "blur(8px)"] },
+              { duration: 0.22, easing: [0.22, 1, 0.36, 1] }
+            );
+            anim?.finished?.then(() => item.remove()).catch(() => item.remove());
+            return;
+          } catch (_) {
+            // fallback below
+          }
+        }
         item.classList.add("toast-hide");
         window.setTimeout(() => item.remove(), 240);
       };
@@ -626,6 +762,51 @@
     $$('[data-action="copy-link"]').forEach((btn) => {
       btn.addEventListener("click", copyCurrentPageLink);
     });
+  };
+
+  const uid = () => {
+    try {
+      if (crypto && typeof crypto.randomUUID === "function") return crypto.randomUUID();
+    } catch (_) {}
+    return `id-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 9)}`;
+  };
+
+  const base64UrlEncode = (text) => {
+    const raw = String(text ?? "");
+    if (!raw) return "";
+    try {
+      if ("TextEncoder" in window) {
+        const bytes = new TextEncoder().encode(raw);
+        let bin = "";
+        bytes.forEach((b) => {
+          bin += String.fromCharCode(b);
+        });
+        return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+      }
+    } catch (_) {
+      // fallback below
+    }
+    try {
+      return btoa(unescape(encodeURIComponent(raw))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+    } catch (_) {
+      return "";
+    }
+  };
+
+  const base64UrlDecode = (value) => {
+    const raw = String(value ?? "").trim();
+    if (!raw) return "";
+    const padded = raw.replace(/-/g, "+").replace(/_/g, "/") + "===".slice((raw.length + 3) % 4);
+    try {
+      const bin = atob(padded);
+      if ("TextDecoder" in window) {
+        const bytes = Uint8Array.from(bin, (ch) => ch.charCodeAt(0));
+        return new TextDecoder().decode(bytes);
+      }
+      return decodeURIComponent(escape(bin));
+    } catch (_) {
+      return "";
+    }
   };
 
   // -------------------------
@@ -1084,6 +1265,10 @@
         },
         { kind: "link", badge: "导航", title: "打开游戏库", subtitle: "筛选与排序全部游戏", href: "all-games.html" },
         { kind: "link", badge: "导航", title: "打开攻略库", subtitle: "搜索与标签筛选", href: "all-guides.html" },
+        { kind: "link", badge: "导航", title: "打开指挥舱", subtitle: "最近访问/收藏/进度汇总", href: "dashboard.html" },
+        { kind: "link", badge: "导航", title: "打开更新中心", subtitle: "NEW / UPDATED 雷达", href: "updates.html" },
+        { kind: "link", badge: "导航", title: "打开路线规划", subtitle: "拖拽排序 + 分享链接", href: "planner.html" },
+        { kind: "link", badge: "导航", title: "打开探索", subtitle: "本地个性化推荐 + 一键路线", href: "discover.html" },
         ...guideActions,
       ];
 
@@ -1308,6 +1493,25 @@
       window.requestAnimationFrame(() => {
         root.dataset.state = "open";
       });
+      const Motion = prefersReducedMotion() ? null : getMotion();
+      if (Motion) {
+        try {
+          const panel = $(".cmdk-panel", root);
+          const backdrop = $(".cmdk-backdrop", root);
+          if (backdrop) {
+            Motion.animate(backdrop, { opacity: [0, 1] }, { duration: 0.16, easing: [0.22, 1, 0.36, 1] });
+          }
+          if (panel) {
+            Motion.animate(
+              panel,
+              { opacity: [0, 1], y: [18, 0], scale: [0.985, 1], filter: ["blur(12px)", "blur(0px)"] },
+              { duration: 0.22, easing: [0.22, 1, 0.36, 1] }
+            );
+          }
+        } catch (_) {
+          // ignore
+        }
+      }
       if (input) {
         input.value = "";
         render("");
@@ -1328,6 +1532,30 @@
           lastActive?.focus?.();
         } catch (_) {}
       };
+      const Motion = prefersReducedMotion() ? null : getMotion();
+      if (Motion) {
+        try {
+          const panel = $(".cmdk-panel", root);
+          const backdrop = $(".cmdk-backdrop", root);
+          const jobs = [];
+          if (panel) {
+            const anim = Motion.animate(
+              panel,
+              { opacity: [1, 0], y: [0, 12], scale: [1, 0.985], filter: ["blur(0px)", "blur(10px)"] },
+              { duration: 0.18, easing: [0.22, 1, 0.36, 1] }
+            );
+            if (anim?.finished) jobs.push(anim.finished);
+          }
+          if (backdrop) {
+            const anim = Motion.animate(backdrop, { opacity: [1, 0] }, { duration: 0.16, easing: [0.22, 1, 0.36, 1] });
+            if (anim?.finished) jobs.push(anim.finished);
+          }
+          Promise.allSettled(jobs).finally(finalize);
+          return;
+        } catch (_) {
+          // fallback below
+        }
+      }
       if (prefersReducedMotion()) finalize();
       else window.setTimeout(finalize, 160);
     };
@@ -1416,6 +1644,61 @@
     });
 
     ensureHeaderButton(open);
+  };
+
+  const initHeaderQuickLinks = () => {
+    const host = $(".header-actions");
+    if (!host) return;
+
+    const hasHref = (href) => {
+      try {
+        return Boolean(host.querySelector(`a[href="${CSS.escape(href)}"]`));
+      } catch (_) {
+        return Boolean(host.querySelector(`a[href="${href.replace(/"/g, '\\"')}"]`));
+      }
+    };
+
+    const insert = ({ href, label, text, svgPath }) => {
+      if (!href) return;
+      if (hasHref(href)) return;
+      const a = document.createElement("a");
+      a.className = "icon-button quick-link";
+      a.href = href;
+      a.setAttribute("aria-label", label || text || "打开");
+      a.innerHTML = `
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+          <path fill="currentColor" d="${svgPath}"/>
+        </svg>
+        <span class="icon-button-text">${escapeHtml(text || "")}</span>
+      `;
+      const before = $(".theme-toggle", host) || null;
+      host.insertBefore(a, before);
+    };
+
+    insert({
+      href: "dashboard.html",
+      label: "打开指挥舱",
+      text: "指挥舱",
+      svgPath: "M4 4h7v7H4V4zm9 0h7v7h-7V4zM4 13h7v7H4v-7zm9 0h7v7h-7v-7z",
+    });
+    insert({
+      href: "updates.html",
+      label: "打开更新中心",
+      text: "更新",
+      svgPath: "M12 22a2 2 0 0 0 2-2H10a2 2 0 0 0 2 2zm6-6V11a6 6 0 1 0-12 0v5L4 18v1h16v-1l-2-2z",
+    });
+    insert({
+      href: "planner.html",
+      label: "打开路线规划",
+      text: "路线",
+      svgPath: "M7 17a3 3 0 1 1 2.83-4H14a3 3 0 1 1 0 2H9.83A3 3 0 0 1 7 17zm0-4a1 1 0 1 0 0 2a1 1 0 0 0 0-2zm10 0a1 1 0 1 0 0 2a1 1 0 0 0 0-2zM7 7a3 3 0 1 1 2.83-4H17a1 1 0 1 1 0 2H9.83A3 3 0 0 1 7 7z",
+    });
+    insert({
+      href: "discover.html",
+      label: "打开探索",
+      text: "探索",
+      svgPath: "M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm4.5 5.5l-2.7 7.3-7.3 2.7 2.7-7.3 7.3-2.7zM10.9 10.9l-1.1 3 3-1.1 1.1-3-3 1.1z",
+    });
   };
 
   // -------------------------
@@ -1834,7 +2117,56 @@
   // -------------------------
 
   const initPageLoaded = () => {
-    window.requestAnimationFrame(() => document.body.classList.add("page-loaded"));
+    window.requestAnimationFrame(() => {
+      document.body.classList.add("page-loaded");
+      initCinematicEntrance();
+    });
+  };
+
+  const initCinematicEntrance = () => {
+    if (prefersReducedMotion()) return;
+    const Motion = getMotion();
+    if (!Motion) return;
+
+    const { animate, stagger } = Motion;
+
+    const header = $("header");
+    if (header) {
+      const nodes = [
+        $(".logo-container", header),
+        ...$$("nav a", header),
+        ...$$(".header-actions .icon-button", header),
+        ...$$(".header-actions .theme-toggle", header),
+      ].filter(Boolean);
+
+      if (nodes.length > 0) {
+        try {
+          animate(
+            nodes,
+            { opacity: [0, 1], y: [-10, 0], filter: ["blur(10px)", "blur(0px)"] },
+            { duration: 0.5, delay: stagger(0.04), easing: [0.22, 1, 0.36, 1] }
+          );
+        } catch (_) {
+          // ignore
+        }
+      }
+    }
+
+    const banner = $(".banner-content");
+    if (banner) {
+      const items = Array.from(banner.children);
+      if (items.length > 0) {
+        try {
+          animate(
+            items,
+            { opacity: [0, 1], y: [14, 0], filter: ["blur(10px)", "blur(0px)"] },
+            { duration: 0.55, delay: stagger(0.08, { startDelay: 0.12 }), easing: [0.22, 1, 0.36, 1] }
+          );
+        } catch (_) {
+          // ignore
+        }
+      }
+    }
   };
 
   const initScrollReveal = () => {
@@ -2485,6 +2817,7 @@
           platforms: [],
           years: [],
           ratings: [],
+          library: [],
           savedOnly: false,
           sort: sortSelect?.value || "popular",
           view: "grid",
@@ -2503,6 +2836,7 @@
       setChecked("platform", s.platforms);
       setChecked("year", s.years);
       setChecked("rating", s.ratings);
+      setChecked("library", s.library);
       setChecked("saved", s.savedOnly ? ["saved"] : []);
 
       if (sortSelect) sortSelect.value = s.sort || "popular";
@@ -2519,6 +2853,7 @@
       platforms: getCheckedValues("platform", root),
       years: getCheckedValues("year", root),
       ratings: getCheckedValues("rating", root),
+      library: getCheckedValues("library", root),
       savedOnly: getCheckedValues("saved", root).includes("saved"),
       sort: sortSelect?.value || "popular",
       view: listEl.classList.contains("list-view-active") ? "list" : "grid",
@@ -3592,6 +3927,8 @@
     const saveGameBtn = $("#game-save");
     const tagsEl = $("#game-tags");
     const highlightsEl = $("#game-highlights");
+    const libraryPills = $("#game-library-pills");
+    const libraryMeta = $("#game-library-meta");
 
     const title = game?.title || (id ? `游戏：${id}` : "游戏详情");
     const subtitle = game?.subtitle || "该游戏详情正在建设中，我们会逐步补全攻略体系。";
@@ -3730,6 +4067,56 @@
       syncGameSave();
     });
 
+    const getLibraryLabel = (status) => {
+      if (status === "wishlist") return "想玩";
+      if (status === "playing") return "在玩";
+      if (status === "done") return "已通关";
+      return "未设置";
+    };
+
+    const syncGameLibrary = () => {
+      if (!libraryPills) return;
+      const map = readGameLibraryMap();
+      const current = getGameLibraryStatus(id, map);
+
+      $$(".library-pill", libraryPills).forEach((btn) => {
+        const s = normalizeGameLibraryStatus(btn.dataset.status);
+        const active = s !== "none" && s === current;
+        btn.classList.toggle("active", active);
+        btn.setAttribute("aria-pressed", active ? "true" : "false");
+      });
+
+      if (libraryMeta) {
+        const at = map?.[id]?.updatedAt ? new Date(map[id].updatedAt).toLocaleString("zh-CN") : "";
+        libraryMeta.textContent = current === "none" ? "未设置" : `当前：${getLibraryLabel(current)}${at ? ` · ${at}` : ""}`;
+      }
+    };
+
+    syncGameLibrary();
+
+    libraryPills?.addEventListener("click", (e) => {
+      const btn = e.target?.closest?.(".library-pill");
+      if (!btn || !libraryPills.contains(btn)) return;
+      if (!id) return;
+
+      const status = btn.dataset.status || "none";
+      const next = setGameLibraryStatus(id, status);
+      syncGameLibrary();
+
+      const Motion = prefersReducedMotion() ? null : getMotion();
+      if (Motion) {
+        try {
+          Motion.animate(btn, { scale: [1, 1.07, 1] }, { duration: 0.28, easing: [0.22, 1, 0.36, 1] });
+        } catch (_) {}
+      }
+
+      toast({
+        title: next === "none" ? "已清除状态" : `已标记：${getLibraryLabel(next)}`,
+        message: "已保存到本地浏览器，可在“指挥舱/筛选”中查看。",
+        tone: next === "done" ? "success" : next === "none" ? "info" : "success",
+      });
+    });
+
     initNotesPanel({
       id,
       textarea: $("#game-notes"),
@@ -3738,6 +4125,1295 @@
       statusEl: $("#game-notes-status"),
       storageKey: STORAGE_KEYS.gameNotesPrefix,
     });
+  };
+
+  // -------------------------
+  // Dashboard Page
+  // -------------------------
+
+  const initDashboardPage = () => {
+    if (getPage() !== "dashboard") return;
+
+    const data = getData();
+    if (!data) return;
+
+    const statsEl = $("#dash-stats");
+    const recentEl = $("#dash-recent");
+    const savedEl = $("#dash-saved");
+    const progressEl = $("#dash-progress");
+    const updatesEl = $("#dash-updates");
+
+    const exportBtn = $("#dash-export");
+    const importBtn = $("#dash-import");
+    const resetBtn = $("#dash-reset");
+    const markAllBtn = $("#dash-mark-all");
+
+    exportBtn?.addEventListener("click", exportLocalData);
+    importBtn?.addEventListener("click", importLocalData);
+    resetBtn?.addEventListener("click", resetLocalData);
+
+    // 1) 概览
+    const totalGames = Object.keys(data.games || {}).length;
+    const totalGuides = Object.keys(data.guides || {}).length;
+    const totalTopics = Object.keys(data.topics || {}).length;
+
+    const savedGames = readStringList(STORAGE_KEYS.savedGames);
+    const savedGuides = readStringList(STORAGE_KEYS.savedGuides);
+    const savedTopics = readStringList(STORAGE_KEYS.savedTopics);
+    const recentGames = readStringList(STORAGE_KEYS.recentGames);
+    const recentGuides = readStringList(STORAGE_KEYS.recentGuides);
+
+    renderMetaList(statsEl, [
+      { label: "游戏库", value: `${totalGames} 款` },
+      { label: "攻略库", value: `${totalGuides} 篇` },
+      { label: "话题库", value: `${totalTopics} 个` },
+      { label: "已收藏游戏", value: `${savedGames.length} 个` },
+      { label: "已收藏攻略", value: `${savedGuides.length} 篇` },
+      { label: "已收藏话题", value: `${savedTopics.length} 个` },
+    ]);
+
+    // 2) 最近访问
+    const recentCards = [
+      ...recentGames.slice(0, 4).map((id) => {
+        const g = data.games?.[id];
+        return {
+          icon: g?.icon || "images/icons/rpg-icon.svg",
+          title: g?.title || `游戏：${id}`,
+          desc: g?.genre || "打开游戏详情",
+          href: `game.html?id=${encodeURIComponent(id)}`,
+        };
+      }),
+      ...recentGuides.slice(0, 4).map((id) => {
+        const g = data.guides?.[id];
+        const updated = g?.updated ? `更新 ${formatDate(g.updated)}` : "更新待补";
+        return {
+          icon: g?.icon || "images/icons/guide-icon.svg",
+          title: g?.title || `攻略：${id}`,
+          desc: `${updated} · ${g?.difficulty || "通用"}`,
+          href: `guide-detail.html?id=${encodeURIComponent(id)}`,
+        };
+      }),
+    ];
+    renderMiniCards(recentEl, recentCards, "还没有最近访问记录");
+
+    // 3) 收藏
+    const savedCards = [
+      ...savedGames.slice(0, 4).map((id) => {
+        const g = data.games?.[id];
+        return {
+          icon: g?.icon || "images/icons/rpg-icon.svg",
+          title: g?.title || `游戏：${id}`,
+          desc: g?.genre || "打开游戏详情",
+          href: `game.html?id=${encodeURIComponent(id)}`,
+        };
+      }),
+      ...savedGuides.slice(0, 4).map((id) => {
+        const g = data.guides?.[id];
+        return {
+          icon: g?.icon || "images/icons/guide-icon.svg",
+          title: g?.title || `攻略：${id}`,
+          desc: g?.summary || "打开攻略详情",
+          href: `guide-detail.html?id=${encodeURIComponent(id)}`,
+        };
+      }),
+      ...savedTopics.slice(0, 3).map((id) => {
+        const t = data.topics?.[id];
+        return {
+          icon: "images/icons/community-icon.svg",
+          title: t?.title || `话题：${id}`,
+          desc: t?.category ? `分类：${t.category}` : "打开话题",
+          href: `forum-topic.html?id=${encodeURIComponent(id)}`,
+        };
+      }),
+    ];
+    renderMiniCards(savedEl, savedCards, "你还没有收藏任何内容");
+
+    // 4) 攻略进度汇总（扫描 localStorage：gkb-guide-checklist:<id>）
+    const checklistKeys = listLocalStorageKeys().filter((k) => k.startsWith(STORAGE_KEYS.guideChecklistPrefix));
+    const progressItems = checklistKeys
+      .map((key) => {
+        const id = key.slice(String(STORAGE_KEYS.guideChecklistPrefix).length);
+        if (!id) return null;
+        const guide = data.guides?.[id] || null;
+        const steps = Array.isArray(guide?.steps) && guide.steps.length > 0 ? guide.steps : [];
+        const total = steps.length || 0;
+        const done = readStringList(key).length;
+        if (!total) return null;
+        const pct = Math.max(0, Math.min(100, Math.round((Math.min(done, total) / total) * 100)));
+        return { id, guide, done: Math.min(done, total), total, pct };
+      })
+      .filter(Boolean)
+      .filter((x) => x.pct > 0 && x.pct < 100)
+      .sort((a, b) => b.pct - a.pct)
+      .slice(0, 8)
+      .map((x) => {
+        const title = x.guide?.title || `攻略：${x.id}`;
+        const desc = `已完成 ${x.done}/${x.total} · ${x.pct}%`;
+        return {
+          icon: x.guide?.icon || "images/icons/guide-icon.svg",
+          title,
+          desc,
+          href: `guide-detail.html?id=${encodeURIComponent(x.id)}`,
+        };
+      });
+    renderMiniCards(progressEl, progressItems, "还没有发现进行中的攻略进度");
+
+    // 5) 更新中心概览
+    const countUpdate = (type, dict) => {
+      let nNew = 0;
+      let nUpdated = 0;
+      Object.entries(dict || {}).forEach(([id, item]) => {
+        const status = getUpdateStatus(type, id, item?.updated);
+        if (status === "new") nNew += 1;
+        if (status === "updated") nUpdated += 1;
+      });
+      return { nNew, nUpdated };
+    };
+
+    const updateCounts = {
+      games: countUpdate("games", data.games),
+      guides: countUpdate("guides", data.guides),
+      topics: countUpdate("topics", data.topics),
+    };
+
+    const totalNew = updateCounts.games.nNew + updateCounts.guides.nNew + updateCounts.topics.nNew;
+    const totalUpdated = updateCounts.games.nUpdated + updateCounts.guides.nUpdated + updateCounts.topics.nUpdated;
+
+    renderMetaList(updatesEl, [
+      { label: "NEW", value: `${totalNew}` },
+      { label: "UPDATED", value: `${totalUpdated}` },
+      { label: "当前版本", value: String(data.version || "—") },
+    ]);
+
+    markAllBtn?.addEventListener("click", () => {
+      let touched = 0;
+      Object.entries(data.games || {}).forEach(([id, g]) => {
+        if (markItemSeen("games", id, g?.updated)) touched += 1;
+      });
+      Object.entries(data.guides || {}).forEach(([id, g]) => {
+        if (markItemSeen("guides", id, g?.updated)) touched += 1;
+      });
+      Object.entries(data.topics || {}).forEach(([id, t]) => {
+        if (markItemSeen("topics", id, t?.updated)) touched += 1;
+      });
+
+      toast({ title: "已标记", message: `已同步更新雷达（写入 ${touched} 项）。`, tone: "success" });
+
+      const nextCounts = {
+        games: countUpdate("games", data.games),
+        guides: countUpdate("guides", data.guides),
+        topics: countUpdate("topics", data.topics),
+      };
+      const nextNew = nextCounts.games.nNew + nextCounts.guides.nNew + nextCounts.topics.nNew;
+      const nextUpdated = nextCounts.games.nUpdated + nextCounts.guides.nUpdated + nextCounts.topics.nUpdated;
+      renderMetaList(updatesEl, [
+        { label: "NEW", value: `${nextNew}` },
+        { label: "UPDATED", value: `${nextUpdated}` },
+        { label: "当前版本", value: String(data.version || "—") },
+      ]);
+    });
+  };
+
+  // -------------------------
+  // Updates Page
+  // -------------------------
+
+  const initUpdatesPage = () => {
+    if (getPage() !== "updates") return;
+
+    const data = getData();
+    if (!data) return;
+
+    const summaryEl = $("#updates-summary");
+    const grid = $("#updates-grid");
+    const empty = $("#updates-empty");
+    const searchInput = $("#updates-search");
+    const searchBtn = $("#updates-search-btn");
+    const typeSelect = $("#updates-type");
+    const statusSelect = $("#updates-status");
+    const countEl = $("#updates-count");
+    const clearBtn = $("#updates-clear");
+    const markAllBtn = $("#updates-mark-all");
+
+    if (!grid) return;
+
+    const typeLabel = (t) => (t === "games" ? "游戏" : t === "guides" ? "攻略" : t === "topics" ? "话题" : "内容");
+
+    const typeIcon = (t) => {
+      if (t === "games") return "images/icons/game-icon.svg";
+      if (t === "guides") return "images/icons/guide-icon.svg";
+      if (t === "topics") return "images/icons/user-avatar.svg";
+      return "images/icons/game-icon.svg";
+    };
+
+    const hrefOf = (t, id) => {
+      const safe = encodeURIComponent(String(id || ""));
+      if (t === "games") return `game.html?id=${safe}`;
+      if (t === "guides") return `guide-detail.html?id=${safe}`;
+      if (t === "topics") return `forum-topic.html?id=${safe}`;
+      return "index.html";
+    };
+
+    const allItems = [];
+    const pushItem = (t, id, item) => {
+      const title = String(item?.title || id || "—");
+      const updated = String(item?.updated || "");
+      const tags = Array.isArray(item?.tags) ? item.tags.map(String) : [];
+      const extra =
+        t === "games"
+          ? [String(item?.genre || ""), String(item?.difficulty || ""), String(item?.year || "")]
+          : t === "guides"
+            ? [String(item?.difficulty || ""), String(item?.readingTime || ""), String(item?.summary || "")]
+            : [String(item?.category || ""), String(item?.starter || ""), String(item?.summary || "")];
+      const blob = `${title} ${tags.join(" ")} ${extra.join(" ")}`.toLowerCase();
+      allItems.push({ type: t, id: String(id || ""), item, title, updated, tags, blob });
+    };
+
+    Object.entries(data.games || {}).forEach(([id, g]) => pushItem("games", id, g));
+    Object.entries(data.guides || {}).forEach(([id, g]) => pushItem("guides", id, g));
+    Object.entries(data.topics || {}).forEach(([id, t]) => pushItem("topics", id, t));
+
+    const readStateFromUrl = () => {
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const q = String(params.get("q") || "");
+        const type = String(params.get("type") || "all");
+        const status = String(params.get("status") || "changed");
+        const validType = new Set(["all", "games", "guides", "topics"]);
+        const validStatus = new Set(["changed", "new", "updated", "all"]);
+        return {
+          query: q,
+          type: validType.has(type) ? type : "all",
+          status: validStatus.has(status) ? status : "changed",
+        };
+      } catch (_) {
+        return { query: "", type: "all", status: "changed" };
+      }
+    };
+
+    let state = readStateFromUrl();
+
+    const syncUrl = () => {
+      try {
+        const url = new URL(window.location.href);
+        const params = url.searchParams;
+        const q = String(state.query || "").trim();
+        if (q) params.set("q", q);
+        else params.delete("q");
+
+        if (state.type && state.type !== "all") params.set("type", state.type);
+        else params.delete("type");
+
+        if (state.status && state.status !== "changed") params.set("status", state.status);
+        else params.delete("status");
+
+        url.search = params.toString();
+        window.history.replaceState({}, "", url.toString());
+      } catch (_) {}
+    };
+
+    const countUpdate = (t, dict) => {
+      let nNew = 0;
+      let nUpdated = 0;
+      Object.entries(dict || {}).forEach(([id, item]) => {
+        const status = getUpdateStatus(t, id, item?.updated);
+        if (status === "new") nNew += 1;
+        if (status === "updated") nUpdated += 1;
+      });
+      return { nNew, nUpdated };
+    };
+
+    const renderSummary = () => {
+      const counts = {
+        games: countUpdate("games", data.games),
+        guides: countUpdate("guides", data.guides),
+        topics: countUpdate("topics", data.topics),
+      };
+      const totalNew = counts.games.nNew + counts.guides.nNew + counts.topics.nNew;
+      const totalUpdated = counts.games.nUpdated + counts.guides.nUpdated + counts.topics.nUpdated;
+      const radar = readUpdateRadar();
+      const seededAt = radar?.seededAt ? new Date(radar.seededAt).toLocaleString("zh-CN") : "—";
+
+      renderMetaList(summaryEl, [
+        { label: "NEW", value: `${totalNew}` },
+        { label: "UPDATED", value: `${totalUpdated}` },
+        { label: "已读基线", value: seededAt },
+        { label: "当前版本", value: String(data.version || "—") },
+      ]);
+    };
+
+    const renderCard = (x) => {
+      const status = getUpdateStatus(x.type, x.id, x.updated);
+      const badge = renderUpdateBadge(status);
+      const href = hrefOf(x.type, x.id);
+      const icon = x.item?.icon || typeIcon(x.type);
+      const updatedText = x.updated ? `更新 ${formatDate(x.updated)}` : "更新待补";
+      const tags = x.tags.slice(0, 4).map((t) => `<span class=\"chip\">${escapeHtml(t)}</span>`).join("");
+      const canMark = Boolean(parseDateKey(x.updated)) && (status === "new" || status === "updated");
+      const markText = canMark ? "标为已读" : "已读";
+
+      return `
+        <article class="update-card" data-type="${escapeHtml(x.type)}" data-id="${escapeHtml(x.id)}">
+          <div class="update-card-head">
+            <div class="update-card-badges">
+              ${badge}
+              <span class="chip chip-muted">${escapeHtml(typeLabel(x.type))}</span>
+            </div>
+            <div class="update-card-meta">${escapeHtml(updatedText)}</div>
+          </div>
+          <a class="update-card-main" href="${href}">
+            <img class="update-card-icon" src="${icon}" alt="${escapeHtml(x.title)}">
+            <div class="update-card-body">
+              <div class="update-card-title">${escapeHtml(x.title)}</div>
+              <div class="update-card-sub">${escapeHtml(x.item?.summary || x.item?.genre || x.item?.category || "打开查看详情")}</div>
+              <div class="chips update-card-tags">${tags}</div>
+            </div>
+          </a>
+          <div class="update-card-actions">
+            <a class="btn btn-small" href="${href}">打开</a>
+            <button type="button" class="btn btn-small btn-secondary" data-action="updates-mark" ${canMark ? "" : "disabled"}>${markText}</button>
+          </div>
+        </article>
+      `;
+    };
+
+    const animateCards = () => {
+      if (prefersReducedMotion()) return;
+      const Motion = getMotion();
+      if (!Motion) return;
+      const nodes = $$(".update-card", grid);
+      if (nodes.length === 0) return;
+      try {
+        Motion.animate(
+          nodes,
+          { opacity: [0, 1], y: [12, 0], filter: ["blur(10px)", "blur(0px)"] },
+          { duration: 0.34, delay: Motion.stagger(0.03), easing: [0.22, 1, 0.36, 1] }
+        );
+      } catch (_) {}
+    };
+
+    const apply = () => {
+      const q = String(state.query || "").trim().toLowerCase();
+      const selectedType = state.type || "all";
+      const selectedStatus = state.status || "changed";
+
+      const filtered = allItems.filter((x) => {
+        if (selectedType !== "all" && x.type !== selectedType) return false;
+        if (q && !x.blob.includes(q)) return false;
+        const status = getUpdateStatus(x.type, x.id, x.updated);
+        if (selectedStatus === "new") return status === "new";
+        if (selectedStatus === "updated") return status === "updated";
+        if (selectedStatus === "changed") return status === "new" || status === "updated";
+        return true;
+      });
+
+      const sorted = [...filtered].sort((a, b) => {
+        const sb = getUpdateStatus(b.type, b.id, b.updated);
+        const sa = getUpdateStatus(a.type, a.id, a.updated);
+        const wb = sb === "new" ? 3 : sb === "updated" ? 2 : 1;
+        const wa = sa === "new" ? 3 : sa === "updated" ? 2 : 1;
+        if (wb !== wa) return wb - wa;
+        return parseDateKey(b.updated) - parseDateKey(a.updated);
+      });
+
+      withViewTransition(() => {
+        grid.innerHTML = sorted.map(renderCard).join("");
+        const total = sorted.length;
+        if (countEl) countEl.textContent = total ? `共 ${total} 条更新` : "";
+        if (empty) empty.hidden = total !== 0 || Boolean(q);
+      });
+      syncUrl();
+      animateCards();
+    };
+
+    const syncControls = () => {
+      if (searchInput) searchInput.value = state.query || "";
+      if (typeSelect) typeSelect.value = state.type || "all";
+      if (statusSelect) statusSelect.value = state.status || "changed";
+    };
+
+    renderSummary();
+    syncControls();
+    apply();
+
+    const syncFromInput = () => {
+      state = { ...state, query: searchInput?.value?.trim() || "" };
+      apply();
+    };
+
+    searchBtn?.addEventListener("click", syncFromInput);
+    typeSelect?.addEventListener("change", () => {
+      state = { ...state, type: String(typeSelect.value || "all") };
+      apply();
+    });
+    statusSelect?.addEventListener("change", () => {
+      state = { ...state, status: String(statusSelect.value || "changed") };
+      apply();
+    });
+
+    if (searchInput) {
+      let t = 0;
+      searchInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          syncFromInput();
+        }
+      });
+      searchInput.addEventListener("input", () => {
+        window.clearTimeout(t);
+        t = window.setTimeout(syncFromInput, 160);
+      });
+    }
+
+    clearBtn?.addEventListener("click", () => {
+      state = { query: "", type: "all", status: "changed" };
+      syncControls();
+      apply();
+    });
+
+    markAllBtn?.addEventListener("click", () => {
+      let touched = 0;
+      Object.entries(data.games || {}).forEach(([id, g]) => {
+        if (markItemSeen("games", id, g?.updated)) touched += 1;
+      });
+      Object.entries(data.guides || {}).forEach(([id, g]) => {
+        if (markItemSeen("guides", id, g?.updated)) touched += 1;
+      });
+      Object.entries(data.topics || {}).forEach(([id, t]) => {
+        if (markItemSeen("topics", id, t?.updated)) touched += 1;
+      });
+      toast({ title: "已标记", message: `已同步更新雷达（写入 ${touched} 项）。`, tone: "success" });
+      renderSummary();
+      apply();
+    });
+
+    grid.addEventListener("click", (e) => {
+      const btn = e.target?.closest?.('button[data-action="updates-mark"]');
+      if (!btn) return;
+      const card = btn.closest?.(".update-card");
+      if (!card) return;
+      const t = String(card.dataset.type || "");
+      const id = String(card.dataset.id || "");
+      const dict = t === "games" ? data.games : t === "guides" ? data.guides : data.topics;
+      const item = dict?.[id] || null;
+      const ok = markItemSeen(t, id, item?.updated);
+      if (!ok) {
+        toast({ title: "无法标记", message: "该条目缺少更新时间或写入失败。", tone: "warn" });
+        return;
+      }
+      toast({ title: "已标为已读", message: "更新雷达已同步。", tone: "success" });
+      renderSummary();
+      apply();
+    });
+  };
+
+  // -------------------------
+  // Planner (Plans)
+  // -------------------------
+
+  const normalizePlanItem = (raw) => {
+    if (!raw || typeof raw !== "object") return null;
+    const type = String(raw.type || "").trim();
+    const id = String(raw.id || "").trim();
+    if (!id) return null;
+    if (type !== "game" && type !== "guide") return null;
+    return { type, id };
+  };
+
+  const readPlansState = () => {
+    const parsed = safeJsonParse(storage.get(STORAGE_KEYS.plans), null);
+    const base = { version: 1, currentId: "", plans: {} };
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return base;
+
+    const plans = {};
+    const rawPlans = parsed.plans && typeof parsed.plans === "object" && !Array.isArray(parsed.plans) ? parsed.plans : {};
+    Object.entries(rawPlans).forEach(([pid, plan]) => {
+      const id = String(pid || "").trim();
+      if (!id) return;
+      if (!plan || typeof plan !== "object" || Array.isArray(plan)) return;
+      const name = String(plan.name || "").trim() || "未命名路线";
+      const items = Array.isArray(plan.items) ? plan.items.map(normalizePlanItem).filter(Boolean) : [];
+      plans[id] = {
+        id,
+        name: name.slice(0, 42),
+        createdAt: Number(plan.createdAt || 0) || 0,
+        updatedAt: Number(plan.updatedAt || 0) || 0,
+        items: items.slice(0, 120),
+      };
+    });
+
+    const ids = Object.keys(plans);
+    const currentIdRaw = String(parsed.currentId || "").trim();
+    const currentId = ids.includes(currentIdRaw) ? currentIdRaw : ids[0] || "";
+    return { version: 1, currentId, plans };
+  };
+
+  const writePlansState = (state) => {
+    try {
+      return storage.set(STORAGE_KEYS.plans, JSON.stringify(state));
+    } catch (_) {
+      return false;
+    }
+  };
+
+  const ensurePlansState = () => {
+    const state = readPlansState();
+    const ids = Object.keys(state.plans);
+    if (ids.length > 0 && state.currentId) return state;
+    const id = uid();
+    const now = Date.now();
+    const next = {
+      version: 1,
+      currentId: id,
+      plans: { [id]: { id, name: "我的路线", createdAt: now, updatedAt: now, items: [] } },
+    };
+    writePlansState(next);
+    return next;
+  };
+
+  const addItemToCurrentPlan = (item) => {
+    const normalized = normalizePlanItem(item);
+    if (!normalized) return { ok: false, added: false, planId: "" };
+    const state = ensurePlansState();
+    const planId = state.currentId;
+    const plan = state.plans?.[planId];
+    if (!plan) return { ok: false, added: false, planId: "" };
+
+    const exists = plan.items.some((x) => x.type === normalized.type && x.id === normalized.id);
+    if (exists) return { ok: true, added: false, planId };
+
+    const next = {
+      ...state,
+      plans: { ...state.plans, [planId]: { ...plan, updatedAt: Date.now(), items: [...plan.items, normalized] } },
+    };
+    writePlansState(next);
+    return { ok: true, added: true, planId };
+  };
+
+  const createPlanFromItems = (name, items) => {
+    const state = ensurePlansState();
+    const id = uid();
+    const now = Date.now();
+    const normalized = Array.isArray(items) ? items.map(normalizePlanItem).filter(Boolean) : [];
+    const safeName = String(name || "").trim().slice(0, 42) || "新路线";
+    const next = {
+      ...state,
+      currentId: id,
+      plans: {
+        ...state.plans,
+        [id]: { id, name: safeName, createdAt: now, updatedAt: now, items: normalized.slice(0, 120) },
+      },
+    };
+    writePlansState(next);
+    return { id, state: next };
+  };
+
+  const initPlannerPage = () => {
+    if (getPage() !== "planner") return;
+
+    const data = getData();
+    if (!data) return;
+
+    const selectEl = $("#planner-select");
+    const metaEl = $("#planner-meta");
+    const listEl = $("#planner-list");
+    const emptyEl = $("#planner-empty");
+
+    const createBtn = $("#planner-create");
+    const renameBtn = $("#planner-rename");
+    const deleteBtn = $("#planner-delete");
+    const shareBtn = $("#planner-share");
+    const importBtn = $("#planner-import");
+
+    const addInput = $("#planner-add-input");
+    const addBtn = $("#planner-add-btn");
+    const suggestEl = $("#planner-suggest");
+
+    if (!selectEl || !listEl) return;
+
+    const pool = [];
+    Object.entries(data.games || {}).forEach(([id, g]) => {
+      pool.push({
+        type: "game",
+        id: String(id || ""),
+        title: String(g?.title || id),
+        subtitle: String(g?.genre || ""),
+        tags: Array.isArray(g?.tags) ? g.tags.map(String) : [],
+        icon: g?.icon || "images/icons/game-icon.svg",
+      });
+    });
+    Object.entries(data.guides || {}).forEach(([id, g]) => {
+      pool.push({
+        type: "guide",
+        id: String(id || ""),
+        title: String(g?.title || id),
+        subtitle: String(g?.summary || ""),
+        tags: Array.isArray(g?.tags) ? g.tags.map(String) : [],
+        icon: g?.icon || "images/icons/guide-icon.svg",
+      });
+    });
+
+    const normalizeQuery = (q) => String(q || "").trim().toLowerCase();
+    const poolIndex = pool.map((x) => ({ ...x, blob: `${x.title} ${x.subtitle} ${x.tags.join(" ")}`.toLowerCase() }));
+
+    let state = ensurePlansState();
+
+    const openId = getParam("open");
+    if (openId && state.plans?.[openId]) {
+      state = { ...state, currentId: openId };
+      writePlansState(state);
+      try {
+        const url = new URL(window.location.href);
+        url.searchParams.delete("open");
+        window.history.replaceState({}, "", url.toString());
+      } catch (_) {}
+    }
+
+    const maybeImportFromHash = () => {
+      const hash = String(window.location.hash || "");
+      const m = hash.match(/(?:^#|[&#])plan=([^&]+)/);
+      if (!m) return false;
+      const raw = base64UrlDecode(m[1]);
+      const parsed = safeJsonParse(raw, null);
+      if (!parsed || typeof parsed !== "object") return false;
+      if (String(parsed.schema || "") !== "gkb-plan-share") return false;
+      const created = createPlanFromItems(String(parsed.name || "分享路线"), parsed.items);
+      state = created.state;
+      toast({ title: "导入成功", message: `已导入路线：${state.plans[created.id].name}`, tone: "success" });
+      try {
+        const url = new URL(window.location.href);
+        url.hash = "";
+        window.history.replaceState({}, "", url.toString());
+      } catch (_) {}
+      return true;
+    };
+    maybeImportFromHash();
+
+    const getPlan = () => state.plans?.[state.currentId] || null;
+
+    const persist = () => writePlansState(state);
+
+    const syncSelect = () => {
+      const ids = Object.keys(state.plans);
+      selectEl.innerHTML = ids
+        .map((id) => `<option value="${escapeHtml(id)}">${escapeHtml(state.plans[id]?.name || "未命名路线")}</option>`)
+        .join("");
+      if (state.currentId && state.plans[state.currentId]) selectEl.value = state.currentId;
+    };
+
+    const computeGuideProgress = (guideId) => {
+      const guide = data.guides?.[guideId] || null;
+      const steps = Array.isArray(guide?.steps) ? guide.steps : [];
+      const total = steps.length;
+      if (!total) return { done: 0, total: 0, pct: 0 };
+      const key = `${STORAGE_KEYS.guideChecklistPrefix}${guideId}`;
+      const done = Math.min(readStringList(key).length, total);
+      const pct = Math.max(0, Math.min(100, Math.round((done / total) * 100)));
+      return { done, total, pct };
+    };
+
+    const computePlanMeta = (plan) => {
+      const items = Array.isArray(plan?.items) ? plan.items : [];
+      const games = items.filter((x) => x.type === "game").length;
+      const guides = items.filter((x) => x.type === "guide").length;
+      const minutes = items
+        .filter((x) => x.type === "guide")
+        .map((x) => Number(data.guides?.[x.id]?.readingTime || 0) || 0)
+        .reduce((a, b) => a + b, 0);
+      const inProgress = items
+        .filter((x) => x.type === "guide")
+        .map((x) => computeGuideProgress(x.id))
+        .filter((p) => p.pct > 0 && p.pct < 100).length;
+      const library = readGameLibraryMap();
+      const playing = items.filter((x) => x.type === "game" && getGameLibraryStatus(x.id, library) === "playing").length;
+      return [
+        { label: "条目数", value: `${items.length}` },
+        { label: "游戏", value: `${games}` },
+        { label: "攻略", value: `${guides}` },
+        { label: "阅读时长", value: minutes ? `约 ${minutes} 分钟` : "—" },
+        { label: "进行中攻略", value: `${inProgress}` },
+        { label: "在玩游戏", value: `${playing}` },
+      ];
+    };
+
+    const renderList = (plan) => {
+      const items = Array.isArray(plan?.items) ? plan.items : [];
+      if (items.length === 0) {
+        listEl.innerHTML = "";
+        if (emptyEl) emptyEl.hidden = false;
+        return;
+      }
+      if (emptyEl) emptyEl.hidden = true;
+
+      const library = readGameLibraryMap();
+      listEl.innerHTML = items
+        .map((x, idx) => {
+          const isGuide = x.type === "guide";
+          const entity = isGuide ? data.guides?.[x.id] : data.games?.[x.id];
+          const title = String(entity?.title || `${isGuide ? "攻略" : "游戏"}：${x.id}`);
+          const icon = String(entity?.icon || (isGuide ? "images/icons/guide-icon.svg" : "images/icons/game-icon.svg"));
+          const href = isGuide ? `guide-detail.html?id=${encodeURIComponent(x.id)}` : `game.html?id=${encodeURIComponent(x.id)}`;
+          const updated = entity?.updated ? `更新 ${formatDate(entity.updated)}` : "更新待补";
+
+          let meta = updated;
+          let chips = "";
+          if (isGuide) {
+            const p = computeGuideProgress(x.id);
+            if (p.total) meta = `${updated} · 进度 ${p.done}/${p.total}（${p.pct}%）`;
+            chips = `<span class="chip chip-muted">攻略</span><span class="chip">${escapeHtml(entity?.difficulty || "通用")}</span>${p.total ? `<span class="chip">${p.pct}%</span>` : ""}`;
+          } else {
+            const s = getGameLibraryStatus(x.id, library);
+            const label = s === "playing" ? "在玩" : s === "wishlist" ? "想玩" : s === "done" ? "已通关" : "未设置";
+            meta = `${updated} · ${label}`;
+            chips = `<span class="chip chip-muted">游戏</span><span class="chip">${escapeHtml(label)}</span>`;
+          }
+
+          return `
+            <div class="plan-item" draggable="true" data-idx="${idx}">
+              <div class="plan-handle" aria-hidden="true">⋮⋮</div>
+              <a class="plan-main" href="${href}">
+                <img class="plan-icon" src="${icon}" alt="${escapeHtml(title)}">
+                <div class="plan-body">
+                  <div class="plan-title">${escapeHtml(title)}</div>
+                  <div class="plan-sub">${escapeHtml(meta)}</div>
+                  <div class="chips plan-chips">${chips}</div>
+                </div>
+              </a>
+              <div class="plan-actions">
+                <button type="button" class="btn btn-small btn-secondary" data-action="plan-remove" data-idx="${idx}">移除</button>
+              </div>
+            </div>
+          `;
+        })
+        .join("");
+    };
+
+    const render = () => {
+      const plan = getPlan();
+      syncSelect();
+      renderMetaList(metaEl, computePlanMeta(plan));
+      renderList(plan);
+    };
+
+    const setCurrent = (id) => {
+      if (!id || !state.plans?.[id]) return;
+      state = { ...state, currentId: id };
+      persist();
+      render();
+    };
+
+    selectEl.addEventListener("change", () => setCurrent(String(selectEl.value || "")));
+
+    createBtn?.addEventListener("click", () => {
+      const name = window.prompt("给新路线起个名字：", "我的新路线");
+      if (name == null) return;
+      const created = createPlanFromItems(name, []);
+      state = created.state;
+      render();
+      toast({ title: "已创建", message: "新路线已保存到本地浏览器。", tone: "success" });
+    });
+
+    renameBtn?.addEventListener("click", () => {
+      const plan = getPlan();
+      if (!plan) return;
+      const nextName = window.prompt("重命名路线：", plan.name || "");
+      if (nextName == null) return;
+      const name = String(nextName).trim().slice(0, 42) || plan.name;
+      state = { ...state, plans: { ...state.plans, [plan.id]: { ...plan, name, updatedAt: Date.now() } } };
+      persist();
+      render();
+      toast({ title: "已重命名", message: `当前路线：${name}`, tone: "success" });
+    });
+
+    deleteBtn?.addEventListener("click", () => {
+      const plan = getPlan();
+      if (!plan) return;
+      const ok = window.confirm(`确认删除路线“${plan.name}”吗？（不可恢复）`);
+      if (!ok) return;
+      const nextPlans = { ...state.plans };
+      delete nextPlans[plan.id];
+      const ids = Object.keys(nextPlans);
+      state =
+        ids.length > 0
+          ? { ...state, currentId: ids[0], plans: nextPlans }
+          : ensurePlansState();
+      persist();
+      render();
+      toast({ title: "已删除", message: "路线已移除（本地）。", tone: "info" });
+    });
+
+    const buildShareUrl = (plan) => {
+      try {
+        const payload = { schema: "gkb-plan-share", name: plan?.name || "分享路线", items: Array.isArray(plan?.items) ? plan.items : [] };
+        const encoded = base64UrlEncode(JSON.stringify(payload));
+        if (!encoded) return "";
+        const url = new URL(window.location.href);
+        url.pathname = url.pathname.replace(/[^/]*$/, "planner.html");
+        url.search = "";
+        url.hash = `plan=${encoded}`;
+        return url.toString();
+      } catch (_) {
+        return "";
+      }
+    };
+
+    shareBtn?.addEventListener("click", () => {
+      const plan = getPlan();
+      if (!plan) return;
+      const url = buildShareUrl(plan);
+      if (!url) {
+        toast({ title: "复制失败", message: "无法生成分享链接。", tone: "warn" });
+        return;
+      }
+      copyTextToClipboard(url).then((ok) => {
+        toast({
+          title: ok ? "分享链接已复制" : "复制失败",
+          message: ok ? "已复制到剪贴板，发给朋友即可导入路线。" : "当前环境不支持剪贴板访问。",
+          tone: ok ? "success" : "warn",
+        });
+      });
+    });
+
+    importBtn?.addEventListener("click", () => {
+      const input = window.prompt("粘贴分享链接（或 #plan= 后的内容）：", "");
+      if (!input) return;
+      const text = String(input).trim();
+      const m = text.match(/plan=([^&]+)/);
+      const token = m ? m[1] : text;
+      const raw = base64UrlDecode(token);
+      const parsed = safeJsonParse(raw, null);
+      if (!parsed || typeof parsed !== "object" || String(parsed.schema || "") !== "gkb-plan-share") {
+        toast({ title: "导入失败", message: "链接格式不正确。", tone: "warn" });
+        return;
+      }
+      const created = createPlanFromItems(String(parsed.name || "导入路线"), parsed.items);
+      state = created.state;
+      render();
+      toast({ title: "导入成功", message: "路线已写入本地浏览器。", tone: "success" });
+    });
+
+    const hideSuggest = () => {
+      if (!suggestEl) return;
+      suggestEl.hidden = true;
+      suggestEl.innerHTML = "";
+    };
+
+    const showSuggest = (q) => {
+      if (!suggestEl) return;
+      const query = normalizeQuery(q);
+      if (!query) {
+        hideSuggest();
+        return;
+      }
+      const results = poolIndex.filter((x) => x.blob.includes(query)).slice(0, 8);
+      if (results.length === 0) {
+        hideSuggest();
+        return;
+      }
+      suggestEl.innerHTML = results
+        .map(
+          (x) => `
+            <button type="button" class="planner-suggest-item" data-type="${escapeHtml(x.type)}" data-id="${escapeHtml(x.id)}">
+              <img src="${x.icon}" alt="${escapeHtml(x.title)}">
+              <span class="planner-suggest-main">
+                <span class="planner-suggest-title">${escapeHtml(x.title)}</span>
+                <span class="planner-suggest-sub">${escapeHtml(x.subtitle || "")}</span>
+              </span>
+              <span class="planner-suggest-tag">${escapeHtml(x.type === "guide" ? "攻略" : "游戏")}</span>
+            </button>
+          `
+        )
+        .join("");
+      suggestEl.hidden = false;
+    };
+
+    const addToPlan = (type, id) => {
+      const result = addItemToCurrentPlan({ type, id });
+      if (!result.ok) {
+        toast({ title: "添加失败", message: "无法写入本地数据。", tone: "warn" });
+        return;
+      }
+      if (!result.added) {
+        toast({ title: "已在路线中", message: "该条目已存在，无需重复添加。", tone: "info" });
+        return;
+      }
+      state = readPlansState();
+      render();
+      toast({ title: "已加入路线", message: "拖拽可排序，进度会自动汇总。", tone: "success" });
+    };
+
+    const addFirstSuggest = () => {
+      const q = addInput?.value || "";
+      const query = normalizeQuery(q);
+      if (!query) return;
+      const hit = poolIndex.find((x) => x.blob.includes(query));
+      if (!hit) {
+        toast({ title: "没找到", message: "换个关键词试试，例如 Boss / Build / 文明6。", tone: "info" });
+        return;
+      }
+      addToPlan(hit.type, hit.id);
+      if (addInput) addInput.value = "";
+      hideSuggest();
+    };
+
+    addBtn?.addEventListener("click", addFirstSuggest);
+
+    if (addInput) {
+      let t = 0;
+      addInput.addEventListener("input", () => {
+        window.clearTimeout(t);
+        t = window.setTimeout(() => showSuggest(addInput.value), 80);
+      });
+      addInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          addFirstSuggest();
+        }
+        if (e.key === "Escape") hideSuggest();
+      });
+      addInput.addEventListener("blur", () => window.setTimeout(hideSuggest, 120));
+      addInput.addEventListener("focus", () => showSuggest(addInput.value));
+    }
+
+    suggestEl?.addEventListener("click", (e) => {
+      const btn = e.target?.closest?.(".planner-suggest-item");
+      if (!btn) return;
+      const type = String(btn.dataset.type || "");
+      const id = String(btn.dataset.id || "");
+      addToPlan(type, id);
+      if (addInput) addInput.value = "";
+      hideSuggest();
+    });
+
+    listEl.addEventListener("click", (e) => {
+      const btn = e.target?.closest?.('button[data-action="plan-remove"]');
+      if (!btn) return;
+      const idx = Number(btn.dataset.idx || -1);
+      const plan = getPlan();
+      if (!plan) return;
+      if (idx < 0 || idx >= plan.items.length) return;
+      const nextItems = plan.items.filter((_, i) => i !== idx);
+      state = { ...state, plans: { ...state.plans, [plan.id]: { ...plan, updatedAt: Date.now(), items: nextItems } } };
+      persist();
+      render();
+      toast({ title: "已移除", message: "条目已从路线中删除。", tone: "info" });
+    });
+
+    // Drag & Drop reorder（轻量实现）
+    let dragIdx = -1;
+    listEl.addEventListener("dragstart", (e) => {
+      const item = e.target?.closest?.(".plan-item");
+      if (!item) return;
+      dragIdx = Number(item.dataset.idx || -1);
+      item.classList.add("is-dragging");
+      try {
+        e.dataTransfer.effectAllowed = "move";
+        e.dataTransfer.setData("text/plain", String(dragIdx));
+      } catch (_) {}
+    });
+    listEl.addEventListener("dragend", (e) => {
+      e.target?.closest?.(".plan-item")?.classList?.remove?.("is-dragging");
+      dragIdx = -1;
+    });
+    listEl.addEventListener("dragover", (e) => {
+      const over = e.target?.closest?.(".plan-item");
+      if (!over) return;
+      e.preventDefault();
+    });
+    listEl.addEventListener("drop", (e) => {
+      const over = e.target?.closest?.(".plan-item");
+      if (!over) return;
+      e.preventDefault();
+      const from = dragIdx;
+      const to = Number(over.dataset.idx || -1);
+      if (from < 0 || to < 0 || from === to) return;
+      const plan = getPlan();
+      if (!plan) return;
+      const items = [...plan.items];
+      const [moved] = items.splice(from, 1);
+      items.splice(to, 0, moved);
+      state = { ...state, plans: { ...state.plans, [plan.id]: { ...plan, updatedAt: Date.now(), items } } };
+      persist();
+      withViewTransition(render);
+    });
+
+    render();
+  };
+
+  // -------------------------
+  // Discover Page (Recommendations)
+  // -------------------------
+
+  const initDiscoverPage = () => {
+    if (getPage() !== "discover") return;
+
+    const data = getData();
+    if (!data) return;
+
+    const tagsEl = $("#discover-tags");
+    const guidesEl = $("#discover-guides");
+    const gamesEl = $("#discover-games");
+    const emptyEl = $("#discover-empty");
+    const refreshBtn = $("#discover-refresh");
+    const buildPlanBtn = $("#discover-build-plan");
+    const onlyUnsavedEl = $("#discover-only-unsaved");
+
+    const readPrefs = () => {
+      const parsed = safeJsonParse(storage.get(STORAGE_KEYS.discoverPrefs), null);
+      if (!parsed || typeof parsed !== "object") return { onlyUnsaved: true };
+      return { onlyUnsaved: parsed.onlyUnsaved !== false };
+    };
+    const writePrefs = (prefs) => storage.set(STORAGE_KEYS.discoverPrefs, JSON.stringify(prefs));
+
+    let prefs = readPrefs();
+    if (onlyUnsavedEl) onlyUnsavedEl.checked = Boolean(prefs.onlyUnsaved);
+
+    const addWeight = (map, tag, w) => {
+      const key = String(tag || "").trim();
+      if (!key) return;
+      map[key] = (Number(map[key] || 0) || 0) + w;
+    };
+
+    const buildWeights = () => {
+      const weights = {};
+      const savedGames = readStringList(STORAGE_KEYS.savedGames);
+      const savedGuides = readStringList(STORAGE_KEYS.savedGuides);
+      const savedTopics = readStringList(STORAGE_KEYS.savedTopics);
+      const recentGames = readStringList(STORAGE_KEYS.recentGames);
+      const recentGuides = readStringList(STORAGE_KEYS.recentGuides);
+      const library = readGameLibraryMap();
+
+      savedGames.forEach((id) => (data.games?.[id]?.tags || []).forEach((t) => addWeight(weights, t, 5)));
+      savedGuides.forEach((id) => (data.guides?.[id]?.tags || []).forEach((t) => addWeight(weights, t, 4)));
+      savedTopics.forEach((id) => (data.topics?.[id]?.tags || []).forEach((t) => addWeight(weights, t, 2)));
+
+      recentGames.slice(0, 8).forEach((id) => (data.games?.[id]?.tags || []).forEach((t) => addWeight(weights, t, 3)));
+      recentGuides.slice(0, 8).forEach((id) => (data.guides?.[id]?.tags || []).forEach((t) => addWeight(weights, t, 2)));
+
+      Object.entries(library).forEach(([id, entry]) => {
+        const status = normalizeGameLibraryStatus(entry?.status);
+        const w = status === "playing" ? 6 : status === "wishlist" ? 3 : status === "done" ? 1 : 0;
+        if (!w) return;
+        (data.games?.[id]?.tags || []).forEach((t) => addWeight(weights, t, w));
+      });
+
+      return weights;
+    };
+
+    const topTags = (weights) =>
+      Object.entries(weights)
+        .sort((a, b) => (b[1] || 0) - (a[1] || 0))
+        .slice(0, 14)
+        .map(([t]) => t);
+
+    const scoreByTags = (weights, tags) => {
+      let score = 0;
+      (Array.isArray(tags) ? tags : []).forEach((t) => {
+        score += Number(weights[String(t)] || 0) || 0;
+      });
+      return score;
+    };
+
+    const computeRecommendations = (weights, { onlyUnsaved }) => {
+      const savedGames = new Set(readStringList(STORAGE_KEYS.savedGames));
+      const savedGuides = new Set(readStringList(STORAGE_KEYS.savedGuides));
+
+      const guides = Object.entries(data.guides || {})
+        .map(([id, g]) => {
+          const tags = Array.isArray(g?.tags) ? g.tags : [];
+          const gameTags = g?.gameId && data.games?.[g.gameId]?.tags ? data.games[g.gameId].tags : [];
+          const combined = [...tags, ...gameTags];
+          const base = scoreByTags(weights, combined);
+          const recency = parseDateKey(g?.updated) / 100000000;
+          return { id, guide: g, score: base + recency };
+        })
+        .filter((x) => x.score > 0.01)
+        .filter((x) => (onlyUnsaved ? !savedGuides.has(x.id) : true))
+        .sort((a, b) => (b.score || 0) - (a.score || 0))
+        .slice(0, 8);
+
+      const games = Object.entries(data.games || {})
+        .map(([id, g]) => {
+          const tags = Array.isArray(g?.tags) ? g.tags : [];
+          const base = scoreByTags(weights, tags);
+          const rating = (Number(g?.rating || 0) || 0) / 10;
+          const recency = parseDateKey(g?.updated) / 100000000;
+          return { id, game: g, score: base + rating + recency };
+        })
+        .filter((x) => x.score > 0.01)
+        .filter((x) => (onlyUnsaved ? !savedGames.has(x.id) : true))
+        .sort((a, b) => (b.score || 0) - (a.score || 0))
+        .slice(0, 8);
+
+      return { guides, games };
+    };
+
+    const renderTagChips = (tags) => {
+      if (!tagsEl) return;
+      tagsEl.innerHTML = (tags || []).map((t) => `<span class="chip">${escapeHtml(t)}</span>`).join("");
+    };
+
+    const renderRecs = (recs) => {
+      const savedGuides = new Set(readStringList(STORAGE_KEYS.savedGuides));
+      const savedGames = new Set(readStringList(STORAGE_KEYS.savedGames));
+
+      if (guidesEl) {
+        guidesEl.innerHTML = recs.guides
+          .map(({ id, guide }) => {
+            const title = String(guide?.title || `攻略：${id}`);
+            const icon = guide?.icon || "images/icons/guide-icon.svg";
+            const updated = guide?.updated ? `更新 ${formatDate(guide.updated)}` : "更新待补";
+            const rt = Number(guide?.readingTime || 0) || 0;
+            const saved = savedGuides.has(id);
+            const href = `guide-detail.html?id=${encodeURIComponent(id)}`;
+            return `
+              <div class="mini-card mini-card-action" data-type="guide" data-id="${escapeHtml(id)}">
+                <a class="mini-card-main" href="${href}">
+                  <img src="${icon}" alt="${escapeHtml(title)}">
+                  <div class="mini-card-body">
+                    <div class="mini-card-title">${escapeHtml(title)}</div>
+                    <div class="mini-card-desc">${escapeHtml(`${updated} · ${guide?.difficulty || "通用"}${rt ? ` · ${rt} 分钟` : ""}`)}</div>
+                  </div>
+                </a>
+                <div class="mini-card-actions">
+                  <button type="button" class="btn btn-small" data-action="discover-add">加入路线</button>
+                  <button type="button" class="btn btn-small btn-secondary" data-action="discover-save">${saved ? "已收藏" : "收藏"}</button>
+                </div>
+              </div>
+            `;
+          })
+          .join("");
+      }
+
+      if (gamesEl) {
+        gamesEl.innerHTML = recs.games
+          .map(({ id, game }) => {
+            const title = String(game?.title || `游戏：${id}`);
+            const icon = game?.icon || "images/icons/game-icon.svg";
+            const updated = game?.updated ? `更新 ${formatDate(game.updated)}` : "更新待补";
+            const saved = savedGames.has(id);
+            const href = `game.html?id=${encodeURIComponent(id)}`;
+            const rating = Number(game?.rating || 0) || 0;
+            return `
+              <div class="mini-card mini-card-action" data-type="game" data-id="${escapeHtml(id)}">
+                <a class="mini-card-main" href="${href}">
+                  <img src="${icon}" alt="${escapeHtml(title)}">
+                  <div class="mini-card-body">
+                    <div class="mini-card-title">${escapeHtml(title)}</div>
+                    <div class="mini-card-desc">${escapeHtml(`${updated} · ${game?.genre || "类型待补"} · 评分 ${rating || "—"}`)}</div>
+                  </div>
+                </a>
+                <div class="mini-card-actions">
+                  <button type="button" class="btn btn-small" data-action="discover-add">加入路线</button>
+                  <button type="button" class="btn btn-small btn-secondary" data-action="discover-save">${saved ? "已收藏" : "收藏"}</button>
+                </div>
+              </div>
+            `;
+          })
+          .join("");
+      }
+    };
+
+    let lastRecs = { guides: [], games: [] };
+
+    const render = () => {
+      const weights = buildWeights();
+      const tags = topTags(weights);
+      if (tags.length === 0) {
+        if (emptyEl) emptyEl.hidden = false;
+        if (tagsEl) tagsEl.innerHTML = "";
+        if (guidesEl) guidesEl.innerHTML = "";
+        if (gamesEl) gamesEl.innerHTML = "";
+        lastRecs = { guides: [], games: [] };
+        return;
+      }
+      if (emptyEl) emptyEl.hidden = true;
+
+      renderTagChips(tags);
+      lastRecs = computeRecommendations(weights, { onlyUnsaved: Boolean(prefs.onlyUnsaved) });
+      renderRecs(lastRecs);
+    };
+
+    const handleAction = (btn) => {
+      const card = btn.closest?.(".mini-card-action");
+      if (!card) return;
+      const type = String(card.dataset.type || "");
+      const id = String(card.dataset.id || "");
+      if (!id || (type !== "guide" && type !== "game")) return;
+
+      if (btn.dataset.action === "discover-add") {
+        const added = addItemToCurrentPlan({ type, id });
+        if (!added.ok) {
+          toast({ title: "添加失败", message: "无法写入本地路线数据。", tone: "warn" });
+          return;
+        }
+        toast({
+          title: added.added ? "已加入路线" : "已在路线中",
+          message: "你可以在“路线规划”中拖拽排序与分享。",
+          tone: added.added ? "success" : "info",
+        });
+        return;
+      }
+
+      if (btn.dataset.action === "discover-save") {
+        if (type === "guide") {
+          const set = new Set(readStringList(STORAGE_KEYS.savedGuides));
+          const saved = set.has(id);
+          if (saved) set.delete(id);
+          else set.add(id);
+          writeStringList(STORAGE_KEYS.savedGuides, Array.from(set));
+          btn.textContent = saved ? "收藏" : "已收藏";
+          toast({ title: saved ? "已取消收藏" : "已收藏", message: "已保存到本地浏览器。", tone: saved ? "info" : "success" });
+          return;
+        }
+        if (type === "game") {
+          const set = new Set(readStringList(STORAGE_KEYS.savedGames));
+          const saved = set.has(id);
+          if (saved) set.delete(id);
+          else set.add(id);
+          writeStringList(STORAGE_KEYS.savedGames, Array.from(set));
+          btn.textContent = saved ? "收藏" : "已收藏";
+          toast({ title: saved ? "已取消收藏" : "已收藏", message: "已保存到本地浏览器。", tone: saved ? "info" : "success" });
+        }
+      }
+    };
+
+    guidesEl?.addEventListener("click", (e) => {
+      const btn = e.target?.closest?.("button[data-action]");
+      if (!btn) return;
+      handleAction(btn);
+    });
+    gamesEl?.addEventListener("click", (e) => {
+      const btn = e.target?.closest?.("button[data-action]");
+      if (!btn) return;
+      handleAction(btn);
+    });
+
+    refreshBtn?.addEventListener("click", render);
+    onlyUnsavedEl?.addEventListener("change", () => {
+      prefs = { ...prefs, onlyUnsaved: Boolean(onlyUnsavedEl.checked) };
+      writePrefs(prefs);
+      render();
+    });
+
+    buildPlanBtn?.addEventListener("click", () => {
+      const items = [
+        ...lastRecs.games.slice(0, 3).map((x) => ({ type: "game", id: x.id })),
+        ...lastRecs.guides.slice(0, 8).map((x) => ({ type: "guide", id: x.id })),
+      ];
+      if (items.length === 0) {
+        toast({ title: "暂无可用推荐", message: "先收藏或标记在玩的游戏，再来试试。", tone: "info" });
+        return;
+      }
+      const name = `推荐路线 · ${new Date().toLocaleDateString("zh-CN")}`;
+      const created = createPlanFromItems(name, items);
+      toast({ title: "路线已生成", message: "已创建新路线，正在为你打开路线规划。", tone: "success" });
+      window.setTimeout(() => {
+        window.location.href = `planner.html?open=${encodeURIComponent(created.id)}`;
+      }, 120);
+    });
+
+    render();
   };
 
   // -------------------------
@@ -4234,6 +5910,7 @@
     run(initContrast);
     run(seedUpdateRadarIfNeeded);
     run(initCommandPalette);
+    run(initHeaderQuickLinks);
     run(initNavigation);
     run(initSoftNavigation);
     run(initBackToTop);
@@ -4247,6 +5924,10 @@
     run(initAllGuidesPage);
     run(initGuideDetailPage);
     run(initGamePage);
+    run(initDashboardPage);
+    run(initUpdatesPage);
+    run(initPlannerPage);
+    run(initDiscoverPage);
     run(initCommunityPage);
     run(initForumTopicPage);
 

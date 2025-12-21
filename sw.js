@@ -19,6 +19,10 @@ const CACHE_NAME = `gkb-cache-${VERSION}`;
 
 const PRECACHE_URLS = [
   "index.html",
+  "dashboard.html",
+  "discover.html",
+  "planner.html",
+  "updates.html",
   "all-games.html",
   "all-guides.html",
   "game.html",
@@ -37,6 +41,7 @@ const PRECACHE_URLS = [
   `styles.css?v=${VERSION}`,
   `data.js?v=${VERSION}`,
   `scripts.js?v=${VERSION}`,
+  `vendor/motion.js?v=${VERSION}`,
   `boot.js?v=${VERSION}`,
   `manifest.webmanifest?v=${VERSION}`,
 

@@ -20,6 +20,21 @@
 - Service Worker：离线回退支持忽略 search（动态渲染页断网可直接打开模板页）
 - 安全性：收紧 CSP（移除 `style-src 'unsafe-inline'`，补齐 `form-action 'self'`）
 
+## 2025-12-22
+
+### Added
+- 更新中心页面（Updates）：聚合 NEW / UPDATED，支持一键标为已读
+- 路线规划页面（Planner）：路线管理、拖拽排序、分享链接导入/导出、进度汇总
+- 探索页面（Discover）：本地个性化推荐（基于收藏/最近访问/在玩状态）+ 一键生成路线
+- PWA Shortcuts：从桌面/系统菜单直达指挥舱/路线/更新/探索
+- README 动态演示图：新增 3 张可播放的 SVG Demo
+
+### Changed
+- Command Palette：开合动效升级（Motion），并加入新模块入口
+- Toast：进出场动效升级（Motion）
+- Service Worker：预缓存补齐新入口页与动效库（`vendor/motion.js`）
+- 首页：新增“探索推荐”入口按钮
+
 ## 2025-12-20
 
 ### Added

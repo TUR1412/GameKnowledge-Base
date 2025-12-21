@@ -20,6 +20,20 @@
   <img src="images/placeholders/screenshot-ui.svg" alt="界面预览" width="860">
 </p>
 
+<details>
+  <summary><strong>动态演示（SVG）</strong>（无需 JS / 可直接在 README 中播放）</summary>
+  <br>
+  <table>
+    <tr>
+      <td><img src="images/demos/demo-command-palette.svg" alt="Command Palette 动态演示" width="460"></td>
+      <td><img src="images/demos/demo-updates.svg" alt="更新中心 动态演示" width="460"></td>
+    </tr>
+    <tr>
+      <td colspan="2"><img src="images/demos/demo-planner.svg" alt="路线规划 动态演示" width="920"></td>
+    </tr>
+  </table>
+</details>
+
 ---
 
 ## 1) 这是什么？
@@ -37,6 +51,10 @@
 ## 2) 功能速览（核心体验）
 
 - **Command Palette 全站搜索**：`Ctrl + K` / `/` 搜索游戏、攻略、话题 + 快捷操作
+- **探索（Discover）**：基于收藏/最近访问/在玩状态做本地个性化推荐 + 一键生成路线
+- **路线规划（Planner）**：把游戏/攻略组合成“可执行路线”，支持拖拽排序 + 分享链接导入/导出
+- **更新中心（Updates）**：聚合 NEW / UPDATED 内容，一键标记已读，保持信息流干净
+- **指挥舱（Dashboard）**：最近访问 / 收藏 / 攻略进度 / 更新概览 + 本地数据备份/迁移
 - **本地收藏体系**：游戏/攻略/话题收藏，支持“只看收藏”
 - **最近访问**：主页展示最近浏览的游戏/攻略
 - **攻略进度清单**：步骤勾选 + 完成度
@@ -54,11 +72,12 @@
 ```mermaid
 flowchart TB
   subgraph Browser[浏览器（无框架）]
-    H[HTML 页面（多页入口）]
+    H[HTML 页面（多页入口：index / dashboard / updates / planner / discover / ...）]
     CSS[styles.css（玻璃拟态 / Aurora / Bento）]
     Boot[boot.js（早期主题/对比度/No-JS）]
     Data[data.js（数据源：games/guides/topics）]
     App[scripts.js（交互：搜索/收藏/筛选/对比/笔记/阅读）]
+    Motion[vendor/motion.js（Motion / Framer 出品：动效编排）]
     LS[(localStorage)]
     SW[sw.js（Service Worker）]
     Cache[(Cache Storage)]
@@ -72,6 +91,8 @@ flowchart TB
   H --> Boot
   H --> Data
   H --> App
+  H --> Motion
+  App --> Motion
 
   App <--> LS
   App <--> SW
@@ -141,10 +162,10 @@ flowchart TB
 本项目对核心资源使用 `?v=` 版本号来避免缓存“幽灵更新”：
 
 ```html
-<link rel="stylesheet" href="styles.css?v=20251221-1">
-<script src="boot.js?v=20251221-1"></script>
-<script src="data.js?v=20251221-1" defer></script>
-<script src="scripts.js?v=20251221-1" defer></script>
+<link rel="stylesheet" href="styles.css?v=20251222-2">
+<script src="boot.js?v=20251222-2"></script>
+<script src="data.js?v=20251222-2" defer></script>
+<script src="scripts.js?v=20251222-2" defer></script>
 ```
 
 当你修改 `styles.css` / `scripts.js` / `data.js` / `sw.js` / `manifest.webmanifest` 时，务必同步 bump 版本号。
@@ -164,7 +185,7 @@ node tools/bump-version.mjs
 核心数据集中在 `data.js`：
 
 ```js
-version: "20251221-1",
+version: "20251222-2",
 
 games: {
   "elden-ring": { title: "艾尔登法环", updated: "2025-10-05", ... }
@@ -214,4 +235,3 @@ node tools/check-sw.mjs
 ## 12) 变更记录
 
 详见：`CHANGELOG.md`
-

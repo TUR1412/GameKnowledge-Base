@@ -42,11 +42,13 @@ const replaceAll = (content, re, replacer) => {
 
 const bumpAssetVersionsInHtml = (content, version) => {
   const patterns = [
-    { label: "styles", re: /styles\.css\?v=[^"']+/g },
-    { label: "manifest", re: /manifest\.webmanifest\?v=[^"']+/g },
-    { label: "boot", re: /boot\.js\?v=[^"']+/g },
-    { label: "data", re: /data\.js\?v=[^"']+/g },
-    { label: "scripts", re: /scripts\.js\?v=[^"']+/g },
+    { label: "styles", re: /styles\.css\?v=[^"']+/g, required: true },
+    { label: "manifest", re: /manifest\.webmanifest\?v=[^"']+/g, required: true },
+    { label: "boot", re: /boot\.js\?v=[^"']+/g, required: true },
+    { label: "data", re: /data\.js\?v=[^"']+/g, required: true },
+    { label: "scripts", re: /scripts\.js\?v=[^"']+/g, required: true },
+    // 可选：动效库等第三方静态资源（存在则一起 bump，缺失不视为错误）
+    { label: "motion", re: /vendor\/motion\.js\?v=[^"']+/g, required: false },
   ];
 
   let next = content;
@@ -64,9 +66,10 @@ const bumpAssetVersionsInHtml = (content, version) => {
     }
   }
 
+  const requiredLabels = new Set(patterns.filter((p) => p.required).map((p) => p.label));
   const missing = Object.entries(hits)
-    .filter(([, count]) => count === 0)
-    .map(([k]) => k);
+    .filter(([label, count]) => requiredLabels.has(label) && count === 0)
+    .map(([label]) => label);
 
   return { next, missing };
 };
@@ -77,7 +80,8 @@ const bumpDocsStyleGuide = (content, version) => {
     .replace(/manifest\.webmanifest\?v=[^\s"']+/g, `manifest.webmanifest?v=${version}`)
     .replace(/boot\.js\?v=[^\s"']+/g, `boot.js?v=${version}`)
     .replace(/data\.js\?v=[^\s"']+/g, `data.js?v=${version}`)
-    .replace(/scripts\.js\?v=[^\s"']+/g, `scripts.js?v=${version}`);
+    .replace(/scripts\.js\?v=[^\s"']+/g, `scripts.js?v=${version}`)
+    .replace(/vendor\/motion\.js\?v=[^\s"']+/g, `vendor/motion.js?v=${version}`);
 };
 
 const main = () => {
@@ -152,4 +156,3 @@ const main = () => {
 };
 
 main();
-

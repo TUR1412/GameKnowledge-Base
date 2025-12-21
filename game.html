@@ -5,14 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>游戏详情 - 游戏攻略网</title>
     <meta name="description" content="查看游戏介绍、平台信息与相关攻略，并加入玩家讨论。">
-    <link rel="stylesheet" href="styles.css?v=20251222-1">
+    <link rel="stylesheet" href="styles.css?v=20251222-2">
     <link rel="icon" href="images/icons/favicon.svg" type="image/svg+xml">
-    <link rel="manifest" href="manifest.webmanifest?v=20251222-1">
+    <link rel="manifest" href="manifest.webmanifest?v=20251222-2">
     <meta name="theme-color" content="#f6f1ea">
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; form-action 'self'; object-src 'none'; img-src 'self' data:; style-src 'self'; script-src 'self'; connect-src 'self'; manifest-src 'self'; worker-src 'self'; frame-ancestors 'none'">
     <meta name="referrer" content="strict-origin-when-cross-origin">
     <meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=()">
-    <script src="boot.js?v=20251222-1"></script>
+    <script src="boot.js?v=20251222-2"></script>
 </head>
 <body data-page="game">
     <a class="skip-link" href="#main">跳到正文</a>
@@ -93,6 +93,18 @@
                             <span id="game-rating-meter"></span>
                         </div>
                         <p class="bento-text" id="game-summary">我们会在这里持续补全更完整的攻略体系，包括入门、流派与关键机制。</p>
+                    </article>
+
+                    <article class="bento-card">
+                        <h2 class="bento-title">我的游戏库</h2>
+                        <p class="bento-text">给这款游戏贴上状态标签：想玩 / 在玩 / 已通关。它会同步到“指挥舱”，并可用于筛选。</p>
+                        <div class="chips library-pills" id="game-library-pills" role="group" aria-label="设置游戏状态">
+                            <button type="button" class="chip chip-btn library-pill" data-status="wishlist" aria-pressed="false">想玩</button>
+                            <button type="button" class="chip chip-btn library-pill" data-status="playing" aria-pressed="false">在玩</button>
+                            <button type="button" class="chip chip-btn library-pill" data-status="done" aria-pressed="false">已通关</button>
+                            <button type="button" class="chip chip-btn library-pill" data-status="none" aria-pressed="false">清除</button>
+                        </div>
+                        <div class="note-status" id="game-library-meta">未设置</div>
                     </article>
 
                     <article class="bento-card">
@@ -185,8 +197,8 @@
 
     <button id="back-to-top" class="back-to-top" aria-label="返回顶部">↑</button>
 
-    <script src="data.js?v=20251222-1" defer></script>
-    <script src="scripts.js?v=20251222-1" defer></script>
+    <script src="data.js?v=20251222-2" defer></script>
+    <script src="vendor/motion.js?v=20251222-2" defer></script>
+    <script src="scripts.js?v=20251222-2" defer></script>
 </body>
 </html>
-
