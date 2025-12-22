@@ -81,4 +81,4 @@
 - [x] 3. `styles.css`：开启 `@view-transition { navigation: auto; }` + vt-card/vt-media/vt-title 电影感动效
 - [x] 4. 版本号：`20251222-2 -> 20251222-3` + 校验通过（check-links/check-sw/validate-data）
 - [x] 5. 单测与覆盖率：`npm test` / `npm run test:coverage` 通过
-- [ ] 6. 提交并推送（待本轮完成）
+- [x] 6. 提交并推送（已完成）
