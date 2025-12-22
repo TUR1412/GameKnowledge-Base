@@ -138,4 +138,20 @@
 - [x] 3. 边缘兼容：动效合成 transform 时尽量保留点击当下的 CSS transform（避免 hover 状态点击“跳一下”）
 - [x] 4. 清理冗余：移除不再需要的 `vendor/motion.LICENSE.md`
 - [x] 5. bump 版本号：`20251222-5 -> 20251222-6` + 本地校验/测试通过（check-links/check-sw/validate-data + coverage）
-- [ ] 6. 提交并推送
+- [x] 6. 提交并推送
+
+---
+
+# [GKB-20251222-R8] 工具链加固：vendor/motion.js 强制版本一致性
+> **环境**: Windows 11 (pwsh -NoLogo wrapper) | **框架**: Static HTML/CSS/JS | **档位**: 3档 (工程化加固)
+> **已激活矩阵**: [模块 E: 幽灵防御] + [模块 F: 靶向验证]
+
+## 1. 需求镜像 (Requirement Mirroring)
+> **我的理解**: 把“未来有人改了 `vendor/motion.js` 却忘记 bump 版本号/更新 SW 预缓存”当作高概率攻击面：在 CI 工具链层面强制校验，直接把幽灵缓存扼杀在 PR 阶段。
+> **不做什么**: 不启动任何后台服务；不抢占端口；不删除本地克隆环境。
+
+## 2. 执行清单 (Execution)
+- [x] 1. `tools/check-links.mjs`：把 `vendor/motion.js?v=` 纳入核心资源版本一致性检查
+- [x] 2. `tools/check-sw.mjs`：把 `vendor/motion.js?v=${VERSION}` 纳入 SW 预缓存模板资源校验
+- [x] 3. `tests/*`：更新测试样例并保持覆盖率阈值通过
+- [ ] 4. 提交并推送
