@@ -362,6 +362,16 @@
     return Promise.resolve();
   };
 
+  const motionStagger = (step = 0.03, options = undefined) => {
+    const Motion = prefersReducedMotion() ? null : getMotion();
+    if (!Motion || typeof Motion.stagger !== "function") return null;
+    try {
+      return Motion.stagger(step, options);
+    } catch (_) {
+      return null;
+    }
+  };
+
   const motionPulse = (el, { scale = 1.045, duration = MOTION.durSlow } = {}) => {
     return motionAnimate(el, { scale: [1, scale, 1] }, { duration });
   };
@@ -543,6 +553,7 @@
 
   const toast = (() => {
     let root = null;
+    const byId = new Map();
 
     const ensureRoot = () => {
       if (root) return root;
@@ -553,56 +564,92 @@
       return root;
     };
 
-    return ({ title, message, tone = "info", timeout = 2600 } = {}) => {
-      const host = ensureRoot();
-      const item = document.createElement("div");
+    const updateToastDom = (item, { title, message, tone }) => {
+      if (!item) return;
       item.className = `toast toast-${tone}`;
-      item.innerHTML = `
-        <div class="toast-title">${escapeHtml(title || "")}</div>
-        <div class="toast-message">${escapeHtml(message || "")}</div>
-      `;
-      host.appendChild(item);
+      const titleEl = item.querySelector?.(".toast-title");
+      const msgEl = item.querySelector?.(".toast-message");
+      if (titleEl) titleEl.textContent = String(title || "");
+      if (msgEl) msgEl.textContent = String(message || "");
+    };
 
-      const Motion = prefersReducedMotion() ? null : getMotion();
-      if (Motion) {
-        try {
-          Motion.animate(
-            item,
-            { opacity: [0, 1], y: [10, 0], filter: ["blur(10px)", "blur(0px)"] },
-            { duration: 0.28, easing: [0.22, 1, 0.36, 1] }
-          );
-        } catch (_) {
-          // ignore
+    const scheduleRemove = (item, remove, timeout) => {
+      try {
+        if (item._toastTimer) window.clearTimeout(item._toastTimer);
+      } catch (_) {}
+      const ms = Number(timeout);
+      if (!Number.isFinite(ms) || ms <= 0) return;
+      item._toastTimer = window.setTimeout(remove, ms);
+    };
+
+    return ({ id, title, message, tone = "info", timeout = 2600 } = {}) => {
+      const host = ensureRoot();
+      const key = String(id || "").trim();
+      let item = key ? byId.get(key) : null;
+      const isUpdate = Boolean(item && item.isConnected);
+
+      if (!isUpdate) {
+        item = document.createElement("div");
+        item.className = `toast toast-${tone}`;
+        item.innerHTML = `
+          <div class="toast-title">${escapeHtml(title || "")}</div>
+          <div class="toast-message">${escapeHtml(message || "")}</div>
+        `;
+        if (key) {
+          item.dataset.toastId = key;
+          byId.set(key, item);
         }
+        host.appendChild(item);
+
+        motionAnimate(
+          item,
+          { opacity: [0, 1], y: [10, 0], filter: ["blur(10px)", "blur(0px)"] },
+          { duration: MOTION.durSlow }
+        );
+
+        item.addEventListener("click", () => {
+          try {
+            item._toastRemove?.();
+          } catch (_) {}
+        });
+      } else {
+        updateToastDom(item, { title, message, tone });
+        motionPulse(item, { scale: 1.01, duration: MOTION.durBase });
       }
 
-      let removed = false;
-      const remove = () => {
-        if (removed) return;
-        removed = true;
+      // 通过 nonce 避免“旧 timer/旧 remove”误删新 toast
+      const nonce = Number(item._toastNonce || 0) + 1;
+      item._toastNonce = nonce;
 
-        if (Motion) {
+      const remove = () => {
+        if (!item || !item.isConnected) return;
+        if (Number(item._toastNonce || 0) !== nonce) return;
+
+        const finalize = () => {
+          if (Number(item._toastNonce || 0) !== nonce) return;
           try {
-            const anim = Motion.animate(
-              item,
-              { opacity: [1, 0], y: [0, -8], scale: [1, 0.98], filter: ["blur(0px)", "blur(8px)"] },
-              { duration: 0.22, easing: [0.22, 1, 0.36, 1] }
-            );
-            anim?.finished?.then(() => item.remove()).catch(() => item.remove());
-            return;
-          } catch (_) {
-            // fallback below
-          }
+            item.remove();
+          } catch (_) {}
+          if (key) byId.delete(key);
+        };
+
+        const anim = motionAnimate(
+          item,
+          { opacity: [1, 0], y: [0, -8], scale: [1, 0.98], filter: ["blur(0px)", "blur(10px)"] },
+          { duration: MOTION.durFast }
+        );
+
+        if (anim) {
+          motionFinished(anim).then(finalize).catch(finalize);
+          return;
         }
+
         item.classList.add("toast-hide");
-        window.setTimeout(() => item.remove(), 240);
+        window.setTimeout(finalize, 240);
       };
 
-      const timer = window.setTimeout(remove, timeout);
-      item.addEventListener("click", () => {
-        window.clearTimeout(timer);
-        remove();
-      });
+      item._toastRemove = remove;
+      scheduleRemove(item, remove, timeout);
     };
   })();
 
@@ -1076,6 +1123,7 @@
     let lastActive = null;
     let selected = 0;
     let flatItems = [];
+    let buttons = [];
 
     const highlight = (text, q) => {
       const raw = String(text || "");
@@ -1503,6 +1551,7 @@
       const groups = buildGroups(query);
 
       flatItems = [];
+      buttons = [];
       let idx = 0;
 
       list.innerHTML = groups
@@ -1536,16 +1585,19 @@
         })
         .join("");
 
-      const buttons = $$(".cmdk-item", list);
+      buttons = $$(".cmdk-item", list);
       selected = 0;
       if (buttons.length > 0) buttons[0].setAttribute("aria-selected", "true");
     };
 
     const syncSelection = (next) => {
-      const buttons = $$(".cmdk-item", list);
       if (buttons.length === 0) return;
-      selected = Math.max(0, Math.min(next, buttons.length - 1));
-      buttons.forEach((b, i) => b.setAttribute("aria-selected", i === selected ? "true" : "false"));
+      const prev = selected;
+      const clamped = Math.max(0, Math.min(next, buttons.length - 1));
+      if (clamped === prev) return;
+      selected = clamped;
+      if (buttons[prev]) buttons[prev].setAttribute("aria-selected", "false");
+      if (buttons[selected]) buttons[selected].setAttribute("aria-selected", "true");
       buttons[selected]?.scrollIntoView({ block: "nearest" });
     };
 
@@ -1558,25 +1610,14 @@
       window.requestAnimationFrame(() => {
         root.dataset.state = "open";
       });
-      const Motion = prefersReducedMotion() ? null : getMotion();
-      if (Motion) {
-        try {
-          const panel = $(".cmdk-panel", root);
-          const backdrop = $(".cmdk-backdrop", root);
-          if (backdrop) {
-            Motion.animate(backdrop, { opacity: [0, 1] }, { duration: 0.16, easing: [0.22, 1, 0.36, 1] });
-          }
-          if (panel) {
-            Motion.animate(
-              panel,
-              { opacity: [0, 1], y: [18, 0], scale: [0.985, 1], filter: ["blur(12px)", "blur(0px)"] },
-              { duration: 0.22, easing: [0.22, 1, 0.36, 1] }
-            );
-          }
-        } catch (_) {
-          // ignore
-        }
-      }
+      const panel = $(".cmdk-panel", root);
+      const backdrop = $(".cmdk-backdrop", root);
+      motionAnimate(backdrop, { opacity: [0, 1] }, { duration: MOTION.durFast });
+      motionAnimate(
+        panel,
+        { opacity: [0, 1], y: [18, 0], scale: [0.985, 1], filter: ["blur(12px)", "blur(0px)"] },
+        { duration: MOTION.durBase }
+      );
       if (input) {
         input.value = "";
         render("");
@@ -1597,29 +1638,17 @@
           lastActive?.focus?.();
         } catch (_) {}
       };
-      const Motion = prefersReducedMotion() ? null : getMotion();
-      if (Motion) {
-        try {
-          const panel = $(".cmdk-panel", root);
-          const backdrop = $(".cmdk-backdrop", root);
-          const jobs = [];
-          if (panel) {
-            const anim = Motion.animate(
-              panel,
-              { opacity: [1, 0], y: [0, 12], scale: [1, 0.985], filter: ["blur(0px)", "blur(10px)"] },
-              { duration: 0.18, easing: [0.22, 1, 0.36, 1] }
-            );
-            if (anim?.finished) jobs.push(anim.finished);
-          }
-          if (backdrop) {
-            const anim = Motion.animate(backdrop, { opacity: [1, 0] }, { duration: 0.16, easing: [0.22, 1, 0.36, 1] });
-            if (anim?.finished) jobs.push(anim.finished);
-          }
-          Promise.allSettled(jobs).finally(finalize);
-          return;
-        } catch (_) {
-          // fallback below
-        }
+      const panel = $(".cmdk-panel", root);
+      const backdrop = $(".cmdk-backdrop", root);
+      const panelAnim = motionAnimate(
+        panel,
+        { opacity: [1, 0], y: [0, 12], scale: [1, 0.985], filter: ["blur(0px)", "blur(10px)"] },
+        { duration: 0.18, easing: MOTION.easeIn }
+      );
+      const backdropAnim = motionAnimate(backdrop, { opacity: [1, 0] }, { duration: MOTION.durFast, easing: MOTION.easeIn });
+      if (panelAnim || backdropAnim) {
+        Promise.allSettled([motionFinished(panelAnim), motionFinished(backdropAnim)]).finally(finalize);
+        return;
       }
       if (prefersReducedMotion()) finalize();
       else window.setTimeout(finalize, 160);
@@ -1875,13 +1904,19 @@
       if (!id) return false;
 
       let card = null;
-      if (kind === "guide") card = a.closest?.(".guide-card") || a.closest?.(".game-card");
+      if (kind === "topic") card = a.closest?.(".topic-card");
+      else if (kind === "guide") card = a.closest?.(".guide-card") || a.closest?.(".game-card");
       else card = a.closest?.(".game-card");
       if (!card) return false;
 
       const media =
-        card.querySelector?.(".game-image, .game-card-image") || card.querySelector?.("img, svg") || card;
-      const title = card.querySelector?.(".game-card-title, h3") || card;
+        kind === "topic"
+          ? card.querySelector?.(".topic-badges") || card.querySelector?.(".topic-tags") || card
+          : card.querySelector?.(".game-image, .game-card-image") || card.querySelector?.("img, svg") || card;
+      const title =
+        kind === "topic"
+          ? card.querySelector?.(".topic-title") || card.querySelector?.("h3") || card
+          : card.querySelector?.(".game-card-title, h3") || card;
 
       clearVtTargets();
       setVtTarget(card, "vt-card");
@@ -1945,6 +1980,7 @@
             const page = url.pathname.split("/").pop();
             if (page === "game.html") prepareSharedElements("game", a, url);
             else if (page === "guide-detail.html") prepareSharedElements("guide", a, url);
+            else if (page === "forum-topic.html") prepareSharedElements("topic", a, url);
           } catch (_) {}
           return; // 交给浏览器原生 VT navigation
         }
@@ -2069,6 +2105,7 @@
   let offlinePackInFlight = false;
   let offlinePackRequestId = 0;
   let offlinePackStorageKey = "";
+  const OFFLINE_PACK_TOAST_ID = "offline-pack";
 
   const normalizeRelativeAssetUrl = (value) => {
     const raw = String(value || "").trim();
@@ -2140,36 +2177,61 @@
 
   const precacheOfflinePack = async () => {
     if (offlinePackInFlight) {
-      toast({ title: "正在缓存中", message: "离线包正在准备，请稍候。", tone: "info" });
+      toast({
+        id: OFFLINE_PACK_TOAST_ID,
+        title: "正在缓存离线包",
+        message: "离线包正在准备中，请稍候…",
+        tone: "info",
+        timeout: 0,
+      });
       return;
     }
 
     const v = detectAssetVersion() || String(getData()?.version || "") || "unknown";
     offlinePackStorageKey = `${STORAGE_KEYS.offlinePackPrefix}${v}`;
     if (storage.get(offlinePackStorageKey) === "1") {
-      toast({ title: "离线包已就绪", message: "常用图标与页面已缓存。", tone: "success" });
+      toast({
+        id: OFFLINE_PACK_TOAST_ID,
+        title: "离线包已就绪",
+        message: "常用图标与页面已缓存。",
+        tone: "success",
+        timeout: 2600,
+      });
       return;
     }
 
     const urls = collectOfflinePackUrls();
     if (urls.length === 0) {
-      toast({ title: "无可缓存资源", message: "当前页面未加载数据，稍后再试。", tone: "warn" });
+      toast({
+        id: OFFLINE_PACK_TOAST_ID,
+        title: "无可缓存资源",
+        message: "当前页面未加载数据，稍后再试。",
+        tone: "warn",
+        timeout: 4200,
+      });
       return;
     }
 
     offlinePackInFlight = true;
     offlinePackRequestId = Date.now();
     toast({
+      id: OFFLINE_PACK_TOAST_ID,
       title: "开始缓存离线包",
-      message: `正在准备 ${urls.length} 项资源（图标/封面/深度页）。`,
+      message: `准备中 0/${urls.length}（图标/封面/深度页）。`,
       tone: "info",
-      timeout: 3200,
+      timeout: 0,
     });
 
     const ok = await requestSwPrecache(urls);
     if (!ok) {
       offlinePackInFlight = false;
-      toast({ title: "缓存失败", message: "当前环境未启用 Service Worker（需要 HTTPS/localhost）。", tone: "warn" });
+      toast({
+        id: OFFLINE_PACK_TOAST_ID,
+        title: "缓存失败",
+        message: "当前环境未启用 Service Worker（需要 HTTPS/localhost）。",
+        tone: "warn",
+        timeout: 5200,
+      });
       return;
     }
 
@@ -2177,7 +2239,13 @@
     window.setTimeout(() => {
       if (!offlinePackInFlight) return;
       offlinePackInFlight = false;
-      toast({ title: "缓存进行中", message: "可能仍在后台缓存，稍后可再试。", tone: "info" });
+      toast({
+        id: OFFLINE_PACK_TOAST_ID,
+        title: "缓存进行中",
+        message: "可能仍在后台缓存（未收到进度回执）。稍后可再试。",
+        tone: "info",
+        timeout: 4200,
+      });
     }, 12000);
   };
 
@@ -2187,8 +2255,28 @@
     navigator.serviceWorker.addEventListener("message", (event) => {
       const data = event?.data;
       if (!data || typeof data !== "object") return;
-      if (data.type !== "GKB_PRECACHE_DONE") return;
-      if (Number(data.requestId || 0) !== offlinePackRequestId) return;
+
+      const type = String(data.type || "");
+      const reqId = Number(data.requestId || 0);
+      if (!reqId || reqId !== offlinePackRequestId) return;
+
+      if (type === "GKB_PRECACHE_PROGRESS") {
+        if (!offlinePackInFlight) return;
+        const ok = Number(data.ok || 0) || 0;
+        const fail = Number(data.fail || 0) || 0;
+        const total = Number(data.total || ok + fail) || ok + fail;
+        const done = Number(data.done || ok + fail) || ok + fail;
+        toast({
+          id: OFFLINE_PACK_TOAST_ID,
+          title: "正在缓存离线包",
+          message: `进度 ${Math.min(done, total)}/${total}（成功 ${ok} / 失败 ${fail}）`,
+          tone: fail > 0 ? "warn" : "info",
+          timeout: 0,
+        });
+        return;
+      }
+
+      if (type !== "GKB_PRECACHE_DONE") return;
 
       offlinePackInFlight = false;
 
@@ -2199,6 +2287,7 @@
       if (offlinePackStorageKey) storage.set(offlinePackStorageKey, "1");
 
       toast({
+        id: OFFLINE_PACK_TOAST_ID,
         title: "离线包已缓存",
         message: fail > 0 ? `已缓存 ${ok}/${total} 项，${fail} 项失败（可稍后重试）。` : `已缓存 ${ok}/${total} 项资源。`,
         tone: fail > 0 ? "warn" : "success",
@@ -4384,12 +4473,7 @@
       const next = setGameLibraryStatus(id, status);
       syncGameLibrary();
 
-      const Motion = prefersReducedMotion() ? null : getMotion();
-      if (Motion) {
-        try {
-          Motion.animate(btn, { scale: [1, 1.07, 1] }, { duration: 0.28, easing: [0.22, 1, 0.36, 1] });
-        } catch (_) {}
-      }
+      motionPulse(btn, { scale: 1.07, duration: MOTION.durSlow });
 
       toast({
         title: next === "none" ? "已清除状态" : `已标记：${getLibraryLabel(next)}`,
@@ -4760,17 +4844,10 @@
 
     const animateCards = () => {
       if (prefersReducedMotion()) return;
-      const Motion = getMotion();
-      if (!Motion) return;
       const nodes = $$(".update-card", grid);
       if (nodes.length === 0) return;
-      try {
-        Motion.animate(
-          nodes,
-          { opacity: [0, 1], y: [12, 0], filter: ["blur(10px)", "blur(0px)"] },
-          { duration: 0.34, delay: Motion.stagger(0.03), easing: [0.22, 1, 0.36, 1] }
-        );
-      } catch (_) {}
+      const delay = motionStagger(0.03);
+      motionAnimate(nodes, { opacity: [0, 1], y: [12, 0], filter: ["blur(10px)", "blur(0px)"] }, { duration: 0.34, delay });
     };
 
     const apply = () => {
@@ -5802,16 +5879,16 @@
     const empty = $("#community-topics-empty");
     const clearBtn = $("#community-clear");
 
-    const items = Object.entries(topics).map(([id, topic]) => ({ id, topic }));
-    const allTags = Array.from(
-      new Set(
-        items.flatMap(({ topic }) => {
-          const tags = Array.isArray(topic?.tags) ? topic.tags.map(String) : [];
-          const category = topic?.category ? [String(topic.category)] : [];
-          return [...category, ...tags];
-        })
-      )
-    )
+    const items = Object.entries(topics).map(([id, topic]) => {
+      const tags = Array.isArray(topic?.tags) ? topic.tags.map(String) : [];
+      const category = topic?.category ? [String(topic.category)] : [];
+      const tagList = [...tags, ...category].filter(Boolean);
+      const blob = `${String(topic?.title || id)} ${String(topic?.summary || "")} ${String(
+        topic?.starter || ""
+      )} ${tagList.join(" ")}`.toLowerCase();
+      return { id, topic, tagList, blob };
+    });
+    const allTags = Array.from(new Set(items.flatMap((x) => x.tagList)))
       .slice(0, 18)
       .sort((a, b) => a.localeCompare(b, "zh-Hans-CN"));
 
@@ -6004,19 +6081,12 @@
     });
 
     const apply = () => {
-      saved = new Set(readStringList(STORAGE_KEYS.savedTopics));
       const q = (state.query || "").trim().toLowerCase();
       const tagSet = new Set(state.tags);
 
-      const filtered = items.filter(({ id, topic }) => {
-        const title = String(topic.title || id).toLowerCase();
-        const summary = String(topic.summary || "").toLowerCase();
-        const starter = String(topic.starter || "").toLowerCase();
-        const tags = Array.isArray(topic.tags) ? topic.tags.map(String) : [];
-        const category = topic.category ? [String(topic.category)] : [];
-        const hay = `${title} ${summary} ${starter} ${tags.join(" ")} ${category.join(" ")}`;
-        const okQuery = !q || hay.includes(q);
-        const okTags = tagSet.size === 0 || [...tags, ...category].some((t) => tagSet.has(String(t)));
+      const filtered = items.filter(({ id, blob, tagList }) => {
+        const okQuery = !q || blob.includes(q);
+        const okTags = tagSet.size === 0 || tagList.some((t) => tagSet.has(String(t)));
         const okSaved = !state.savedOnly || saved.has(id);
         return okQuery && okTags && okSaved;
       });
@@ -6039,6 +6109,15 @@
       });
       syncUrl();
     };
+
+    // 跨标签页同步：避免“每次筛选都读 localStorage”带来的同步卡顿
+    window.addEventListener("storage", (e) => {
+      if (!e) return;
+      if (e.storageArea !== localStorage) return;
+      if (e.key !== STORAGE_KEYS.savedTopics && e.key !== null) return;
+      saved = new Set(readStringList(STORAGE_KEYS.savedTopics));
+      apply();
+    });
 
     if (searchInput) searchInput.value = state.query || "";
     if (sortSelect) {

@@ -161,6 +161,7 @@ self.addEventListener("message", (event) => {
       const cache = await caches.open(CACHE_NAME);
       let ok = 0;
       let fail = 0;
+      let lastProgressAt = 0;
 
       for (const url of urls) {
         try {
@@ -179,6 +180,16 @@ self.addEventListener("message", (event) => {
           ok += 1;
         } catch (_) {
           fail += 1;
+        }
+
+        const done = ok + fail;
+        const now = Date.now();
+        const shouldReport = done === urls.length || done % 8 === 0 || now - lastProgressAt >= 1200;
+        if (shouldReport) {
+          lastProgressAt = now;
+          try {
+            client?.postMessage?.({ type: "GKB_PRECACHE_PROGRESS", requestId, ok, fail, total: urls.length, done });
+          } catch (_) {}
         }
       }
 

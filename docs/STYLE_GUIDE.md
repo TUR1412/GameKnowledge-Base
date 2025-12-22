@@ -9,11 +9,11 @@
 所有页面必须使用带版本号的静态资源引用：
 
 ```html
-<link rel="stylesheet" href="styles.css?v=20251222-4">
-<link rel="manifest" href="manifest.webmanifest?v=20251222-4">
-<script src="boot.js?v=20251222-4"></script>
-<script src="data.js?v=20251222-4" defer></script>
-<script src="scripts.js?v=20251222-4" defer></script>
+<link rel="stylesheet" href="styles.css?v=20251222-5">
+<link rel="manifest" href="manifest.webmanifest?v=20251222-5">
+<script src="boot.js?v=20251222-5"></script>
+<script src="data.js?v=20251222-5" defer></script>
+<script src="scripts.js?v=20251222-5" defer></script>
 ```
 
 当你修改以下任意文件时，请同步更新所有 HTML 页里的 `?v=`：
@@ -121,3 +121,7 @@ node tools/bump-version.mjs --dry-run
 - 跨页形变：通过 `view-transition-name` + `@view-transition { navigation: auto; }` 实现共享元素映射
   - 新页面必须在首帧前打标（`boot.js` 负责注入 `html[data-vt-kind]`）
   - 支持 VT 时不要 `preventDefault` 拦截导航，否则浏览器无法捕获快照
+  - 当前已支持的 `data-vt-kind`：`game` / `guide` / `topic`
+  - 映射策略：源页写入 `vt-card/vt-media/vt-title`，目标页用 `html[data-vt-kind]` 选择器把 Banner/标题映射到同名 `view-transition-name`
+- Root 级过渡：使用 `::view-transition-old(root)` / `::view-transition-new(root)` 做轻量“导演剪辑”淡入淡出（避免抢镜）
+  - 必须在 `prefers-reduced-motion: reduce` 下关闭或极大缩短

@@ -39,6 +39,12 @@ test("extractPrecacheBody：应提取 PRECACHE_URLS 数组体", () => {
   assert.ok(body.includes("`styles.css?v=${VERSION}`"));
 });
 
+test("extractPrecacheBody / parse*：无匹配输入应返回空结果（分支覆盖）", () => {
+  assert.equal(extractPrecacheBody("const X = 1;"), "");
+  assert.deepEqual(parseDoubleQuotedStrings("no strings here"), []);
+  assert.deepEqual(parseTemplateStrings("no templates here"), []);
+});
+
 test("parseDoubleQuotedStrings：应解析双引号字符串（含转义）", () => {
   const body = `"a", "b", "c\\\\d", "a\\\"b"`;
   const items = parseDoubleQuotedStrings(body);

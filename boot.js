@@ -70,7 +70,7 @@
 
       const now = Date.now();
       const fresh = Number.isFinite(ts) && Math.abs(now - ts) <= 15000;
-      const okKind = kind === "game" || kind === "guide";
+      const okKind = kind === "game" || kind === "guide" || kind === "topic";
 
       if (fresh && okKind && id) {
         root.dataset.vtKind = kind;

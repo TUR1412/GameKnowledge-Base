@@ -101,3 +101,23 @@
 - [x] 5. 规范：补齐 `docs/STYLE_GUIDE.md` 的动效与降级策略说明
 - [x] 6. bump 版本号：`20251222-3 -> 20251222-4` + 校验/测试通过
 - [x] 7. 提交并推送（已完成）
+
+---
+
+# [GKB-20251222-R6] 全路径融合：Topic VT × Root Transition × 离线包进度
+> **环境**: Windows 11 (pwsh -NoLogo wrapper) | **框架**: Static HTML/CSS/JS | **档位**: 4档 (动效融合 & 性能压榨)
+> **已激活矩阵**: [模块 A: 视觉矫正] + [模块 E: 幽灵防御] + [模块 F: 靶向验证]
+
+## 1. 需求镜像 (Requirement Mirroring)
+> **我的理解**: 合并 A/B/D 与潜在短板修复：扩展 VT 到“社区话题 → 话题页”，加入 root 级导演剪辑过渡，离线包缓存加入进度回执，并对交互热点做渲染/读写优化与动效收敛；同时保持单测覆盖率阈值通过。
+> **不做什么**: 不启动任何后台服务；不抢占端口；不删除本地克隆环境。
+
+## 2. 执行清单 (Execution)
+- [x] 1. Topic Shared Element：`community.html` 话题卡片 → `forum-topic.html` Banner 形变（boot/sync/style 全链路）
+- [x] 2. Root View Transition：全站轻量导演剪辑过渡（淡入淡出 + blur/scale）+ `prefers-reduced-motion` 降级
+- [x] 3. 离线包进度：SW `postMessage(GKB_PRECACHE_PROGRESS)` + Toast 同 ID 更新（done/total/失败提示）
+- [x] 4. 动效收敛：移除散落 `Motion.animate` 调用，统一走 `motionAnimate` / tokens
+- [x] 5. 性能压榨：Command Palette 选中态差分更新；社区话题筛选预计算 search blob + 避免每次 apply 读 localStorage
+- [x] 6. 单测覆盖：补齐外链资源检测与解析空输入分支，`npm test` / `npm run test:coverage` 通过
+- [x] 7. bump 版本号：`20251222-4 -> 20251222-5` + 校验通过（check-links/check-sw/validate-data）
+- [x] 8. 提交并推送

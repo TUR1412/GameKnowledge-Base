@@ -28,6 +28,8 @@
 - 探索页面（Discover）：本地个性化推荐（基于收藏/最近访问/在玩状态）+ 一键生成路线
 - PWA Shortcuts：从桌面/系统菜单直达指挥舱/路线/更新/探索
 - README 动态演示图：新增 3 张可播放的 SVG Demo
+- 社区话题共享元素转场：话题卡片 → 讨论页 Banner 形变级转场（更连贯）
+- 离线包缓存进度回执：缓存过程中 Toast 实时显示 done/total（失败项提示）
 
 ### Changed
 - Command Palette：开合动效升级（Motion），并加入新模块入口
@@ -36,6 +38,9 @@
 - 首页：新增“探索推荐”入口按钮
 - 跨页转场：支持跨文档 View Transition（卡片→详情 Banner 形变），不支持浏览器继续使用淡出降级
 - 微交互一致性：Planner 列表增删/拖拽反馈、Compare 弹窗/对比栏动效、收藏星标弹性反馈（统一 Motion 参数）
+- View Transition：新增 root 级“导演剪辑”过渡（轻量淡入淡出 + blur/scale），`prefers-reduced-motion` 自动关闭
+- 性能压榨：Command Palette 选中态改为差分更新；社区话题筛选预计算 search blob + 减少 localStorage 读取
+- 工具链：单测覆盖外链资源检测与解析空输入分支，维持覆盖率阈值通过
 
 ## 2025-12-20
 

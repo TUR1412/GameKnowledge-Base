@@ -28,6 +28,7 @@ test("stripQueryAndHash：应移除 ? 与 #", () => {
 });
 
 test("normalizeRelative：应过滤外链与协议，并归一化相对路径", () => {
+  assert.equal(normalizeRelative("   "), "");
   assert.equal(normalizeRelative("https://example.com/a.css"), "");
   assert.equal(normalizeRelative("http://example.com/a.css"), "");
   assert.equal(normalizeRelative("mailto:test@example.com"), "");
@@ -220,6 +221,48 @@ test("scanSite：当无法解析全站版本号时应跳过 data.js 对齐检查
     assert.equal(r.globalVersion, "");
     assert.ok(r.errors.some((e) => e.includes("[CACHE] index.html") && e.includes("缺少")), "应包含缺少 ?v= 的错误");
     assert.ok(!r.errors.some((e) => e.includes("data.js version=")), "不应触发 data.js 版本对齐检查");
+  });
+});
+
+test("scanSite：应识别外链 stylesheet/img/media（分支覆盖）", () => {
+  withTempDir((root) => {
+    fs.writeFileSync(
+      path.join(root, "data.js"),
+      `(() => { window.GKB = window.GKB || {}; window.GKB.data = { version: "1", games: {}, guides: {}, topics: {} }; })();`,
+      "utf8"
+    );
+
+    const html = `<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <link rel="stylesheet" href="styles.css?v=1">
+    <link rel="manifest" href="manifest.webmanifest?v=1">
+    <script src="boot.js?v=1"></script>
+    <script src="data.js?v=1" defer></script>
+    <script src="scripts.js?v=1" defer></script>
+
+    <link rel="stylesheet" href="https://cdn.example.com/a.css">
+    <link href="https://cdn.example.com/b.css" rel="stylesheet">
+  </head>
+  <body>
+    <img src="https://cdn.example.com/a.png" alt="x">
+    <picture><source src="https://cdn.example.com/a.webp" type="image/webp"></picture>
+    <picture><source srcset="https://cdn.example.com/a.webp 1x, https://cdn.example.com/a2.webp 2x" type="image/webp"></picture>
+    <video src="https://cdn.example.com/a.mp4"></video>
+    <audio src="https://cdn.example.com/a.mp3"></audio>
+  </body>
+</html>`;
+
+    fs.writeFileSync(path.join(root, "index.html"), html, "utf8");
+
+    const r = scanSite({ workspaceRoot: root });
+    const styleErrors = r.errors.filter((e) => e.includes("[EXT] index.html") && e.includes("（style）"));
+    const imageErrors = r.errors.filter((e) => e.includes("[EXT] index.html") && e.includes("（image）"));
+    const mediaErrors = r.errors.filter((e) => e.includes("[EXT] index.html") && e.includes("（media）"));
+
+    assert.ok(styleErrors.length >= 2, "应能识别两种外链 stylesheet 写法");
+    assert.ok(imageErrors.length >= 1, "应能识别外链 img");
+    assert.ok(mediaErrors.length >= 3, "应能识别外链 media（source/video/audio）");
   });
 });
 
