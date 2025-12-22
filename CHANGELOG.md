@@ -41,6 +41,7 @@
 - View Transition：新增 root 级“导演剪辑”过渡（轻量淡入淡出 + blur/scale），`prefers-reduced-motion` 自动关闭
 - 性能压榨：Command Palette 选中态改为差分更新；社区话题筛选预计算 search blob + 减少 localStorage 读取
 - 工具链：单测覆盖外链资源检测与解析空输入分支，维持覆盖率阈值通过
+- 动效库瘦身：`vendor/motion.js` 替换为 WAAPI 轻量实现（体积约 82KB → 7KB），保留 `Motion.animate/stagger` 兼容接口
 
 ## 2025-12-20
 

@@ -121,3 +121,21 @@
 - [x] 6. 单测覆盖：补齐外链资源检测与解析空输入分支，`npm test` / `npm run test:coverage` 通过
 - [x] 7. bump 版本号：`20251222-4 -> 20251222-5` + 校验通过（check-links/check-sw/validate-data）
 - [x] 8. 提交并推送
+
+---
+
+# [GKB-20251222-R7] 红蓝对抗：动效库瘦身 × Transform 兼容
+> **环境**: Windows 11 (pwsh -NoLogo wrapper) | **框架**: Static HTML/CSS/JS | **档位**: 4档 (性能 & 体积压榨)
+> **已激活矩阵**: [模块 E: 幽灵防御] + [模块 F: 靶向验证]
+
+## 1. 需求镜像 (Requirement Mirroring)
+> **我的理解**: 把“旧时代遗物”当作攻击面：扫描依赖与大文件，优先消灭体积/性能热点；在不牺牲动效体验的前提下用轻量实现替代臃肿库，并确保边缘场景（hover transform、WAAPI 不可用）可降级不崩。
+> **不做什么**: 不启动任何后台服务；不抢占端口；不删除本地克隆环境。
+
+## 2. 执行清单 (Execution)
+- [x] 1. 依赖扫描：`node_modules` 不存在（项目无 NPM runtime 依赖）
+- [x] 2. 动效库瘦身：将 `vendor/motion.js` 替换为 WAAPI 轻量适配层（保留 `Motion.animate/stagger` 接口）
+- [x] 3. 边缘兼容：动效合成 transform 时尽量保留点击当下的 CSS transform（避免 hover 状态点击“跳一下”）
+- [x] 4. 清理冗余：移除不再需要的 `vendor/motion.LICENSE.md`
+- [x] 5. bump 版本号：`20251222-5 -> 20251222-6` + 本地校验/测试通过（check-links/check-sw/validate-data + coverage）
+- [ ] 6. 提交并推送

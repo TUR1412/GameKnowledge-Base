@@ -86,7 +86,7 @@ flowchart TB
     Boot[boot.js（早期主题/对比度/No-JS）]
     Data[data.js（数据源：games/guides/topics）]
     App[scripts.js（交互：搜索/收藏/筛选/对比/笔记/阅读）]
-    Motion[vendor/motion.js（Motion / Framer 出品：动效编排）]
+    Motion[vendor/motion.js（WAAPI 轻量动效层：animate/stagger）]
     LS[(localStorage)]
     SW[sw.js（Service Worker）]
     Cache[(Cache Storage)]
@@ -171,10 +171,10 @@ flowchart TB
 本项目对核心资源使用 `?v=` 版本号来避免缓存“幽灵更新”：
 
 ```html
-<link rel="stylesheet" href="styles.css?v=20251222-5">
-<script src="boot.js?v=20251222-5"></script>
-<script src="data.js?v=20251222-5" defer></script>
-<script src="scripts.js?v=20251222-5" defer></script>
+<link rel="stylesheet" href="styles.css?v=20251222-6">
+<script src="boot.js?v=20251222-6"></script>
+<script src="data.js?v=20251222-6" defer></script>
+<script src="scripts.js?v=20251222-6" defer></script>
 ```
 
 当你修改 `styles.css` / `scripts.js` / `data.js` / `sw.js` / `manifest.webmanifest` 时，务必同步 bump 版本号。
@@ -194,7 +194,7 @@ node tools/bump-version.mjs
 核心数据集中在 `data.js`：
 
 ```js
-version: "20251222-5",
+version: "20251222-6",
 
 games: {
   "elden-ring": { title: "艾尔登法环", updated: "2025-10-05", ... }
