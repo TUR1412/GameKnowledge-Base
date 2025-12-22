@@ -82,3 +82,22 @@
 - [x] 4. 版本号：`20251222-2 -> 20251222-3` + 校验通过（check-links/check-sw/validate-data）
 - [x] 5. 单测与覆盖率：`npm test` / `npm run test:coverage` 通过
 - [x] 6. 提交并推送（已完成）
+
+---
+
+# [GKB-20251222-R5] 微交互深挖：物理反馈 × 可回归动效规范
+> **环境**: Windows 11 (pwsh -NoLogo wrapper) | **框架**: Static HTML/CSS/JS | **档位**: 4档 (微交互 & 质感)
+> **已激活矩阵**: [模块 A: 视觉矫正] + [模块 E: 幽灵防御] + [模块 F: 需求镜像]
+
+## 1. 需求镜像 (Requirement Mirroring)
+> **我的理解**: 聚焦 C：把“按钮/收藏/列表重排/弹窗”做成更有物理感的微交互，同时把动效参数统一成可回归的规范（避免后续越改越散）。
+> **不做什么**: 不启动任何后台服务；不抢占端口；不删除本地克隆环境。
+
+## 2. 执行清单 (Execution)
+- [x] 1. `scripts.js`：新增统一 Motion tokens + helper（`motionAnimate` / `motionPulse` / `motionSpark` / `motionFlash`）
+- [x] 2. Planner：新增/移除/拖拽排序的物理反馈（drop 高亮 + remove collapse + drop pulse）
+- [x] 3. Compare：对比弹窗开合动效升级（Motion 优先、CSS 兜底）+ 对比栏/Chip 更新反馈
+- [x] 4. 收藏反馈：攻略库/话题库收藏星标弹性动效；详情页收藏按钮闪光反馈
+- [x] 5. 规范：补齐 `docs/STYLE_GUIDE.md` 的动效与降级策略说明
+- [x] 6. bump 版本号：`20251222-3 -> 20251222-4` + 校验/测试通过
+- [ ] 7. 提交并推送（待本轮完成）

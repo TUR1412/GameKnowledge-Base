@@ -9,11 +9,11 @@
 所有页面必须使用带版本号的静态资源引用：
 
 ```html
-<link rel="stylesheet" href="styles.css?v=20251222-3">
-<link rel="manifest" href="manifest.webmanifest?v=20251222-3">
-<script src="boot.js?v=20251222-3"></script>
-<script src="data.js?v=20251222-3" defer></script>
-<script src="scripts.js?v=20251222-3" defer></script>
+<link rel="stylesheet" href="styles.css?v=20251222-4">
+<link rel="manifest" href="manifest.webmanifest?v=20251222-4">
+<script src="boot.js?v=20251222-4"></script>
+<script src="data.js?v=20251222-4" defer></script>
+<script src="scripts.js?v=20251222-4" defer></script>
 ```
 
 当你修改以下任意文件时，请同步更新所有 HTML 页里的 `?v=`：
@@ -84,3 +84,40 @@ node tools/bump-version.mjs --dry-run
 - `.gitattributes`
 
 确保在 Windows / macOS / Linux 上显示一致，避免 CRLF/LF 混乱导致的 diff 噪音。
+
+---
+
+## 6) 动效规范（Motion / View Transition）
+
+目标：**动效可复用、可回归、可降级**——不追求“到处都在动”，而追求“该动的地方动得更对”。
+
+### 6.1 Motion 统一参数（强烈推荐）
+
+`scripts.js` 里提供了全站统一的动效参数与封装：
+
+- `MOTION.easeOut`：默认出场/弹性（例如 Toast / 弹窗开合）
+- `MOTION.durFast / durBase / durSlow`：统一时长档位
+- `motionAnimate(el, keyframes, options)`：统一入口（自动处理 `prefers-reduced-motion` + try/catch）
+- 常用微交互：`motionPulse` / `motionSpark` / `motionFlash`
+
+约定：新增动效时 **优先复用上述 helper**，避免散落的 magic number 导致“风格漂移”。
+
+### 6.2 Reduced Motion（必须可降级）
+
+- JS：所有 Motion 动效都必须走 `motionAnimate`（内部会检测 `prefers-reduced-motion`）
+- CSS：对粒子/大幅动画使用 `@media (prefers-reduced-motion: reduce)` 直接关掉或压缩到极短
+
+用户选择减少动态效果时，站点应保持 **信息层级与可用性不变**。
+
+### 6.3 性能红线（动效也要性能）
+
+- **优先动画 transform/opacity/filter**（GPU 友好），避免频繁 layout 抖动
+- 如必须动画布局（例如列表删除的 collapse），只允许在“单个元素”上短时执行，并确保可以降级
+- 事件绑定优先事件委托（避免“每次 render 绑 N 个 listener”）
+
+### 6.4 View Transition（跨页/同页）
+
+- 同页重排：用 `withViewTransition(fn)` 包裹关键 DOM 更新（可用则启用，不可用自动降级）
+- 跨页形变：通过 `view-transition-name` + `@view-transition { navigation: auto; }` 实现共享元素映射
+  - 新页面必须在首帧前打标（`boot.js` 负责注入 `html[data-vt-kind]`）
+  - 支持 VT 时不要 `preventDefault` 拦截导航，否则浏览器无法捕获快照

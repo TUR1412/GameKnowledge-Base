@@ -335,6 +335,71 @@
     return api;
   };
 
+  // Motion tokens（全站统一：便于回归与调参）
+  const MOTION = {
+    easeOut: [0.22, 1, 0.36, 1],
+    easeIn: [0.4, 0, 1, 1],
+    durFast: 0.16,
+    durBase: 0.22,
+    durSlow: 0.28,
+  };
+
+  const motionAnimate = (el, keyframes, options = {}) => {
+    const Motion = prefersReducedMotion() ? null : getMotion();
+    if (!Motion || !el) return null;
+    try {
+      return Motion.animate(el, keyframes, { duration: MOTION.durBase, easing: MOTION.easeOut, ...options });
+    } catch (_) {
+      return null;
+    }
+  };
+
+  const motionFinished = (anim) => {
+    try {
+      const p = anim?.finished;
+      if (p && typeof p.then === "function") return p.catch(() => {});
+    } catch (_) {}
+    return Promise.resolve();
+  };
+
+  const motionPulse = (el, { scale = 1.045, duration = MOTION.durSlow } = {}) => {
+    return motionAnimate(el, { scale: [1, scale, 1] }, { duration });
+  };
+
+  const motionSpark = (el) => {
+    return motionAnimate(
+      el,
+      {
+        scale: [1, 1.25, 1.02, 1],
+        rotate: [0, -8, 6, 0],
+        filter: ["blur(0px)", "blur(0px)", "blur(0px)", "blur(0px)"],
+      },
+      { duration: 0.34 }
+    );
+  };
+
+  const motionFlash = (el) => {
+    return motionAnimate(
+      el,
+      {
+        filter: ["brightness(1)", "brightness(1.08)", "brightness(1)"],
+        opacity: [1, 1, 1],
+      },
+      { duration: 0.32 }
+    );
+  };
+
+  const animateSavePill = (btn, isSaved) => {
+    if (!btn) return;
+    const star = $(".save-star", btn);
+    const target = star || btn;
+    if (isSaved) {
+      motionSpark(target);
+      return;
+    }
+    motionAnimate(target, { scale: [1, 0.92, 1], rotate: [0, 6, 0], opacity: [1, 0.92, 1] }, { duration: 0.24 });
+  };
+
   const withViewTransition = (fn) => {
     const start = document.startViewTransition;
     if (prefersReducedMotion() || typeof start !== "function") {
@@ -2504,7 +2569,6 @@
 
     const close = () => {
       if (root.hidden) return;
-      root.dataset.state = prefersReducedMotion() ? "closed" : "closing";
       document.body.classList.remove("compare-open");
       const finalize = () => {
         root.hidden = true;
@@ -2513,6 +2577,23 @@
           compareDialogLastActive?.focus?.();
         } catch (_) {}
       };
+
+      const panel = $(".compare-panel", root);
+      const backdrop = $(".compare-backdrop", root);
+
+      const outPanel = motionAnimate(
+        panel,
+        { opacity: [1, 0], y: [0, 12], scale: [1, 0.985], filter: ["blur(0px)", "blur(10px)"] },
+        { duration: MOTION.durFast }
+      );
+      const outBackdrop = motionAnimate(backdrop, { opacity: [1, 0] }, { duration: MOTION.durFast });
+
+      if (outPanel || outBackdrop) {
+        Promise.allSettled([motionFinished(outPanel), motionFinished(outBackdrop)]).finally(finalize);
+        return;
+      }
+
+      root.dataset.state = prefersReducedMotion() ? "closed" : "closing";
       if (prefersReducedMotion()) finalize();
       else window.setTimeout(finalize, 170);
     };
@@ -2639,12 +2720,72 @@
 
     compareDialogLastActive = document.activeElement;
     body.innerHTML = renderCompareTable(ids);
+
+    const panel = $(".compare-panel", root);
+    const backdrop = $(".compare-backdrop", root);
+
+    const canMotion = !prefersReducedMotion() && Boolean(getMotion());
+
+    // Motion 版本：先写入初始样式再开场，避免 CSS transition 与 Motion 互相抢 transform
+    if (canMotion) {
+      try {
+        if (panel) {
+          panel.style.opacity = "0";
+          panel.style.transform = "translateY(18px) scale(0.985)";
+          panel.style.filter = "blur(12px)";
+        }
+        if (backdrop) backdrop.style.opacity = "0";
+      } catch (_) {}
+    } else {
+      // 保证 CSS 方案可接管（避免遗留 inline style 抢优先级）
+      try {
+        if (panel) {
+          panel.style.opacity = "";
+          panel.style.transform = "";
+          panel.style.filter = "";
+        }
+        if (backdrop) backdrop.style.opacity = "";
+      } catch (_) {}
+    }
+
     root.hidden = false;
-    root.dataset.state = "opening";
     document.body.classList.add("compare-open");
-    window.requestAnimationFrame(() => {
+
+    const inBackdrop = canMotion ? motionAnimate(backdrop, { opacity: [0, 1] }, { duration: MOTION.durFast }) : null;
+    const inPanel = canMotion
+      ? motionAnimate(
+          panel,
+          { opacity: [0, 1], y: [18, 0], scale: [0.985, 1], filter: ["blur(12px)", "blur(0px)"] },
+          { duration: MOTION.durBase }
+        )
+      : null;
+
+    if (canMotion && (inPanel || inBackdrop)) {
       root.dataset.state = "open";
-    });
+      Promise.allSettled([motionFinished(inPanel), motionFinished(inBackdrop)]).finally(() => {
+        try {
+          if (panel) {
+            panel.style.opacity = "";
+            panel.style.transform = "";
+            panel.style.filter = "";
+          }
+          if (backdrop) backdrop.style.opacity = "";
+        } catch (_) {}
+      });
+    } else {
+      try {
+        if (panel) {
+          panel.style.opacity = "";
+          panel.style.transform = "";
+          panel.style.filter = "";
+        }
+        if (backdrop) backdrop.style.opacity = "";
+      } catch (_) {}
+      root.dataset.state = "opening";
+      window.requestAnimationFrame(() => {
+        root.dataset.state = "open";
+      });
+    }
 
     const closeBtn = $(".compare-close", root);
     closeBtn?.focus?.();
@@ -2706,6 +2847,7 @@
 
     // 游戏对比（Compare Bar + 对比弹窗）
     let compareIds = readCompareGames();
+    let lastCompareIds = compareIds.slice();
 
     const getGameTitle = (id) => {
       const data = getData();
@@ -2747,6 +2889,7 @@
             toast({ title: "还差一点", message: "至少选择 2 款游戏才能对比。", tone: "warn" });
             return;
           }
+          motionPulse($(".compare-bar-inner", bar), { scale: 1.01, duration: 0.32 });
           openGameCompare(ids);
           return;
         }
@@ -2755,15 +2898,26 @@
           clearCompareGames();
           syncCompareUi();
           toast({ title: "已清空", message: "对比列表已重置。", tone: "info" });
+          motionPulse($(".compare-bar-inner", bar), { scale: 1.01, duration: 0.32 });
           return;
         }
 
         const removeBtn = e.target?.closest?.("[data-remove-id]");
         const removeId = removeBtn?.dataset?.removeId || "";
         if (removeId) {
-          const next = readCompareGames().filter((x) => x !== removeId);
-          writeCompareGames(next);
-          syncCompareUi();
+          const commit = () => {
+            const next = readCompareGames().filter((x) => x !== removeId);
+            writeCompareGames(next);
+            syncCompareUi();
+          };
+
+          const anim = motionAnimate(
+            removeBtn,
+            { opacity: [1, 0], scale: [1, 0.96], filter: ["blur(0px)", "blur(8px)"] },
+            { duration: MOTION.durFast }
+          );
+          if (anim) motionFinished(anim).then(commit).catch(commit);
+          else commit();
         }
       });
 
@@ -2800,12 +2954,22 @@
         bar.dataset.state = "opening";
         window.requestAnimationFrame(() => {
           bar.dataset.state = "open";
+          motionAnimate(
+            $(".compare-bar-inner", bar),
+            { opacity: [0, 1], y: [6, 0], scale: [0.99, 1], filter: ["blur(10px)", "blur(0px)"] },
+            { duration: MOTION.durBase }
+          );
         });
         return;
       }
 
       if (bar.hidden) return;
       bar.dataset.state = prefersReducedMotion() ? "closed" : "closing";
+      motionAnimate(
+        $(".compare-bar-inner", bar),
+        { opacity: [1, 0], y: [0, 6], scale: [1, 0.99], filter: ["blur(0px)", "blur(10px)"] },
+        { duration: MOTION.durFast }
+      );
       const finalize = () => {
         bar.hidden = true;
         bar.dataset.state = "closed";
@@ -2816,6 +2980,19 @@
 
     const syncCompareUi = () => {
       compareIds = readCompareGames();
+      const prev = lastCompareIds;
+      let added = "";
+      let removed = "";
+      try {
+        const prevSet = new Set(prev);
+        const nextSet = new Set(compareIds);
+        added = compareIds.find((id) => !prevSet.has(id)) || "";
+        removed = prev.find((id) => !nextSet.has(id)) || "";
+      } catch (_) {
+        added = "";
+        removed = "";
+      }
+      lastCompareIds = compareIds.slice();
 
       cards.forEach((card) => {
         const id = String(card.dataset.id || "").trim();
@@ -2843,6 +3020,28 @@
             return `<button type="button" class="chip chip-btn compare-chip" data-remove-id="${escapeHtml(id)}" aria-label="移除 ${escapeHtml(title)}">${escapeHtml(title)}<span class="chip-x" aria-hidden="true">×</span></button>`;
           })
           .join("");
+
+        if (added) {
+          window.requestAnimationFrame(() => {
+            let sel = null;
+            try {
+              sel = `[data-remove-id="${CSS.escape(added)}"]`;
+            } catch (_) {
+              sel = null;
+            }
+            const el = sel ? chips.querySelector(sel) : null;
+            if (!el) return;
+            motionAnimate(
+              el,
+              { opacity: [0, 1], y: [10, 0], scale: [0.98, 1], filter: ["blur(10px)", "blur(0px)"] },
+              { duration: 0.24 }
+            );
+          });
+        }
+
+        if (added || removed) {
+          motionPulse($(".compare-bar-inner", bar), { scale: 1.008, duration: 0.26 });
+        }
       }
     };
 
@@ -3485,6 +3684,7 @@
       }
 
       syncGuideSaveUi(btn, !had);
+      animateSavePill(btn, !had);
       btn.closest?.(".guide-card")?.classList.toggle("is-saved", !had);
     });
 
@@ -3963,6 +4163,7 @@
         tone: isSaved ? "info" : "success",
       });
       syncSaveButton();
+      motionFlash(saveBtn);
     });
 
     initNotesPanel({
@@ -4144,6 +4345,7 @@
         tone: saved ? "info" : "success",
       });
       syncGameSave();
+      motionFlash(saveGameBtn);
     });
 
     const getLibraryLabel = (status) => {
@@ -4810,6 +5012,60 @@
 
     if (!selectEl || !listEl) return;
 
+    const animatePlanItemAdded = (idx) => {
+      const el = listEl.querySelector(`.plan-item[data-idx="${idx}"]`);
+      if (!el) return;
+      motionAnimate(
+        el,
+        { opacity: [0, 1], y: [10, 0], scale: [0.99, 1], filter: ["blur(10px)", "blur(0px)"] },
+        { duration: 0.24 }
+      );
+    };
+
+    const animatePlanItemDropped = (idx) => {
+      const el = listEl.querySelector(`.plan-item[data-idx="${idx}"]`);
+      if (!el) return;
+      motionAnimate(el, { scale: [1, 1.02, 1], filter: ["blur(0px)", "blur(0px)", "blur(0px)"] }, { duration: 0.3 });
+    };
+
+    const animatePlanItemRemoved = (el) => {
+      if (!el) return Promise.resolve();
+      if (prefersReducedMotion()) return Promise.resolve();
+
+      let h = 0;
+      let mt = "0px";
+      let mb = "0px";
+      try {
+        h = Math.max(0, Math.round(el.getBoundingClientRect().height));
+        const cs = window.getComputedStyle(el);
+        mt = cs.marginTop || "0px";
+        mb = cs.marginBottom || "0px";
+      } catch (_) {}
+      const heightPx = `${h || el.offsetHeight || 0}px`;
+
+      try {
+        el.style.overflow = "hidden";
+        el.style.height = heightPx;
+        el.style.marginTop = mt;
+        el.style.marginBottom = mb;
+      } catch (_) {}
+
+      const anim = motionAnimate(
+        el,
+        {
+          opacity: [1, 0],
+          y: [0, -8],
+          scale: [1, 0.985],
+          height: [heightPx, "0px"],
+          marginTop: [mt, "0px"],
+          marginBottom: [mb, "0px"],
+          filter: ["blur(0px)", "blur(10px)"],
+        },
+        { duration: 0.22 }
+      );
+      return motionFinished(anim);
+    };
+
     const pool = [];
     Object.entries(data.games || {}).forEach(([id, g]) => {
       pool.push({
@@ -5118,6 +5374,11 @@
       }
       state = readPlansState();
       render();
+      window.requestAnimationFrame(() => {
+        const plan = getPlan();
+        const idx = plan ? Math.max(0, (plan.items || []).length - 1) : -1;
+        if (idx >= 0) animatePlanItemAdded(idx);
+      });
       toast({ title: "已加入路线", message: "拖拽可排序，进度会自动汇总。", tone: "success" });
     };
 
@@ -5171,20 +5432,42 @@
       const plan = getPlan();
       if (!plan) return;
       if (idx < 0 || idx >= plan.items.length) return;
-      const nextItems = plan.items.filter((_, i) => i !== idx);
-      state = { ...state, plans: { ...state.plans, [plan.id]: { ...plan, updatedAt: Date.now(), items: nextItems } } };
-      persist();
-      render();
-      toast({ title: "已移除", message: "条目已从路线中删除。", tone: "info" });
+
+      const row = btn.closest?.(".plan-item");
+      const commit = () => {
+        const nextItems = plan.items.filter((_, i) => i !== idx);
+        state = { ...state, plans: { ...state.plans, [plan.id]: { ...plan, updatedAt: Date.now(), items: nextItems } } };
+        persist();
+        render();
+        toast({ title: "已移除", message: "条目已从路线中删除。", tone: "info" });
+      };
+
+      animatePlanItemRemoved(row).then(commit).catch(commit);
     });
 
     // Drag & Drop reorder（轻量实现）
     let dragIdx = -1;
+    let dropTarget = null;
+
+    const setDropTarget = (el) => {
+      if (dropTarget === el) return;
+      try {
+        dropTarget?.classList?.remove?.("is-drop-target");
+      } catch (_) {}
+      dropTarget = el;
+      try {
+        dropTarget?.classList?.add?.("is-drop-target");
+      } catch (_) {}
+    };
+
+    const clearDropTarget = () => setDropTarget(null);
+
     listEl.addEventListener("dragstart", (e) => {
       const item = e.target?.closest?.(".plan-item");
       if (!item) return;
       dragIdx = Number(item.dataset.idx || -1);
       item.classList.add("is-dragging");
+      setDropTarget(item);
       try {
         e.dataTransfer.effectAllowed = "move";
         e.dataTransfer.setData("text/plain", String(dragIdx));
@@ -5193,11 +5476,13 @@
     listEl.addEventListener("dragend", (e) => {
       e.target?.closest?.(".plan-item")?.classList?.remove?.("is-dragging");
       dragIdx = -1;
+      clearDropTarget();
     });
     listEl.addEventListener("dragover", (e) => {
       const over = e.target?.closest?.(".plan-item");
       if (!over) return;
       e.preventDefault();
+      setDropTarget(over);
     });
     listEl.addEventListener("drop", (e) => {
       const over = e.target?.closest?.(".plan-item");
@@ -5214,6 +5499,8 @@
       state = { ...state, plans: { ...state.plans, [plan.id]: { ...plan, updatedAt: Date.now(), items } } };
       persist();
       withViewTransition(render);
+      clearDropTarget();
+      window.requestAnimationFrame(() => animatePlanItemDropped(to));
     });
 
     render();
@@ -5712,6 +5999,7 @@
       }
 
       syncTopicSaveUi(btn, !had);
+      animateSavePill(btn, !had);
       btn.closest?.(".topic-card")?.classList.toggle("is-saved", !had);
     });
 
