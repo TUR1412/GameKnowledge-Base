@@ -154,4 +154,4 @@
 - [x] 1. `tools/check-links.mjs`：把 `vendor/motion.js?v=` 纳入核心资源版本一致性检查
 - [x] 2. `tools/check-sw.mjs`：把 `vendor/motion.js?v=${VERSION}` 纳入 SW 预缓存模板资源校验
 - [x] 3. `tests/*`：更新测试样例并保持覆盖率阈值通过
-- [ ] 4. 提交并推送
+- [x] 4. 提交并推送
