@@ -1763,6 +1763,75 @@
   const initSoftNavigation = () => {
     if (prefersReducedMotion()) return;
 
+    const VT_KEY = "gkb-vt";
+    const supportsViewTransition = (() => {
+      try {
+        if (typeof document.startViewTransition !== "function") return false;
+        return "viewTransitionName" in document.documentElement.style;
+      } catch (_) {
+        return false;
+      }
+    })();
+
+    let activeVtTargets = [];
+
+    const clearVtTargets = () => {
+      activeVtTargets.forEach((el) => {
+        try {
+          el.style.viewTransitionName = "";
+        } catch (_) {}
+      });
+      activeVtTargets = [];
+    };
+
+    const setVtTarget = (el, name) => {
+      if (!el) return;
+      try {
+        el.style.viewTransitionName = name;
+        activeVtTargets.push(el);
+      } catch (_) {}
+    };
+
+    const writeVtToken = (kind, id) => {
+      try {
+        sessionStorage.setItem(VT_KEY, JSON.stringify({ kind, id, ts: Date.now() }));
+      } catch (_) {}
+    };
+
+    const prepareSharedElements = (kind, a, url) => {
+      if (!supportsViewTransition) return false;
+
+      let id = "";
+      try {
+        id = String(url.searchParams.get("id") || "").trim();
+      } catch (_) {
+        id = "";
+      }
+      if (!id) return false;
+
+      let card = null;
+      if (kind === "guide") card = a.closest?.(".guide-card") || a.closest?.(".game-card");
+      else card = a.closest?.(".game-card");
+      if (!card) return false;
+
+      const media =
+        card.querySelector?.(".game-image, .game-card-image") || card.querySelector?.("img, svg") || card;
+      const title = card.querySelector?.(".game-card-title, h3") || card;
+
+      clearVtTargets();
+      setVtTarget(card, "vt-card");
+      setVtTarget(media, "vt-media");
+      setVtTarget(title, "vt-title");
+      writeVtToken(kind, id);
+
+      // 若后续跳转被阻止（例如业务逻辑 preventDefault），避免名称“粘住”影响同页动效。
+      window.setTimeout(() => {
+        if (!document.hidden) clearVtTargets();
+      }, 2500);
+
+      return true;
+    };
+
     let inFlight = false;
 
     const canIntercept = (e, a, url) => {
@@ -1806,6 +1875,15 @@
 
         if (!canIntercept(e, a, url)) return;
 
+        if (supportsViewTransition) {
+          try {
+            const page = url.pathname.split("/").pop();
+            if (page === "game.html") prepareSharedElements("game", a, url);
+            else if (page === "guide-detail.html") prepareSharedElements("guide", a, url);
+          } catch (_) {}
+          return; // 交给浏览器原生 VT navigation
+        }
+
         inFlight = true;
         e.preventDefault();
 
@@ -1820,6 +1898,7 @@
     // BFCache / 返回：确保不会卡在“离场态”
     window.addEventListener("pageshow", () => {
       inFlight = false;
+      clearVtTargets();
       document.body.classList.remove("is-navigating");
     });
   };

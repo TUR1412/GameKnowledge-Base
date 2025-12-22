@@ -10,6 +10,7 @@
 
   const THEME_KEY = "gkb-theme";
   const CONTRAST_KEY = "gkb-contrast";
+  const VT_KEY = "gkb-vt";
   const root = document.documentElement;
 
   const readStoredTheme = () => {
@@ -56,4 +57,31 @@
   root.dataset.theme = theme;
   root.classList.remove("no-js");
   syncThemeColor(theme);
+
+  // View Transition（跨文档共享元素）：为新页面首帧提前打标
+  // 说明：必须在渲染前尽早写入 dataset，确保 CSS 选择器能在快照捕获前生效。
+  try {
+    const raw = sessionStorage.getItem(VT_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      const kind = String(parsed?.kind || "").trim();
+      const id = String(parsed?.id || "").trim();
+      const ts = Number(parsed?.ts || 0);
+
+      const now = Date.now();
+      const fresh = Number.isFinite(ts) && Math.abs(now - ts) <= 15000;
+      const okKind = kind === "game" || kind === "guide";
+
+      if (fresh && okKind && id) {
+        root.dataset.vtKind = kind;
+        root.dataset.vtId = id;
+      }
+    }
+  } catch (_) {
+    // sessionStorage/JSON 可能不可用（隐私模式/禁用），忽略即可。
+  } finally {
+    try {
+      sessionStorage.removeItem(VT_KEY);
+    } catch (_) {}
+  }
 })();

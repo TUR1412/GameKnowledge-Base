@@ -60,3 +60,25 @@
 - [x] 6. README：新增 3 张动态演示 SVG + 功能清单/架构图更新
 - [x] 7. bump 版本号：`20251222-1 -> 20251222-2` + 本地校验通过（check-links/check-sw/validate-data）
 - [x] 8. 提交并推送（已完成）
+
+---
+
+# [GKB-20251222-R4] 形变级跨页转场：View Transition Shared Element
+> **环境**: Windows 11 (pwsh -NoLogo wrapper) | **框架**: Static HTML/CSS/JS | **档位**: 4档 (动效深化)
+> **已激活矩阵**: [模块 A: 视觉矫正] + [模块 E: 幽灵防御] + [模块 F: 需求镜像]
+
+## 1. 需求镜像 (Requirement Mirroring)
+> **我的理解**: 用户选择 A：实现“跨文档 View Transition”的卡片→详情 Banner 形变级转场，并确保不支持的浏览器自动降级（不破坏现有跨页淡出）。
+> **不做什么**: 不启动任何后台服务；不抢占端口；不删除本地克隆环境。
+
+## 2. 进化知识库 (Evolutionary Knowledge - Ω)
+- [!] (新发现) 跨文档 View Transition 必须保持“正常导航”，不能 `preventDefault` 或延迟跳转，否则浏览器无法捕获转场快照。
+- [!] (新发现) 新页面需在首帧前应用 `view-transition-name`（用 `boot.js` 写入 `html[data-vt-kind]`），否则会错过映射时机。
+
+## 3. 执行清单 (Execution)
+- [x] 1. `boot.js`：读取 `sessionStorage(gkb-vt)`，首帧写入 `html[data-vt-kind]`（并清理 token）
+- [x] 2. `scripts.js`：点击时为被点卡片写 `viewTransitionName` + 写入 token；支持 VT 时不再拦截导航
+- [x] 3. `styles.css`：开启 `@view-transition { navigation: auto; }` + vt-card/vt-media/vt-title 电影感动效
+- [x] 4. 版本号：`20251222-2 -> 20251222-3` + 校验通过（check-links/check-sw/validate-data）
+- [x] 5. 单测与覆盖率：`npm test` / `npm run test:coverage` 通过
+- [ ] 6. 提交并推送（待本轮完成）

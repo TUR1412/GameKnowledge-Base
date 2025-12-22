@@ -29,6 +29,9 @@
       <td><img src="images/demos/demo-updates.svg" alt="更新中心 动态演示" width="460"></td>
     </tr>
     <tr>
+      <td colspan="2"><img src="images/demos/demo-view-transition.svg" alt="跨页 View Transition 动态演示" width="920"></td>
+    </tr>
+    <tr>
       <td colspan="2"><img src="images/demos/demo-planner.svg" alt="路线规划 动态演示" width="920"></td>
     </tr>
   </table>
@@ -59,6 +62,7 @@
 - **最近访问**：主页展示最近浏览的游戏/攻略
 - **攻略进度清单**：步骤勾选 + 完成度
 - **阅读增强**：阅读进度条、专注阅读、字号/行距记忆、继续阅读、复制小节链接
+- **跨页 View Transition 形变**：从列表卡片进入详情页时“卡片 → Banner”共享元素转场（支持浏览器启用，自动降级）
 - **游戏对比（Compare）**：在“所有游戏”页多选对比，底部对比栏 + 对比弹窗（最多 4 项）
 - **更新雷达（NEW / UPDATED）**：为数据条目建立“已读基线”，后续新增/更新自动标记
 - **无障碍高对比度模式**：全站可切换更清晰的文本与边界（适合强光环境）
@@ -162,10 +166,10 @@ flowchart TB
 本项目对核心资源使用 `?v=` 版本号来避免缓存“幽灵更新”：
 
 ```html
-<link rel="stylesheet" href="styles.css?v=20251222-2">
-<script src="boot.js?v=20251222-2"></script>
-<script src="data.js?v=20251222-2" defer></script>
-<script src="scripts.js?v=20251222-2" defer></script>
+<link rel="stylesheet" href="styles.css?v=20251222-3">
+<script src="boot.js?v=20251222-3"></script>
+<script src="data.js?v=20251222-3" defer></script>
+<script src="scripts.js?v=20251222-3" defer></script>
 ```
 
 当你修改 `styles.css` / `scripts.js` / `data.js` / `sw.js` / `manifest.webmanifest` 时，务必同步 bump 版本号。
@@ -185,7 +189,7 @@ node tools/bump-version.mjs
 核心数据集中在 `data.js`：
 
 ```js
-version: "20251222-2",
+version: "20251222-3",
 
 games: {
   "elden-ring": { title: "艾尔登法环", updated: "2025-10-05", ... }

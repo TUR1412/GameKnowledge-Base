@@ -34,6 +34,7 @@
 - Toast：进出场动效升级（Motion）
 - Service Worker：预缓存补齐新入口页与动效库（`vendor/motion.js`）
 - 首页：新增“探索推荐”入口按钮
+- 跨页转场：支持跨文档 View Transition（卡片→详情 Banner 形变），不支持浏览器继续使用淡出降级
 
 ## 2025-12-20
 
