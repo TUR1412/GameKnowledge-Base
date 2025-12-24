@@ -30,6 +30,8 @@
 - 工具链共享：新增 `tools/lib/site.mjs` 统一复用站点 base/url/xml/data 逻辑
 - 交互式文档入口：新增 `docs.html`，站内渲染 `docs/*.md`（维护/贡献更顺手）
 - 高延迟体验增强：新增运行时网络状态闭环（netStore/netClient）与内部链接 hover/focus 预取
+- 长列表虚拟化：为攻略库 / 话题库引入零依赖虚拟列表渲染（超大数据量只渲染可视区）
+- 工程自诊断：新增控制台 `GKB.health()` 与 `GKB.runtime.health.start()` 实时监控采样
 
 ### Changed
 - 动效层内建：将 WAAPI 动效轻量层内联到 `scripts.js`，减少额外请求与维护点

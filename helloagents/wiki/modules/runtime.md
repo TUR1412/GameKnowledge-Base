@@ -30,6 +30,8 @@
     - 按 `data-page` 精确调度页面级 init，减少无效调用
     - 网络状态闭环：`netStore` 统一维护 online/connection/inflight/error，减少散落监听
     - 高延迟优化：内部链接 hover/focus 预取（prefetch），让跨页更“跟手”
+    - 长列表虚拟化：当列表规模巨大时自动启用虚拟列表（只渲染可视区），避免一次性创建海量 DOM
+    - 工程自诊断：提供 `GKB.health()` 与 `GKB.runtime.health.start()` 采样输出（FPS/LongTask/CLS/LCP/内存等）
   - 动效：
     - 内建 `MotionLite`（WAAPI 轻量层：`animate/stagger`）
     - 统一走 `motionAnimate` 并尊重 `prefers-reduced-motion`

@@ -522,6 +522,20 @@
     const inflight = new Map();
     const cache = createMemoryCache();
 
+    const normalizeSameOriginUrl = (value) => {
+      const raw = String(value || "").trim();
+      if (!raw) return null;
+      if (raw.startsWith("//")) return null;
+
+      try {
+        const u = new URL(raw, window.location.href);
+        if (u.origin !== window.location.origin) return null;
+        return u.href;
+      } catch (_) {
+        return null;
+      }
+    };
+
     const bumpInflight = (delta) => {
       if (!store) return;
       store.setState((s) => ({
@@ -538,7 +552,12 @@
     const fetchTextOnce = async (href, { timeoutMs } = {}) =>
       withTimeout(
         async ({ signal }) => {
-          const res = await fetch(href, { method: "GET", credentials: "same-origin", signal });
+          const res = await fetch(href, {
+            method: "GET",
+            credentials: "same-origin",
+            cache: "force-cache",
+            signal,
+          });
           if (!res || !res.ok) throw new Error(`http ${res?.status || 0}`);
           return await res.text();
         },
@@ -546,8 +565,8 @@
       );
 
     const requestText = async (url, { timeoutMs = NET_CONSTANTS.requestTimeoutMs, retry = true } = {}) => {
-      const href = String(url || "").trim();
-      if (!href) throw new Error("empty url");
+      const href = normalizeSameOriginUrl(url);
+      if (!href) throw new Error("blocked url");
 
       const key = `text:${href}`;
       const cached = cache.get(key);
@@ -611,13 +630,18 @@
     };
 
     const prefetch = async (url) => {
-      const href = String(url || "").trim();
+      const href = normalizeSameOriginUrl(url);
       if (!href) return false;
       try {
         // 预取只为“热缓存”（SW / HTTP cache），无需读取 body
         await withTimeout(
           async ({ signal }) => {
-            const res = await fetch(href, { method: "GET", credentials: "same-origin", signal });
+            const res = await fetch(href, {
+              method: "GET",
+              credentials: "same-origin",
+              cache: "force-cache",
+              signal,
+            });
             void res;
             return true;
           },
@@ -634,12 +658,273 @@
 
   const netClient = createRequestClient({ store: netStore });
 
+  const createHealthMonitor = ({ store } = {}) => {
+    const state = {
+      startedAt: 0,
+      running: false,
+      fps: 0,
+      frameCount: 0,
+      lastFpsAt: 0,
+      longTaskCount: 0,
+      longTaskTotalMs: 0,
+      cls: 0,
+      lcpMs: 0,
+      samples: [],
+      timer: 0,
+      raf: 0,
+      observers: [],
+    };
+
+    const now = () => {
+      try {
+        return performance.now();
+      } catch (_) {
+        return Date.now();
+      }
+    };
+
+    const getMemory = () => {
+      try {
+        // Chromium only
+        const mem = performance.memory;
+        if (!mem) return null;
+        const used = Number(mem.usedJSHeapSize || 0) || 0;
+        const total = Number(mem.totalJSHeapSize || 0) || 0;
+        const limit = Number(mem.jsHeapSizeLimit || 0) || 0;
+        return { used, total, limit };
+      } catch (_) {
+        return null;
+      }
+    };
+
+    const approxLocalStorageBytes = () => {
+      try {
+        let bytes = 0;
+        for (let i = 0; i < localStorage.length; i += 1) {
+          const k = localStorage.key(i);
+          if (!k) continue;
+          const v = localStorage.getItem(k) || "";
+          // UTF-16 粗略估算：每个字符 2 bytes
+          bytes += (k.length + v.length) * 2;
+        }
+        return bytes;
+      } catch (_) {
+        return 0;
+      }
+    };
+
+    const getDomNodes = () => {
+      try {
+        return document.getElementsByTagName("*").length;
+      } catch (_) {
+        return 0;
+      }
+    };
+
+    const observe = (type, handler, opts) => {
+      try {
+        if (!("PerformanceObserver" in window)) return null;
+        const obs = new PerformanceObserver((list) => {
+          try {
+            handler(list.getEntries());
+          } catch (_) {}
+        });
+        obs.observe({ type, buffered: true, ...(opts || {}) });
+        state.observers.push(obs);
+        return obs;
+      } catch (_) {
+        return null;
+      }
+    };
+
+    const formatBytes = (b) => {
+      const n = Number(b || 0) || 0;
+      if (n <= 0) return "0 B";
+      const units = ["B", "KB", "MB", "GB"];
+      let v = n;
+      let u = 0;
+      while (v >= 1024 && u < units.length - 1) {
+        v /= 1024;
+        u += 1;
+      }
+      return `${v.toFixed(u === 0 ? 0 : 2)} ${units[u]}`;
+    };
+
+    const snapshot = () => {
+      const mem = getMemory();
+      const domNodes = getDomNodes();
+      const lsBytes = approxLocalStorageBytes();
+      const net = store?.getState?.() || {};
+
+      const nav = (() => {
+        try {
+          const entry = performance.getEntriesByType("navigation")?.[0];
+          if (!entry) return null;
+          return {
+            type: String(entry.type || ""),
+            ttfb: Number(entry.responseStart || 0) || 0,
+            domInteractive: Number(entry.domInteractive || 0) || 0,
+            dcl: Number(entry.domContentLoadedEventEnd || 0) || 0,
+            load: Number(entry.loadEventEnd || 0) || 0,
+          };
+        } catch (_) {
+          return null;
+        }
+      })();
+
+      const report = {
+        "网络/在线": Boolean(net.online),
+        "网络/类型": String(net.effectiveType || ""),
+        "网络/RTT(ms)": Number(net.rtt || 0) || 0,
+        "网络/请求中": Number(net.requestsInFlight || 0) || 0,
+        "性能/FPS": Math.round(Number(state.fps || 0) || 0),
+        "性能/LongTask": Number(state.longTaskCount || 0) || 0,
+        "性能/LongTask(ms)": Math.round(Number(state.longTaskTotalMs || 0) || 0),
+        "性能/CLS": Number(state.cls || 0) || 0,
+        "性能/LCP(ms)": Math.round(Number(state.lcpMs || 0) || 0),
+        "渲染/VListUpdate(ms)": Math.round(Number(runtimeMetrics.vlistLastUpdateMs || 0) || 0),
+        "渲染/VListMounted": Number(runtimeMetrics.vlistMounted || 0) || 0,
+        "渲染/VListRange": String(runtimeMetrics.vlistRange || ""),
+        "页面/DOM节点": domNodes,
+        "存储/localStorage": formatBytes(lsBytes),
+        "内存/JSHeap": mem ? `${formatBytes(mem.used)} / ${formatBytes(mem.total)}` : "n/a",
+      };
+
+      const warnings = [];
+      if (report["性能/FPS"] > 0 && report["性能/FPS"] < 50) warnings.push("FPS 偏低（可能有重渲染或长任务）");
+      if ((Number(report["性能/LongTask"]) || 0) > 0) warnings.push("存在 LongTask（可用 Performance 面板定位）");
+      if (Number(report["性能/CLS"] || 0) >= 0.12) warnings.push("CLS 偏高（注意布局抖动/图片尺寸占位）");
+      if ((Number(net.requestsInFlight || 0) || 0) >= 6) warnings.push("并发请求较多（注意瀑布与缓存策略）");
+
+      console.groupCollapsed(`[GKB] 系统健康全景图 @ ${new Date().toLocaleString("zh-CN")}`);
+      try {
+        console.table(report);
+      } catch (_) {
+        console.log(report);
+      }
+
+      if (nav) {
+        try {
+          console.table({
+            "导航/type": nav.type,
+            "导航/TTFB(ms)": Math.round(nav.ttfb),
+            "导航/DOM Interactive(ms)": Math.round(nav.domInteractive),
+            "导航/DCL(ms)": Math.round(nav.dcl),
+            "导航/Load(ms)": Math.round(nav.load),
+          });
+        } catch (_) {}
+      }
+
+      if (warnings.length > 0) console.warn("⚠️ Health Warnings:", warnings);
+      console.groupEnd();
+
+      return { report, warnings, nav };
+    };
+
+    const tickFps = () => {
+      if (!state.running) return;
+      state.frameCount += 1;
+      const t = now();
+      if (!state.lastFpsAt) state.lastFpsAt = t;
+      const delta = t - state.lastFpsAt;
+      if (delta >= 1000) {
+        state.fps = (state.frameCount * 1000) / delta;
+        state.frameCount = 0;
+        state.lastFpsAt = t;
+      }
+      state.raf = window.requestAnimationFrame(tickFps);
+    };
+
+    const start = ({ intervalMs = 5000, log = true } = {}) => {
+      if (state.running) return;
+      state.running = true;
+      state.startedAt = Date.now();
+      state.longTaskCount = 0;
+      state.longTaskTotalMs = 0;
+      state.cls = 0;
+      state.lcpMs = 0;
+
+      // Long Task（主线程卡顿）
+      observe("longtask", (entries) => {
+        entries.forEach((e) => {
+          state.longTaskCount += 1;
+          state.longTaskTotalMs += Number(e.duration || 0) || 0;
+        });
+      });
+
+      // CLS（布局抖动）
+      observe("layout-shift", (entries) => {
+        entries.forEach((e) => {
+          if (e.hadRecentInput) return;
+          state.cls += Number(e.value || 0) || 0;
+        });
+      });
+
+      // LCP（首屏关键内容渲染）
+      observe("largest-contentful-paint", (entries) => {
+        const last = entries[entries.length - 1];
+        if (!last) return;
+        state.lcpMs = Math.max(state.lcpMs, Number(last.startTime || 0) || 0);
+      });
+
+      // FPS loop
+      state.raf = window.requestAnimationFrame(tickFps);
+
+      const ms = Math.max(1000, Number(intervalMs || 0) || 5000);
+      state.timer = window.setInterval(() => {
+        if (!state.running) return;
+        const mem = getMemory();
+        const sample = {
+          ts: Date.now(),
+          fps: Number(state.fps || 0) || 0,
+          longTaskCount: state.longTaskCount,
+          longTaskTotalMs: state.longTaskTotalMs,
+          cls: state.cls,
+          lcpMs: state.lcpMs,
+          heapUsed: mem?.used || 0,
+        };
+        state.samples.push(sample);
+        if (state.samples.length > 120) state.samples.shift();
+        if (log) snapshot();
+      }, ms);
+
+      if (log) snapshot();
+    };
+
+    const stop = () => {
+      if (!state.running) return;
+      state.running = false;
+
+      if (state.timer) window.clearInterval(state.timer);
+      state.timer = 0;
+
+      if (state.raf) window.cancelAnimationFrame(state.raf);
+      state.raf = 0;
+
+      state.observers.forEach((obs) => {
+        try {
+          obs.disconnect();
+        } catch (_) {}
+      });
+      state.observers = [];
+    };
+
+    return {
+      snapshot,
+      start,
+      stop,
+      getState: () => ({ ...state, observers: state.observers.length }),
+    };
+  };
+
   // 暴露只读句柄：便于调试/扩展，但避免把内部实现散落在全局
   try {
     window.GKB = window.GKB || {};
     window.GKB.runtime = window.GKB.runtime || {};
     window.GKB.runtime.netStore = netStore;
     window.GKB.runtime.net = netClient;
+    window.GKB.runtime.health = createHealthMonitor({ store: netStore });
+    window.GKB.health = () => window.GKB.runtime.health.snapshot();
   } catch (_) {
     // ignore
   }
@@ -738,6 +1023,212 @@
       },
       { passive: true }
     );
+  };
+
+  // -------------------------
+  // Virtual List Engine（0 依赖 / 10w 级数据量可用）
+  // -------------------------
+
+  const runtimeMetrics = {
+    vlistLastUpdateMs: 0,
+    vlistMounted: 0,
+    vlistRange: "",
+  };
+
+  const VLIST = {
+    // 超过此数量时自动启用虚拟列表（避免一次性 innerHTML 生成巨量 DOM）
+    enableThreshold: 2200,
+    overscanRows: 10,
+    guidesRowHeight: 152,
+    topicsRowHeight: 168,
+  };
+
+  const clampInt = (value, min, max) => {
+    const n = Number(value);
+    const i = Number.isFinite(n) ? Math.trunc(n) : 0;
+    return Math.min(max, Math.max(min, i));
+  };
+
+  const createVirtualList = (host, { rowHeight, overscanRows = VLIST.overscanRows } = {}) => {
+    if (!host) return null;
+
+    const originalInline = {
+      position: host.style.position || "",
+      height: host.style.height || "",
+      display: host.style.display || "",
+      overflow: host.style.overflow || "",
+    };
+
+    host.style.position = "relative";
+    host.style.display = "block";
+    host.style.overflow = "visible";
+    host.innerHTML = "";
+
+    /** @type {{ key: string, data: any }[]} */
+    let items = [];
+    let renderRevision = 1;
+
+    const pool = [];
+    const mounted = new Map(); // key -> element
+    let raf = 0;
+    let destroyed = false;
+
+    const getScrollY = () => {
+      try {
+        return window.scrollY || window.pageYOffset || 0;
+      } catch (_) {
+        return 0;
+      }
+    };
+
+    const getViewportHeight = () => {
+      try {
+        return window.innerHeight || document.documentElement.clientHeight || 0;
+      } catch (_) {
+        return 0;
+      }
+    };
+
+    const schedule = () => {
+      if (destroyed) return;
+      if (raf) return;
+      raf = window.requestAnimationFrame(update);
+    };
+
+    const ensureRow = () => {
+      const el = pool.pop() || document.createElement("div");
+      el.className = "vlist-row";
+      el.style.position = "absolute";
+      el.style.left = "0";
+      el.style.right = "0";
+      el.style.height = `${rowHeight}px`;
+      el.style.willChange = "transform";
+      return el;
+    };
+
+    const releaseRow = (el) => {
+      try {
+        el.remove();
+      } catch (_) {}
+      pool.push(el);
+    };
+
+    const update = () => {
+      raf = 0;
+      if (destroyed) return;
+
+      const t0 = (() => {
+        try {
+          return performance.now();
+        } catch (_) {
+          return Date.now();
+        }
+      })();
+
+      const count = items.length;
+      host.style.height = `${count * rowHeight}px`;
+
+      const rect = host.getBoundingClientRect();
+      const hostTop = rect.top + getScrollY();
+      const y = getScrollY() - hostTop;
+      const viewport = getViewportHeight();
+
+      const overscanPx = Math.max(0, overscanRows) * rowHeight;
+      const start = clampInt((y - overscanPx) / rowHeight, 0, Math.max(0, count - 1));
+      const end = clampInt((y + viewport + overscanPx) / rowHeight, 0, Math.max(0, count - 1));
+
+      const desired = new Map(); // key -> index
+      for (let i = start; i <= end; i += 1) {
+        const entry = items[i];
+        if (!entry) continue;
+        desired.set(entry.key, i);
+      }
+
+      // 移除不可见行
+      Array.from(mounted.keys()).forEach((key) => {
+        if (desired.has(key)) return;
+        const el = mounted.get(key);
+        mounted.delete(key);
+        if (el) releaseRow(el);
+      });
+
+      // 渲染/定位可见行（滚动时只做 transform 更新；数据变化时才重绘内容）
+      desired.forEach((idx, key) => {
+        const entry = items[idx];
+        if (!entry) return;
+
+        let el = mounted.get(key);
+        if (!el) {
+          el = ensureRow();
+          el.dataset.vkey = key;
+          mounted.set(key, el);
+          host.appendChild(el);
+        }
+
+        const topPx = idx * rowHeight;
+        el.style.transform = `translate3d(0, ${topPx}px, 0)`;
+
+        const lastRev = Number(el.dataset.vrev || 0) || 0;
+        if (lastRev !== renderRevision) {
+          try {
+            entry.render(el, entry.data);
+            el.dataset.vrev = String(renderRevision);
+          } catch (_) {
+            // ignore
+          }
+        }
+      });
+
+      try {
+        const t1 = (() => {
+          try {
+            return performance.now();
+          } catch (_) {
+            return Date.now();
+          }
+        })();
+        runtimeMetrics.vlistLastUpdateMs = Math.max(0, t1 - t0);
+        runtimeMetrics.vlistMounted = mounted.size;
+        runtimeMetrics.vlistRange = `${start}-${end}/${count}`;
+      } catch (_) {}
+    };
+
+    const onScroll = () => schedule();
+    const onResize = () => schedule();
+
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onResize, { passive: true });
+
+    const setItems = (nextItems) => {
+      items = Array.isArray(nextItems) ? nextItems : [];
+      renderRevision += 1;
+      schedule();
+    };
+
+    const destroy = () => {
+      if (destroyed) return;
+      destroyed = true;
+      if (raf) window.cancelAnimationFrame(raf);
+      raf = 0;
+
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onResize);
+
+      Array.from(mounted.values()).forEach((el) => releaseRow(el));
+      mounted.clear();
+      pool.length = 0;
+
+      host.style.position = originalInline.position;
+      host.style.height = originalInline.height;
+      host.style.display = originalInline.display;
+      host.style.overflow = originalInline.overflow;
+      host.innerHTML = "";
+    };
+
+    // 首次渲染
+    schedule();
+
+    return { setItems, update: schedule, destroy };
   };
 
   // Motion（内建 WAAPI 轻量适配层）
@@ -4406,6 +4897,25 @@
       btn.closest?.(".guide-card")?.classList.toggle("is-saved", !had);
     });
 
+    const urlFlags = (() => {
+      const params = getSearchParams();
+      return {
+        forceVirtual: readSearchBool(params, ["virtual", "vlist"], { truthy: ["1", "true"] }),
+      };
+    })();
+
+    let vlist = null;
+    const ensureVlist = () => {
+      if (vlist) return vlist;
+      vlist = createVirtualList(grid, { rowHeight: VLIST.guidesRowHeight });
+      return vlist;
+    };
+    const teardownVlist = () => {
+      if (!vlist) return;
+      vlist.destroy();
+      vlist = null;
+    };
+
     const apply = () => {
       saved = new Set(readStringList(STORAGE_KEYS.savedGuides));
       const q = (state.query || "").trim().toLowerCase();
@@ -4434,10 +4944,96 @@
         });
       }
 
+      const shouldVirtualize =
+        urlFlags.forceVirtual || (sorted.length >= VLIST.enableThreshold && !prefersReducedMotion());
+
+      if (sorted.length === 0) {
+        teardownVlist();
+        withViewTransition(() => {
+          grid.innerHTML = "";
+          if (countEl) countEl.textContent = "共 0 条攻略";
+          if (empty) empty.hidden = false;
+        });
+        syncUrl();
+        return;
+      }
+
+      if (shouldVirtualize) {
+        const renderer = (el, payload) => {
+          const id = payload.id;
+          const guide = payload.guide || {};
+          const icon = guide.icon || "images/icons/guide-icon.svg";
+          const title = guide.title || id;
+          const summary = guide.summary || "该攻略正在整理中。";
+          const tags = Array.isArray(guide.tags) ? guide.tags : [];
+          const status = getUpdateStatus("guides", id, guide.updated);
+          const updated = guide.updated ? `更新 ${formatDate(guide.updated)}` : "更新待补";
+          const difficulty = guide.difficulty ? `难度 ${guide.difficulty}` : "难度 待补";
+          const readingTime =
+            typeof guide.readingTime === "number" && Number.isFinite(guide.readingTime)
+              ? `${guide.readingTime} 分钟`
+              : `${Math.max(3, Math.round(String(summary).length / 18))} 分钟`;
+          const isSaved = saved.has(id);
+          const saveLabel = isSaved ? "取消收藏" : "收藏";
+          const saveStar = isSaved ? "★" : "☆";
+          const chips =
+            tags.length > 0
+              ? `<div class="vlist-tags">${tags
+                  .slice(0, 3)
+                  .map((t) => `<span class="chip">${escapeHtml(t)}</span>`)
+                  .join("")}</div>`
+              : "";
+
+          el.className = `vlist-row vlist-row-guide${isSaved ? " is-saved" : ""}`;
+          el.innerHTML = `
+            <div class="vlist-row-inner">
+              <div class="vlist-media">
+                <img src="${icon}" alt="${escapeHtml(title)}" loading="lazy" decoding="async">
+              </div>
+              <div class="vlist-main">
+                <div class="vlist-title">
+                  <span class="vlist-title-text">${escapeHtml(title)}</span>
+                  ${renderUpdateBadge(status)}
+                </div>
+                <div class="vlist-desc">${escapeHtml(summary)}</div>
+                ${chips}
+                <div class="vlist-meta">
+                  <span class="meta-pill small">${escapeHtml(updated)}</span>
+                  <span class="meta-pill small">${escapeHtml(difficulty)}</span>
+                  <span class="meta-pill small">阅读 ${escapeHtml(readingTime)}</span>
+                </div>
+              </div>
+              <div class="vlist-actions">
+                <a href="guide-detail.html?id=${encodeURIComponent(id)}" class="btn btn-small">阅读全文</a>
+                <button type="button" class="save-pill ${isSaved ? "active" : ""}" data-guide-id="${escapeHtml(id)}" aria-pressed="${isSaved ? "true" : "false"}" aria-label="${escapeHtml(saveLabel)}">
+                  <span class="save-star" aria-hidden="true">${saveStar}</span>
+                  <span class="save-text">${escapeHtml(saveLabel)}</span>
+                </button>
+              </div>
+            </div>
+          `;
+        };
+
+        const list = ensureVlist();
+        list.setItems(
+          sorted.map(({ id, guide }) => ({
+            key: String(id),
+            data: { id, guide },
+            render: renderer,
+          }))
+        );
+
+        if (countEl) countEl.textContent = `共 ${sorted.length} 条攻略（虚拟列表）`;
+        if (empty) empty.hidden = true;
+        syncUrl();
+        return;
+      }
+
+      teardownVlist();
       withViewTransition(() => {
-        grid.innerHTML = sorted.length > 0 ? sorted.map(({ id, guide }) => renderCard(id, guide)).join("") : "";
+        grid.innerHTML = sorted.map(({ id, guide }) => renderCard(id, guide)).join("");
         if (countEl) countEl.textContent = `共 ${sorted.length} 条攻略`;
-        if (empty) empty.hidden = sorted.length !== 0;
+        if (empty) empty.hidden = true;
       });
       syncUrl();
     };
@@ -6702,6 +7298,25 @@
       btn.closest?.(".topic-card")?.classList.toggle("is-saved", !had);
     });
 
+    const urlFlags = (() => {
+      const params = getSearchParams();
+      return {
+        forceVirtual: readSearchBool(params, ["virtual", "vlist"], { truthy: ["1", "true"] }),
+      };
+    })();
+
+    let vlist = null;
+    const ensureVlist = () => {
+      if (vlist) return vlist;
+      vlist = createVirtualList(grid, { rowHeight: VLIST.topicsRowHeight });
+      return vlist;
+    };
+    const teardownVlist = () => {
+      if (!vlist) return;
+      vlist.destroy();
+      vlist = null;
+    };
+
     const apply = () => {
       const q = (state.query || "").trim().toLowerCase();
       const tagSet = new Set(state.tags);
@@ -6724,10 +7339,92 @@
         return parseDateKey(b.topic?.updated) - parseDateKey(a.topic?.updated);
       });
 
+      const shouldVirtualize =
+        urlFlags.forceVirtual || (sorted.length >= VLIST.enableThreshold && !prefersReducedMotion());
+
+      if (sorted.length === 0) {
+        teardownVlist();
+        withViewTransition(() => {
+          grid.innerHTML = "";
+          if (countEl) countEl.textContent = "共 0 个话题";
+          if (empty) empty.hidden = false;
+        });
+        syncUrl();
+        return;
+      }
+
+      if (shouldVirtualize) {
+        const renderer = (el, payload) => {
+          const id = payload.id;
+          const topic = payload.topic || {};
+
+          const title = topic.title || id;
+          const summary = topic.summary || "该话题正在整理中。";
+          const starter = topic.starter || "社区成员";
+          const replies = Number(topic.replies || 0);
+          const updated = topic.updated ? formatDate(topic.updated) : "—";
+          const status = getUpdateStatus("topics", id, topic.updated);
+          const tags = Array.isArray(topic.tags) ? topic.tags : [];
+          const category = topic.category ? [topic.category] : [];
+          const isSaved = saved.has(id);
+          const saveLabel = isSaved ? "取消收藏" : "收藏";
+          const saveStar = isSaved ? "★" : "☆";
+          const hotBadge = replies >= 150 ? '<span class="badge popular">热门</span>' : "";
+          const categoryBadge = topic.category ? `<span class="badge subtle">${escapeHtml(topic.category)}</span>` : "";
+          const updateBadge = renderUpdateBadge(status);
+          const tagList = [...category, ...tags]
+            .filter(Boolean)
+            .slice(0, 3)
+            .map((t) => `<span class="chip">${escapeHtml(t)}</span>`)
+            .join("");
+
+          el.className = `vlist-row vlist-row-topic${isSaved ? " is-saved" : ""}`;
+          el.innerHTML = `
+            <div class="vlist-row-inner">
+              <div class="vlist-main">
+                <div class="vlist-title">
+                  <span class="vlist-title-text">${escapeHtml(title)}</span>
+                  <span class="vlist-badges">${updateBadge}${hotBadge}${categoryBadge}</span>
+                </div>
+                <div class="vlist-desc">${escapeHtml(summary)}</div>
+                ${tagList ? `<div class="vlist-tags">${tagList}</div>` : ""}
+                <div class="vlist-meta">
+                  <span class="meta-pill small">发起人 ${escapeHtml(starter)}</span>
+                  <span class="meta-pill small">回复 ${Number.isFinite(replies) ? replies : 0}</span>
+                  <span class="meta-pill small">更新 ${escapeHtml(updated)}</span>
+                </div>
+              </div>
+              <div class="vlist-actions">
+                <a class="btn btn-small" href="forum-topic.html?id=${encodeURIComponent(id)}">加入讨论</a>
+                <button type="button" class="save-pill ${isSaved ? "active" : ""}" data-topic-id="${escapeHtml(id)}" aria-pressed="${isSaved ? "true" : "false"}" aria-label="${escapeHtml(saveLabel)}">
+                  <span class="save-star" aria-hidden="true">${saveStar}</span>
+                  <span class="save-text">${escapeHtml(saveLabel)}</span>
+                </button>
+              </div>
+            </div>
+          `;
+        };
+
+        const list = ensureVlist();
+        list.setItems(
+          sorted.map(({ id, topic }) => ({
+            key: String(id),
+            data: { id, topic },
+            render: renderer,
+          }))
+        );
+
+        if (countEl) countEl.textContent = `共 ${sorted.length} 个话题（虚拟列表）`;
+        if (empty) empty.hidden = true;
+        syncUrl();
+        return;
+      }
+
+      teardownVlist();
       withViewTransition(() => {
-        grid.innerHTML = sorted.length > 0 ? sorted.map(({ id, topic }) => renderCard(id, topic)).join("") : "";
+        grid.innerHTML = sorted.map(({ id, topic }) => renderCard(id, topic)).join("");
         if (countEl) countEl.textContent = `共 ${sorted.length} 个话题`;
-        if (empty) empty.hidden = sorted.length !== 0;
+        if (empty) empty.hidden = true;
       });
       syncUrl();
     };
@@ -6998,9 +7695,14 @@
       const raw = String(href || "").trim();
       if (!raw) return null;
       if (raw.startsWith("//")) return null;
-      if (raw.startsWith("javascript:")) return null;
+
+      const lower = raw.toLowerCase();
+      if (lower.startsWith("javascript:")) return null;
+      if (lower.startsWith("data:")) return null;
+      if (lower.startsWith("vbscript:")) return null;
+      if (lower.startsWith("file:")) return null;
       if (raw.startsWith("#")) return raw;
-      if (raw.startsWith("mailto:") || raw.startsWith("tel:")) return raw;
+      if (lower.startsWith("mailto:") || lower.startsWith("tel:")) return raw;
       return raw;
     };
 

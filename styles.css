@@ -7294,3 +7294,140 @@ body[data-guide-line="relaxed"] {
         top: auto;
     }
 }
+
+/* -------------------------
+   Virtual List（10w 级数据量：只渲染可视区）
+   ------------------------- */
+
+.vlist-row {
+    box-sizing: border-box;
+    padding: 8px 0;
+}
+
+.vlist-row-inner {
+    height: 100%;
+    display: flex;
+    gap: 14px;
+    align-items: stretch;
+    padding: 12px 14px;
+    border-radius: var(--border-radius-lg);
+    background: rgba(255, 255, 255, 0.92);
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    box-shadow: var(--box-shadow-sm);
+    backdrop-filter: blur(8px);
+}
+
+[data-theme="dark"] .vlist-row-inner {
+    background: rgba(26, 26, 46, 0.55);
+    border-color: rgba(255, 255, 255, 0.08);
+}
+
+.vlist-media {
+    flex: 0 0 120px;
+    border-radius: 14px;
+    overflow: hidden;
+    background: rgba(0, 0, 0, 0.04);
+    border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+[data-theme="dark"] .vlist-media {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.08);
+}
+
+.vlist-media img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 14px;
+}
+
+.vlist-main {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.vlist-title {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 6px;
+}
+
+.vlist-title-text {
+    font-weight: 800;
+    color: var(--dark-color);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+[data-theme="dark"] .vlist-title-text {
+    color: rgba(255, 255, 255, 0.92);
+}
+
+.vlist-badges {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    flex: 0 0 auto;
+}
+
+.vlist-desc {
+    color: var(--text-light);
+    line-height: 1.55;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+}
+
+[data-theme="dark"] .vlist-desc {
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.vlist-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 8px;
+}
+
+.vlist-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: auto;
+    padding-top: 10px;
+}
+
+.vlist-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    justify-content: center;
+    align-items: flex-end;
+    flex: 0 0 auto;
+}
+
+@media (max-width: 780px) {
+    .vlist-row-inner {
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .vlist-media {
+        width: 100%;
+        height: 120px;
+        flex: 0 0 auto;
+    }
+
+    .vlist-actions {
+        flex-direction: row;
+        justify-content: flex-start;
+        align-items: center;
+    }
+}

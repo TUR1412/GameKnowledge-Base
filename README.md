@@ -228,10 +228,10 @@ npm run build:vite
 本项目对核心资源使用 `?v=` 版本号来避免缓存“幽灵更新”：
 
 ```html
-<link rel="stylesheet" href="styles.css?v=20251224-3">
-<script src="boot.js?v=20251224-3"></script>
-<script src="data.js?v=20251224-3" defer></script>
-<script src="scripts.js?v=20251224-3" defer></script>
+<link rel="stylesheet" href="styles.css?v=20251224-4">
+<script src="boot.js?v=20251224-4"></script>
+<script src="data.js?v=20251224-4" defer></script>
+<script src="scripts.js?v=20251224-4" defer></script>
 ```
 
 当你修改 `styles.css` / `scripts.js` / `data.js` / `sw.js` / `manifest.webmanifest` 时，务必同步 bump 版本号。
@@ -251,7 +251,7 @@ node tools/bump-version.mjs
 核心数据集中在 `data.js`：
 
 ```js
-version: "20251224-3",
+version: "20251224-4",
 
 games: {
   "elden-ring": { title: "艾尔登法环", updated: "2025-10-05", ... }
@@ -302,6 +302,21 @@ npm run build:vite
 - **CSP + 权限策略**：限制资源来源，减少被注入风险
 - **本地数据隔离**：所有状态仅写入浏览器存储，不包含任何密钥
 - **离线增强可降级**：PWA 失败不影响基础浏览
+- **长列表可扩展**：当列表规模变大时启用虚拟列表渲染（只渲染可视区），避免一次性创建海量 DOM
+- **工程自诊断**：提供控制台“系统健康全景图”与实时采样，便于定位卡顿/抖动/内存增长
+
+运行态诊断用法（浏览器控制台）：
+
+```js
+// 输出一次“系统健康全景图”
+GKB.health();
+
+// 开始实时监控（默认每 5 秒输出一次）
+GKB.runtime.health.start({ intervalMs: 5000, log: true });
+
+// 停止监控
+GKB.runtime.health.stop();
+```
 
 ---
 

@@ -6,6 +6,18 @@
 
 ## [Unreleased]
 
+## [20251224-4] - 2025-12-24
+
+### 新增
+- 长列表虚拟化：为攻略库与话题库接入 `createVirtualList`（可扩展到 10w 条数据量，仅渲染可视区）
+- 工程自诊断：新增 `GKB.health()` 与 `GKB.runtime.health`（FPS / LongTask / CLS / LCP / 内存等采样）
+- 视觉组件：新增虚拟列表行样式（`vlist-row*`），为超大列表提供稳定可读布局
+
+### 变更
+- 网络交互收敛：`netClient` 默认只允许同源 URL（降低被滥用为“任意外链请求器”的风险），并偏向使用 `force-cache`
+- 文档渲染更稳健：`docs.html` 的 Markdown link sanitization 进一步收紧（阻止 `data:` / `file:` 等协议）
+- 版本号：bump 至 `20251224-4`（同步更新全站 `?v=` 与 `data.js.version`）
+
 ## [20251224-3] - 2025-12-24
 
 ### 新增

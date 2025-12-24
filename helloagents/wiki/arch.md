@@ -82,6 +82,8 @@ flowchart TB
    - 全局交互（主题/导航/Command Palette/PWA/Toast 等）
    - 网络状态闭环：`netStore` 维护 online/connection/inflight，Toast 等订阅统一状态来源
    - 高延迟优化：内部链接 hover/focus 预取（prefetch），减少跨页等待
+   - 长列表可扩展：攻略库/话题库在超大数据量下自动启用虚拟列表（仅渲染可视区）
+   - 工程自诊断：控制台 `GKB.health()` 输出“系统健康全景图”，可开启实时采样
    - 页面级逻辑（all-games / all-guides / game / guide / updates / planner / discover / community / forum）
    - 文档入口：`docs.html` 同源加载并渲染 `docs/*.md`
 4. `sw.js` 空闲时注册；
@@ -103,3 +105,4 @@ flowchart TB
 |--------|-------|------|--------|------------------|---------|
 | ADR-20251224-01 | 动效层内建：移除额外脚本请求，统一 MotionLite | 2025-12-24 | ✅已采纳 | runtime | `scripts.js` 内建 MotionLite（WAAPI） |
 | ADR-20251224-02 | 高延迟体验闭环：netStore/netClient + SWR 缓存策略 + 文档入口 | 2025-12-24 | ✅已采纳 | runtime | `scripts.js` 增加网络状态闭环与预取；`sw.js` 导航超时回退 + 资源 SWR；新增 `docs.html` |
+| ADR-20251224-03 | 长列表虚拟化与自诊断：Virtual List + Console Health | 2025-12-24 | ✅已采纳 | runtime | `scripts.js` 内建虚拟列表引擎（10w 级可用）与 `GKB.health()` 诊断输出 |
