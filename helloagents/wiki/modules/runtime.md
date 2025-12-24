@@ -18,6 +18,8 @@
 - `styles.css`
   - Aurora/Glass/Bento 视觉系统
   - 对 `prefers-reduced-motion` 提供降级规则
+  - Motion tokens：统一关键交互的时长与 Bezier（按钮/弹窗/滚动 reveal）
+  - 超长文本体验：标题提供截断 + 渐变遮罩（mask 支持时更细腻）
 
 - `data.js`
   - 注入 `window.GKB.data`（站点数据 + version）

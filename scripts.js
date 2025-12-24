@@ -1634,7 +1634,7 @@
           <a class="mini-card" href="${href}">
             <img src="${icon}" alt="${escapeHtml(title)}">
             <div class="mini-card-body">
-              <div class="mini-card-title">${escapeHtml(title)}</div>
+              <div class="mini-card-title" title="${escapeHtml(title)}">${escapeHtml(title)}</div>
               <div class="mini-card-desc">${escapeHtml(desc)}</div>
             </div>
           </a>
@@ -3671,7 +3671,7 @@
             <a class="mini-card" href="${href}">
               <img src="${icon}" alt="${escapeHtml(title)}">
               <div class="mini-card-body">
-                <div class="mini-card-title">${escapeHtml(title)}</div>
+                <div class="mini-card-title" title="${escapeHtml(title)}">${escapeHtml(title)}</div>
                 <div class="mini-card-desc">${escapeHtml(desc || (type === "game" ? "打开游戏详情" : "打开攻略详情"))}</div>
               </div>
             </a>
@@ -3885,7 +3885,7 @@
             <div class="compare-game-head">
               <img class="compare-game-icon" src="${escapeHtml(g.icon)}" alt="${escapeHtml(g.title)}">
               <div class="compare-game-meta">
-                <div class="compare-game-title">${escapeHtml(g.title)}</div>
+                <div class="compare-game-title" title="${escapeHtml(g.title)}">${escapeHtml(g.title)}</div>
                 <div class="compare-game-links">
                   <a class="compare-link" href="${detailHref}">打开详情</a>
                   <span class="dot" aria-hidden="true">·</span>
@@ -4827,7 +4827,10 @@
             <img src="${icon}" alt="${escapeHtml(title)}">
           </div>
           <div class="game-card-content">
-            <h3 class="game-card-title">${escapeHtml(title)} ${renderUpdateBadge(status)}</h3>
+            <h3 class="game-card-title">
+              <span class="game-card-title-text" title="${escapeHtml(title)}">${escapeHtml(title)}</span>
+              ${renderUpdateBadge(status)}
+            </h3>
             <p class="game-card-description">${escapeHtml(summary)}</p>
             ${chips}
             ${meta}
@@ -5581,7 +5584,7 @@
             <a class="mini-card" href="guide-detail.html?id=${encodeURIComponent(gid)}">
               <img src="${icon2}" alt="${escapeHtml(t)}">
               <div class="mini-card-body">
-                <div class="mini-card-title">${escapeHtml(t)}</div>
+                <div class="mini-card-title" title="${escapeHtml(t)}">${escapeHtml(t)}</div>
                 <div class="mini-card-desc">${escapeHtml(s)}</div>
               </div>
             </a>
@@ -6054,7 +6057,7 @@
           <a class="update-card-main" href="${href}">
             <img class="update-card-icon" src="${icon}" alt="${escapeHtml(x.title)}">
             <div class="update-card-body">
-              <div class="update-card-title">${escapeHtml(x.title)}</div>
+              <div class="update-card-title" title="${escapeHtml(x.title)}">${escapeHtml(x.title)}</div>
               <div class="update-card-sub">${escapeHtml(x.item?.summary || x.item?.genre || x.item?.category || "打开查看详情")}</div>
               <div class="chips update-card-tags">${tags}</div>
             </div>
@@ -6939,7 +6942,7 @@
                 <a class="mini-card-main" href="${href}">
                   <img src="${icon}" alt="${escapeHtml(title)}">
                   <div class="mini-card-body">
-                    <div class="mini-card-title">${escapeHtml(title)}</div>
+                    <div class="mini-card-title" title="${escapeHtml(title)}">${escapeHtml(title)}</div>
                     <div class="mini-card-desc">${escapeHtml(`${updated} · ${guide?.difficulty || "通用"}${rt ? ` · ${rt} 分钟` : ""}`)}</div>
                   </div>
                 </a>
@@ -6967,7 +6970,7 @@
                 <a class="mini-card-main" href="${href}">
                   <img src="${icon}" alt="${escapeHtml(title)}">
                   <div class="mini-card-body">
-                    <div class="mini-card-title">${escapeHtml(title)}</div>
+                    <div class="mini-card-title" title="${escapeHtml(title)}">${escapeHtml(title)}</div>
                     <div class="mini-card-desc">${escapeHtml(`${updated} · ${game?.genre || "类型待补"} · 评分 ${rating || "—"}`)}</div>
                   </div>
                 </a>
@@ -7235,7 +7238,7 @@
           <div class="topic-header">
             <div class="topic-badges">${updateBadge}${hotBadge}${categoryBadge}</div>
           </div>
-          <h3 class="topic-title">${escapeHtml(title)}</h3>
+          <h3 class="topic-title" title="${escapeHtml(title)}">${escapeHtml(title)}</h3>
           <p class="topic-summary">${escapeHtml(summary)}</p>
           ${tagList ? `<div class="topic-tags">${tagList}</div>` : ""}
           <div class="topic-stats">

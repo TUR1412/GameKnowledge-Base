@@ -39,6 +39,9 @@
 - Service Worker：导航请求短窗口等待网络，超时回退缓存并后台刷新；资源请求改为 SWR（缓存优先 + 后台更新）
 - 工具脚本去重：站点相关工具复用 `tools/lib/site.mjs`，降低重复实现与维护成本
 - URL 参数解析去重：抽象 `readSearch*` helper，多个页面共享同一套解析逻辑
+- UI 细节：修复 Header 水平对齐（移除重复 padding），横幅纹理层改为零资源 CSS pattern（消除构建 unresolved）
+- 动效手感：补齐 Motion tokens（时长 + Bezier）并收敛关键组件 transition（按钮/弹窗/卡片）
+- 文本与图标：标题支持截断 + 渐变遮罩（mask 支持时），SVG 在 flex 布局下对齐更稳定
 
 ### Removed
 - `vendor/motion.js` 及其在 HTML / SW / 工具链 / 单测中的引用

@@ -98,10 +98,21 @@ flowchart TB
     Data[data.js（唯一数据源：games/guides/topics + version）]
 
     subgraph Runtime[scripts.js（运行时：状态闭环 + 交互）]
-      UI[页面控制器（按 data-page 调度）]
-      Store[netStore（online/connection/inflight/error）]
-      Net[netClient（requestText/prefetch + timeout/retry + memory cache）]
-      Storage[(localStorage)]
+      subgraph Core[UI Core（页面与本地状态）]
+        UI[页面控制器（按 data-page 调度）]
+        Prefs[Prefs/State（收藏/筛选/进度/阅读设置）]
+        Storage[(localStorage)]
+      end
+
+      subgraph NetLayer[Networking（高延迟体验闭环）]
+        Store[netStore（online/connection/inflight/error）]
+        Net[netClient（requestText/prefetch + timeout/retry + memory cache）]
+      end
+
+      subgraph Perf[Perf/UX（性能与可观测性）]
+        VList[VirtualList（createVirtualList：长列表虚拟化）]
+        Health[Health（GKB.health / runtime.health）]
+      end
     end
   end
 
@@ -125,9 +136,12 @@ flowchart TB
   Shell --> Runtime
 
   Runtime --> UI
-  Runtime --> Store
-  Runtime --> Net
-  Runtime <--> Storage
+  UI --> Prefs
+  Prefs <--> Storage
+  UI --> VList
+  UI --> Health
+  UI --> Store
+  UI --> Net
 
   Net <--> SW
   SW --> Precache
