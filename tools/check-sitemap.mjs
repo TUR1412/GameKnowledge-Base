@@ -1,38 +1,16 @@
 import fs from "node:fs";
 import path from "node:path";
-import vm from "node:vm";
+
+import {
+  baseFromSitemapUrl,
+  buildUrl,
+  listRootHtml,
+  loadDataFromDataJs,
+  parseSitemapUrlFromRobots,
+  readText,
+} from "./lib/site.mjs";
 
 const WORKSPACE_ROOT = process.cwd();
-
-const readText = (filePath) => fs.readFileSync(filePath, "utf8");
-
-const normalizeBase = (base) => {
-  const raw = String(base || "").trim();
-  if (!raw) return "";
-  return raw.endsWith("/") ? raw : `${raw}/`;
-};
-
-const buildUrl = (base, pathAndQuery) => {
-  const b = normalizeBase(base);
-  const url = `${b}${String(pathAndQuery || "").replace(/^\//, "")}`;
-  return url;
-};
-
-const parseSitemapUrlFromRobots = (robots) => {
-  const m = String(robots || "").match(/^Sitemap:\s*(\S+)\s*$/im);
-  return m ? m[1] : "";
-};
-
-const baseFromSitemapUrl = (sitemapUrl) => {
-  try {
-    const u = new URL(String(sitemapUrl || ""));
-    if (!u.pathname.endsWith("sitemap.xml")) return "";
-    const basePath = u.pathname.replace(/sitemap\.xml$/i, "");
-    return normalizeBase(`${u.origin}${basePath}`);
-  } catch (_) {
-    return "";
-  }
-};
 
 const parseSitemapLocs = (xml) => {
   const locs = [];
@@ -59,24 +37,6 @@ const isValidIsoDate = (s) => {
   const d = new Date(`${s}T00:00:00Z`);
   if (Number.isNaN(d.getTime())) return false;
   return d.toISOString().slice(0, 10) === s;
-};
-
-const listRootHtml = () =>
-  fs
-    .readdirSync(WORKSPACE_ROOT, { withFileTypes: true })
-    .filter((d) => d.isFile() && d.name.toLowerCase().endsWith(".html"))
-    .map((d) => d.name)
-    .sort();
-
-const loadDataFromDataJs = () => {
-  const dataPath = path.join(WORKSPACE_ROOT, "data.js");
-  if (!fs.existsSync(dataPath)) return null;
-
-  const code = readText(dataPath);
-  const context = { window: { GKB: {} } };
-  vm.createContext(context);
-  vm.runInContext(code, context, { filename: "data.js" });
-  return context.window?.GKB?.data || null;
 };
 
 const errors = [];
@@ -146,11 +106,13 @@ const main = () => {
     }
   }
 
-  const data = loadDataFromDataJs();
+  const data = loadDataFromDataJs({ workspaceRoot: WORKSPACE_ROOT });
   if (!data) errors.push("[SITEMAP] 无法从 data.js 读取站点数据");
 
   if (data && base) {
-    const staticHtml = listRootHtml().filter((f) => f !== "404.html").filter((f) => f !== "offline.html");
+    const staticHtml = listRootHtml({ workspaceRoot: WORKSPACE_ROOT })
+      .filter((f) => f !== "404.html")
+      .filter((f) => f !== "offline.html");
 
     const games = Object.keys(data.games || {});
     const guides = Object.keys(data.guides || {});
@@ -193,4 +155,3 @@ const main = () => {
 };
 
 main();
-

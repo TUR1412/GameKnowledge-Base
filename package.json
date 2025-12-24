@@ -5,7 +5,14 @@
   "scripts": {
     "generate:feed": "node tools/generate-feed.mjs",
     "check:feed": "node tools/generate-feed.mjs --check",
+    "dev:vite": "vite",
+    "build:vite": "vite build",
+    "preview:vite": "vite preview",
     "test": "node --test",
     "test:coverage": "node --test --experimental-test-coverage --test-coverage-lines=95 --test-coverage-functions=95 --test-coverage-branches=90"
+  },
+  "devDependencies": {
+    "terser": "^5.44.1",
+    "vite": "^7.3.0"
   }
 }

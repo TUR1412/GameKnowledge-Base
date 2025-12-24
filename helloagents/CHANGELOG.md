@@ -6,6 +6,16 @@
 
 ## [Unreleased]
 
+## [20251224-2] - 2025-12-24
+
+### 新增
+- 极限压缩构建：新增 `vite.config.mjs` + `src/bundle.mjs`，并补齐 `npm run build:vite` 与 CI 构建步骤
+- 工具链共享库：新增 `tools/lib/site.mjs`，统一复用 base/url/xml/data 加载逻辑
+
+### 变更
+- 工具脚本去重：`tools/generate-sitemap.mjs` / `tools/check-sitemap.mjs` / `tools/generate-feed.mjs` 复用共享库
+- URL 参数解析去重：`scripts.js` 抽象 `readSearch*` helper，多个页面共享同一套解析逻辑
+
 ## [20251224-1] - 2025-12-24
 
 ### 新增

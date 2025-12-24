@@ -26,11 +26,15 @@
 - Atom 更新订阅：新增 `feed.xml`（Atom），并在更新中心提供订阅入口
 - OpenSearch：新增 `opensearch.xml`，支持浏览器地址栏直搜并跳转到游戏库结果页
 - CI 加固：新增 Feed 一致性校验（`node tools/generate-feed.mjs --check`）
+- 可选构建：新增 Vite 极限压缩配置（`vite.config.mjs`）与构建入口（`src/bundle.mjs`）
+- 工具链共享：新增 `tools/lib/site.mjs` 统一复用站点 base/url/xml/data 逻辑
 
 ### Changed
 - 动效层内建：将 WAAPI 动效轻量层内联到 `scripts.js`，减少额外请求与维护点
 - 启动调度：按 `data-page` 精确执行页面 init，减少无效调用
 - Service Worker：预缓存补齐 `feed.xml` / `opensearch.xml`
+- 工具脚本去重：站点相关工具复用 `tools/lib/site.mjs`，降低重复实现与维护成本
+- URL 参数解析去重：抽象 `readSearch*` helper，多个页面共享同一套解析逻辑
 
 ### Removed
 - `vendor/motion.js` 及其在 HTML / SW / 工具链 / 单测中的引用

@@ -1,41 +1,18 @@
 import fs from "node:fs";
 import path from "node:path";
-import vm from "node:vm";
+
+import {
+  baseFromSitemapUrl,
+  buildUrl,
+  escapeXml,
+  loadDataFromDataJs,
+  normalizeBase,
+  parseSitemapUrlFromRobots,
+  readText,
+  writeText,
+} from "./lib/site.mjs";
 
 const WORKSPACE_ROOT = process.cwd();
-
-const readText = (filePath) => fs.readFileSync(filePath, "utf8");
-const writeText = (filePath, content) => fs.writeFileSync(filePath, content, "utf8");
-
-const normalizeBase = (base) => {
-  const raw = String(base || "").trim();
-  if (!raw) return "";
-  return raw.endsWith("/") ? raw : `${raw}/`;
-};
-
-const escapeXml = (s) =>
-  String(s ?? "")
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&apos;");
-
-const parseSitemapUrlFromRobots = (robots) => {
-  const m = String(robots || "").match(/^Sitemap:\s*(\S+)\s*$/im);
-  return m ? m[1] : "";
-};
-
-const baseFromSitemapUrl = (sitemapUrl) => {
-  try {
-    const u = new URL(String(sitemapUrl || ""));
-    if (!u.pathname.endsWith("sitemap.xml")) return "";
-    const basePath = u.pathname.replace(/sitemap\.xml$/i, "");
-    return normalizeBase(`${u.origin}${basePath}`);
-  } catch (_) {
-    return "";
-  }
-};
 
 const inferBase = () => {
   const robotsPath = path.join(WORKSPACE_ROOT, "robots.txt");
@@ -43,17 +20,6 @@ const inferBase = () => {
   const robots = readText(robotsPath);
   const sitemapUrl = parseSitemapUrlFromRobots(robots);
   return baseFromSitemapUrl(sitemapUrl);
-};
-
-const loadDataFromDataJs = () => {
-  const dataPath = path.join(WORKSPACE_ROOT, "data.js");
-  if (!fs.existsSync(dataPath)) return null;
-
-  const code = readText(dataPath);
-  const context = { window: { GKB: {} } };
-  vm.createContext(context);
-  vm.runInContext(code, context, { filename: "data.js" });
-  return context.window?.GKB?.data || null;
 };
 
 const parseArgs = () => {
@@ -95,8 +61,6 @@ const dateKey = (value) => {
   if (digits.length >= 8) return Number(digits.slice(0, 8)) || 0;
   return 0;
 };
-
-const buildUrl = (base, pathAndQuery) => `${normalizeBase(base)}${String(pathAndQuery || "").replace(/^\//, "")}`;
 
 const versionDateIso = (dataVersion) => {
   const raw = String(dataVersion || "").trim();
@@ -184,7 +148,7 @@ const main = () => {
     process.exit(1);
   }
 
-  const data = loadDataFromDataJs();
+  const data = loadDataFromDataJs({ workspaceRoot: WORKSPACE_ROOT });
   if (!data) {
     console.error("❌ 无法从 data.js 读取站点数据");
     process.exit(1);

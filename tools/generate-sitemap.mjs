@@ -1,22 +1,13 @@
-import fs from "node:fs";
 import path from "node:path";
-import vm from "node:vm";
+
+import { buildUrl, escapeXml, listRootHtml, loadDataFromDataJs, normalizeBase, writeText } from "./lib/site.mjs";
 
 const WORKSPACE_ROOT = process.cwd();
-
-const readText = (filePath) => fs.readFileSync(filePath, "utf8");
-const writeText = (filePath, content) => fs.writeFileSync(filePath, content, "utf8");
 
 const pad2 = (n) => String(n).padStart(2, "0");
 const todayIso = () => {
   const d = new Date();
   return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
-};
-
-const normalizeBase = (base) => {
-  const raw = String(base || "").trim();
-  if (!raw) return "";
-  return raw.endsWith("/") ? raw : `${raw}/`;
 };
 
 const parseArgs = () => {
@@ -32,40 +23,6 @@ const parseArgs = () => {
   return out;
 };
 
-const loadDataFromDataJs = () => {
-  const dataPath = path.join(WORKSPACE_ROOT, "data.js");
-  if (!fs.existsSync(dataPath)) return null;
-
-  const code = readText(dataPath);
-  const context = {
-    window: { GKB: {} },
-  };
-  vm.createContext(context);
-  vm.runInContext(code, context, { filename: "data.js" });
-  return context.window?.GKB?.data || null;
-};
-
-const listRootHtml = () =>
-  fs
-    .readdirSync(WORKSPACE_ROOT, { withFileTypes: true })
-    .filter((d) => d.isFile() && d.name.toLowerCase().endsWith(".html"))
-    .map((d) => d.name)
-    .sort();
-
-const escapeXml = (s) =>
-  String(s || "")
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&apos;");
-
-const buildUrl = (base, pathAndQuery) => {
-  const b = normalizeBase(base);
-  const url = `${b}${String(pathAndQuery || "").replace(/^\//, "")}`;
-  return url;
-};
-
 const main = () => {
   const { base, dryRun } = parseArgs();
   const inferredBase = "https://tur1412.github.io/GameKnowledge-Base/";
@@ -76,13 +33,13 @@ const main = () => {
     process.exit(1);
   }
 
-  const data = loadDataFromDataJs();
+  const data = loadDataFromDataJs({ workspaceRoot: WORKSPACE_ROOT });
   if (!data) {
     console.error("❌ 无法从 data.js 读取站点数据");
     process.exit(1);
   }
 
-  const html = listRootHtml()
+  const html = listRootHtml({ workspaceRoot: WORKSPACE_ROOT })
     .filter((f) => f !== "404.html")
     .filter((f) => f !== "offline.html");
 
@@ -152,4 +109,3 @@ const main = () => {
 };
 
 main();
-

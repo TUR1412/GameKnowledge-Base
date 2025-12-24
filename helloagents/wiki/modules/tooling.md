@@ -35,6 +35,22 @@
   - 基于 `data.js` 生成 Atom 订阅 `feed.xml`
   - 支持 `--check`：CI 校验 `feed.xml` 是否最新
 
+- `tools/lib/site.mjs`
+  - 工具链共享库：`normalizeBase/buildUrl/escapeXml/loadDataFromDataJs/listRootHtml` 等
+  - 目标：减少重复实现，降低“修一处漏一处”的风险
+
+---
+
+## 1.1 可选构建（Vite）
+
+- `vite.config.mjs`
+  - 极限压缩构建配置（terser + treeshake），用于生成可选的压缩产物
+- `src/bundle.mjs`
+  - Vite 入口：打包并压缩 `styles.css` 与 `scripts.js`
+- 命令：
+  - `npm ci`
+  - `npm run build:vite`（输出 `dist/gkb.min.js` + `dist/gkb.min.css`）
+
 ---
 
 ## 2) 测试（tests/*.test.mjs）

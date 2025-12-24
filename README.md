@@ -157,6 +157,22 @@ flowchart TB
 
 你可以使用任意静态服务器（例如 VSCode Live Server、Python `http.server`、Node 任何静态服务等）。
 
+### 6.3 可选：极限压缩构建（Vite）
+
+如果你希望把最终交付体积进一步压榨（**更小的 JS/CSS**、更激进的压缩），可以使用本项目提供的可选 Vite 构建：
+
+```bash
+npm ci
+npm run build:vite
+```
+
+产物输出到：`dist/`
+
+- `dist/gkb.min.js`
+- `dist/gkb.min.css`
+
+说明：该构建不会改变默认的“无构建直接部署”路径；你可以按需选择将 `dist/` 作为部署目录。
+
 ---
 
 ## 7) 部署到 GitHub Pages（推荐）
@@ -175,10 +191,10 @@ flowchart TB
 本项目对核心资源使用 `?v=` 版本号来避免缓存“幽灵更新”：
 
 ```html
-<link rel="stylesheet" href="styles.css?v=20251224-1">
-<script src="boot.js?v=20251224-1"></script>
-<script src="data.js?v=20251224-1" defer></script>
-<script src="scripts.js?v=20251224-1" defer></script>
+<link rel="stylesheet" href="styles.css?v=20251224-2">
+<script src="boot.js?v=20251224-2"></script>
+<script src="data.js?v=20251224-2" defer></script>
+<script src="scripts.js?v=20251224-2" defer></script>
 ```
 
 当你修改 `styles.css` / `scripts.js` / `data.js` / `sw.js` / `manifest.webmanifest` 时，务必同步 bump 版本号。
@@ -198,7 +214,7 @@ node tools/bump-version.mjs
 核心数据集中在 `data.js`：
 
 ```js
-version: "20251224-1",
+version: "20251224-2",
 
 games: {
   "elden-ring": { title: "艾尔登法环", updated: "2025-10-05", ... }
@@ -236,6 +252,9 @@ node tools/check-sw.mjs
 # Atom Feed 生成 / 校验（CI 会跑 --check）
 node tools/generate-feed.mjs
 node tools/generate-feed.mjs --check
+
+# 可选：极限压缩构建（Vite）
+npm run build:vite
 ```
 
 ---
@@ -252,3 +271,27 @@ node tools/generate-feed.mjs --check
 ## 12) 变更记录
 
 详见：`CHANGELOG.md`
+
+---
+
+## 13) 未来进化蓝图（未来 3 个版本）
+
+> 目标：保持“纯静态 / 无后端 / 本地优先 / 稳定交付”不变，在不引入高风险复杂度的前提下持续进化。
+
+### v202601xx-1：内容生产力与一致性
+
+- **内容编辑体验**：新增 `tools/` 级“数据编辑器”或导入导出助手（JSON/CSV/Markdown → `data.js`），减少人工维护成本
+- **数据约束升级**：为 `data.js` 引入更严格的 schema（字段约束、枚举、互斥规则），并在 CI 输出可读错误定位
+- **自动生成体系**：自动生成 `sitemap.xml` / `feed.xml` / tag 索引页（避免内容增长后手工维护失控）
+
+### v202602xx-1：离线与搜索的“产品化”
+
+- **离线索引**：将搜索索引分层（基础索引预缓存 + 深度索引按需缓存），弱网/离线也能“秒搜”
+- **Web Worker 搜索**：将搜索/排序/过滤搬到 Worker（避免主线程卡顿，尤其是数据规模扩大时）
+- **更强的可访问性**：键盘流全覆盖、ARIA 语义校验加入 CI（把无障碍作为“可测试指标”）
+
+### v202603xx-1：可扩展架构（但不走向臃肿）
+
+- **插件化特性开关**：把高阶能力（路线规划/对比/订阅等）做成可配置模块（按站点需求启用），保持核心轻量
+- **主题与品牌系统**：抽象设计 Token（颜色/圆角/阴影/动效时长），支持“一套数据，多套皮肤”
+- **发布自动化**：引入“发布清单”模式：一键 bump 版本 → 生成 sitemap/feed → 运行校验 → 产出 release notes

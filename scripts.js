@@ -318,6 +318,41 @@
     }
   };
 
+  const getSearchParams = () => {
+    try {
+      return new URLSearchParams(window.location.search);
+    } catch (_) {
+      return null;
+    }
+  };
+
+  const readSearchString = (params, keys) => {
+    if (!params) return "";
+    const keyList = Array.isArray(keys) ? keys : [keys];
+    for (const k of keyList) {
+      const v = params.get(k);
+      const s = String(v ?? "").trim();
+      if (s) return s;
+    }
+    return "";
+  };
+
+  const readSearchList = (params, keys) => {
+    if (!params) return [];
+    const keyList = Array.isArray(keys) ? keys : [keys];
+    const raw = keyList
+      .flatMap((k) => params.getAll(k))
+      .flatMap((v) => String(v || "").split(","))
+      .map((v) => v.trim())
+      .filter(Boolean);
+    return Array.from(new Set(raw));
+  };
+
+  const readSearchBool = (params, keys, { truthy = ["1", "true"] } = {}) => {
+    const v = readSearchString(params, keys).trim().toLowerCase();
+    return truthy.includes(v);
+  };
+
   const prefersReducedMotion = () => {
     try {
       return (
@@ -3643,31 +3678,33 @@
 
     const readUrlParams = () => {
       try {
-        const params = new URLSearchParams(window.location.search);
+        const params = getSearchParams();
+        if (!params) {
+          return {
+            reset: false,
+            query: "",
+            genres: [],
+            platforms: [],
+            years: [],
+            ratings: [],
+            savedOnly: false,
+            sort: "",
+            view: "",
+          };
+        }
 
-        const readList = (key) => {
-          const raw = params
-            .getAll(key)
-            .flatMap((v) => String(v || "").split(","))
-            .map((v) => v.trim())
-            .filter(Boolean);
-          return Array.from(new Set(raw));
-        };
-
-        const q = String(params.get("q") || params.get("query") || "").trim();
-        const reset = params.get("reset") === "1";
-        const sortKey = String(params.get("sort") || "").trim();
-        const savedOnly = params.get("saved") === "1";
-        const view = String(params.get("view") || "").trim();
+        const reset = readSearchBool(params, "reset", { truthy: ["1"] });
+        const sortKey = readSearchString(params, "sort");
+        const view = readSearchString(params, "view");
 
         return {
           reset,
-          query: q,
-          genres: readList("genre"),
-          platforms: readList("platform"),
-          years: readList("year"),
-          ratings: readList("rating"),
-          savedOnly,
+          query: readSearchString(params, ["q", "query"]),
+          genres: readSearchList(params, "genre"),
+          platforms: readSearchList(params, "platform"),
+          years: readSearchList(params, "year"),
+          ratings: readSearchList(params, "rating"),
+          savedOnly: readSearchBool(params, "saved", { truthy: ["1"] }),
           sort: sortKey,
           view,
         };
@@ -3823,25 +3860,16 @@
     // 初始化状态：URL > localStorage > default（便于分享“筛选后的链接”）
     const readUrlParams = () => {
       try {
-        const params = new URLSearchParams(window.location.search);
+        const params = getSearchParams();
+        if (!params) return { reset: false, query: "", tags: [], savedOnly: false, sort: "" };
 
-        const readList = (key) => {
-          const raw = params
-            .getAll(key)
-            .flatMap((v) => String(v || "").split(","))
-            .map((v) => v.trim())
-            .filter(Boolean);
-          return Array.from(new Set(raw));
-        };
+        const reset = readSearchBool(params, "reset", { truthy: ["1"] });
+        const query = readSearchString(params, ["q", "query"]);
+        const tags = readSearchList(params, ["tag", "tags"]);
+        const savedOnly = readSearchBool(params, ["saved", "savedOnly"], { truthy: ["1", "true"] });
+        const sort = readSearchString(params, "sort");
 
-        const q = String(params.get("q") || params.get("query") || "").trim();
-        const tags = [...readList("tag"), ...readList("tags")];
-        const reset = params.get("reset") === "1";
-        const savedOnlyRaw = String(params.get("saved") || params.get("savedOnly") || "").trim().toLowerCase();
-        const savedOnly = savedOnlyRaw === "1" || savedOnlyRaw === "true";
-        const sort = String(params.get("sort") || "").trim();
-
-        return { reset, query: q, tags, savedOnly, sort };
+        return { reset, query, tags, savedOnly, sort };
       } catch (_) {
         return { reset: false, query: "", tags: [], savedOnly: false, sort: "" };
       }
@@ -6144,22 +6172,15 @@
 
     const readUrlParams = () => {
       try {
-        const params = new URLSearchParams(window.location.search);
-        const readList = (key) => {
-          const raw = params
-            .getAll(key)
-            .flatMap((v) => String(v || "").split(","))
-            .map((v) => v.trim())
-            .filter(Boolean);
-          return Array.from(new Set(raw));
-        };
-        const q = String(params.get("q") || params.get("query") || "").trim();
-        const tags = [...readList("tag"), ...readList("tags")];
-        const reset = params.get("reset") === "1";
-        const savedOnlyRaw = String(params.get("saved") || params.get("savedOnly") || "").trim().toLowerCase();
-        const savedOnly = savedOnlyRaw === "1" || savedOnlyRaw === "true";
-        const sort = String(params.get("sort") || "").trim();
-        return { reset, query: q, tags, savedOnly, sort };
+        const params = getSearchParams();
+        if (!params) return { reset: false, query: "", tags: [], savedOnly: false, sort: "" };
+
+        const reset = readSearchBool(params, "reset", { truthy: ["1"] });
+        const query = readSearchString(params, ["q", "query"]);
+        const tags = readSearchList(params, ["tag", "tags"]);
+        const savedOnly = readSearchBool(params, ["saved", "savedOnly"], { truthy: ["1", "true"] });
+        const sort = readSearchString(params, "sort");
+        return { reset, query, tags, savedOnly, sort };
       } catch (_) {
         return { reset: false, query: "", tags: [], savedOnly: false, sort: "" };
       }

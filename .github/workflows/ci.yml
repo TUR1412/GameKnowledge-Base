@@ -16,6 +16,9 @@ jobs:
         with:
           node-version: "lts/*"
 
+      - name: Install Dependencies
+        run: npm ci
+
       - name: JS Syntax Check
         run: |
           node --check boot.js
@@ -29,11 +32,15 @@ jobs:
           node --check tools/bump-version.mjs
           node --check tools/generate-feed.mjs
           node --check tools/generate-sitemap.mjs
+          node --check tools/lib/site.mjs
           node --check tools/validate-data.mjs
 
       - name: Unit Tests (Node Test Runner + Coverage)
         run: |
           node --test --experimental-test-coverage --test-coverage-lines=95 --test-coverage-functions=95 --test-coverage-branches=90
+
+      - name: Vite Ultimate Build
+        run: npm run build:vite
 
       - name: Link / Asset / Cache Busting Check
         run: node tools/check-links.mjs
