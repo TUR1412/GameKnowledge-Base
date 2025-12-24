@@ -363,6 +363,383 @@
     }
   };
 
+  // -------------------------
+  // Runtime Store + Network Client（请求拦截 & 状态闭环）
+  // -------------------------
+
+  /**
+   * @typedef {Object} NetConnectionInfo
+   * @property {string} effectiveType
+   * @property {number} rtt
+   * @property {number} downlink
+   * @property {boolean} saveData
+   */
+
+  /**
+   * @typedef {Object} NetRuntimeState
+   * @property {boolean} online
+   * @property {string} effectiveType
+   * @property {number} rtt
+   * @property {number} downlink
+   * @property {boolean} saveData
+   * @property {number} requestsInFlight
+   * @property {number} lastErrorAt
+   */
+
+  const NET_CONSTANTS = {
+    requestTimeoutMs: 6500,
+    retryMax: 1,
+    retryBaseDelayMs: 240,
+    retryMaxDelayMs: 1200,
+    memoryCacheTtlMs: 90 * 1000,
+    prefetchHoverDelayMs: 80,
+    prefetchMax: 24,
+  };
+
+  /**
+   * @template T
+   * @param {T} initialState
+   */
+  const createStore = (initialState) => {
+    let state = initialState;
+    const listeners = new Set();
+
+    const getState = () => state;
+
+    const setState = (updater, meta = {}) => {
+      const next =
+        typeof updater === "function"
+          ? updater(state)
+          : { ...(state && typeof state === "object" ? state : {}), ...(updater || {}) };
+      if (next === state) return state;
+      state = next;
+      listeners.forEach((fn) => {
+        try {
+          fn(state, meta);
+        } catch (_) {}
+      });
+      return state;
+    };
+
+    const subscribe = (fn) => {
+      if (typeof fn !== "function") return () => {};
+      listeners.add(fn);
+      return () => listeners.delete(fn);
+    };
+
+    return { getState, setState, subscribe };
+  };
+
+  const readConnectionInfo = () => {
+    const empty = { effectiveType: "", rtt: 0, downlink: 0, saveData: false };
+    try {
+      const c = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+      if (!c) return empty;
+      return {
+        effectiveType: String(c.effectiveType || ""),
+        rtt: Number(c.rtt || 0) || 0,
+        downlink: Number(c.downlink || 0) || 0,
+        saveData: Boolean(c.saveData),
+      };
+    } catch (_) {
+      return empty;
+    }
+  };
+
+  const netStore = createStore({
+    online: true,
+    ...readConnectionInfo(),
+    requestsInFlight: 0,
+    lastErrorAt: 0,
+  });
+
+  const withTimeout = async (promiseFactory, timeoutMs) => {
+    const ms = Math.max(0, Number(timeoutMs || 0) || 0);
+    if (!ms) return promiseFactory({ signal: null });
+
+    let controller = null;
+    try {
+      controller = typeof AbortController === "function" ? new AbortController() : null;
+    } catch (_) {
+      controller = null;
+    }
+
+    const signal = controller?.signal || null;
+    let id = 0;
+    const timeout = new Promise((_, reject) => {
+      id = window.setTimeout(() => {
+        try {
+          controller?.abort?.();
+        } catch (_) {}
+        reject(new Error("timeout"));
+      }, ms);
+    });
+
+    try {
+      return await Promise.race([promiseFactory({ signal }), timeout]);
+    } finally {
+      if (id) window.clearTimeout(id);
+    }
+  };
+
+  const sleep = (ms) =>
+    new Promise((resolve) => window.setTimeout(resolve, Math.max(0, Number(ms || 0) || 0)));
+
+  const jitter = (baseMs, maxMs) => {
+    const base = Math.max(0, Number(baseMs || 0) || 0);
+    const max = Math.max(base, Number(maxMs || 0) || base);
+    const span = Math.max(0, max - base);
+    return base + Math.round(Math.random() * span);
+  };
+
+  const createMemoryCache = () => {
+    const map = new Map();
+    const get = (key) => {
+      const k = String(key || "");
+      if (!k) return null;
+      const hit = map.get(k);
+      if (!hit) return null;
+      if (Date.now() > hit.expiresAt) {
+        map.delete(k);
+        return null;
+      }
+      return hit.value;
+    };
+    const set = (key, value, ttlMs) => {
+      const k = String(key || "");
+      if (!k) return false;
+      const ttl = Math.max(0, Number(ttlMs || 0) || 0);
+      map.set(k, { value, expiresAt: Date.now() + ttl });
+      return true;
+    };
+    return { get, set };
+  };
+
+  /**
+   * @param {{ store?: { getState: () => NetRuntimeState, setState: (updater: any) => any } }} [options]
+   */
+  const createRequestClient = ({ store } = {}) => {
+    const inflight = new Map();
+    const cache = createMemoryCache();
+
+    const bumpInflight = (delta) => {
+      if (!store) return;
+      store.setState((s) => ({
+        ...s,
+        requestsInFlight: Math.max(0, Number(s.requestsInFlight || 0) + Number(delta || 0)),
+      }));
+    };
+
+    const onError = () => {
+      if (!store) return;
+      store.setState((s) => ({ ...s, lastErrorAt: Date.now() }));
+    };
+
+    const fetchTextOnce = async (href, { timeoutMs } = {}) =>
+      withTimeout(
+        async ({ signal }) => {
+          const res = await fetch(href, { method: "GET", credentials: "same-origin", signal });
+          if (!res || !res.ok) throw new Error(`http ${res?.status || 0}`);
+          return await res.text();
+        },
+        timeoutMs
+      );
+
+    const requestText = async (url, { timeoutMs = NET_CONSTANTS.requestTimeoutMs, retry = true } = {}) => {
+      const href = String(url || "").trim();
+      if (!href) throw new Error("empty url");
+
+      const key = `text:${href}`;
+      const cached = cache.get(key);
+      if (typeof cached === "string") {
+        // 背景刷新：避免高延迟网络下重复卡顿
+        if (!inflight.has(key)) {
+          inflight.set(
+            key,
+            (async () => {
+              try {
+                const fresh = await fetchTextOnce(href, { timeoutMs });
+                cache.set(key, fresh, NET_CONSTANTS.memoryCacheTtlMs);
+              } catch (_) {
+                // ignore
+              } finally {
+                inflight.delete(key);
+              }
+            })()
+          );
+        }
+        return cached;
+      }
+
+      if (inflight.has(key)) return inflight.get(key);
+
+      const task = (async () => {
+        bumpInflight(1);
+        try {
+          const runOnce = async () => fetchTextOnce(href, { timeoutMs });
+
+          try {
+            const text = await runOnce();
+            cache.set(key, text, NET_CONSTANTS.memoryCacheTtlMs);
+            return text;
+          } catch (err) {
+            if (!retry) throw err;
+            const retries = Math.max(0, Number(NET_CONSTANTS.retryMax || 0) || 0);
+            for (let i = 0; i < retries; i += 1) {
+              await sleep(jitter(NET_CONSTANTS.retryBaseDelayMs, NET_CONSTANTS.retryMaxDelayMs));
+              try {
+                const text = await runOnce();
+                cache.set(key, text, NET_CONSTANTS.memoryCacheTtlMs);
+                return text;
+              } catch (_) {
+                // continue
+              }
+            }
+            throw err;
+          }
+        } catch (err) {
+          onError();
+          throw err;
+        } finally {
+          bumpInflight(-1);
+          inflight.delete(key);
+        }
+      })();
+
+      inflight.set(key, task);
+      return task;
+    };
+
+    const prefetch = async (url) => {
+      const href = String(url || "").trim();
+      if (!href) return false;
+      try {
+        // 预取只为“热缓存”（SW / HTTP cache），无需读取 body
+        await withTimeout(
+          async ({ signal }) => {
+            const res = await fetch(href, { method: "GET", credentials: "same-origin", signal });
+            void res;
+            return true;
+          },
+          Math.min(2500, NET_CONSTANTS.requestTimeoutMs)
+        );
+        return true;
+      } catch (_) {
+        return false;
+      }
+    };
+
+    return { requestText, prefetch };
+  };
+
+  const netClient = createRequestClient({ store: netStore });
+
+  // 暴露只读句柄：便于调试/扩展，但避免把内部实现散落在全局
+  try {
+    window.GKB = window.GKB || {};
+    window.GKB.runtime = window.GKB.runtime || {};
+    window.GKB.runtime.netStore = netStore;
+    window.GKB.runtime.net = netClient;
+  } catch (_) {
+    // ignore
+  }
+
+  const initNetworkStateLoop = () => {
+    const syncOnline = () => {
+      let online = true;
+      try {
+        online = Boolean(navigator.onLine);
+      } catch (_) {
+        online = true;
+      }
+      netStore.setState({ online });
+    };
+
+    const syncConnection = () => netStore.setState(readConnectionInfo());
+
+    syncOnline();
+    syncConnection();
+
+    window.addEventListener("online", syncOnline);
+    window.addEventListener("offline", syncOnline);
+
+    try {
+      const c = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+      c?.addEventListener?.("change", syncConnection);
+    } catch (_) {}
+  };
+
+  const initLinkPrefetch = () => {
+    const prefetched = new Set();
+    let hoverTimer = 0;
+    let lastHoverHref = "";
+
+    const canPrefetchNow = () => {
+      const s = netStore.getState();
+      if (!s || !s.online) return false;
+      if (s.saveData) return false;
+      const type = String(s.effectiveType || "");
+      if (type === "slow-2g" || type === "2g") return false;
+      return true;
+    };
+
+    const normalize = (href) => {
+      const raw = String(href || "").trim();
+      if (!raw) return null;
+      if (raw.startsWith("#")) return null;
+      if (raw.startsWith("mailto:") || raw.startsWith("tel:")) return null;
+
+      let url = null;
+      try {
+        url = new URL(raw, window.location.href);
+      } catch (_) {
+        return null;
+      }
+      if (url.origin !== window.location.origin) return null;
+      if (!url.pathname.toLowerCase().endsWith(".html")) return null;
+      return url.href;
+    };
+
+    const schedule = (href) => {
+      const normalized = normalize(href);
+      if (!normalized) return;
+      if (!canPrefetchNow()) return;
+      if (prefetched.has(normalized)) return;
+      if (prefetched.size >= NET_CONSTANTS.prefetchMax) return;
+
+      if (hoverTimer) window.clearTimeout(hoverTimer);
+      lastHoverHref = normalized;
+      hoverTimer = window.setTimeout(() => {
+        hoverTimer = 0;
+        const next = lastHoverHref;
+        if (!next) return;
+        if (prefetched.has(next)) return;
+        prefetched.add(next);
+        netClient.prefetch(next);
+      }, NET_CONSTANTS.prefetchHoverDelayMs);
+    };
+
+    document.addEventListener(
+      "pointerover",
+      (e) => {
+        const a = e.target?.closest?.("a[href]");
+        if (!a) return;
+        schedule(a.getAttribute("href") || "");
+      },
+      { passive: true }
+    );
+
+    document.addEventListener(
+      "focusin",
+      (e) => {
+        const a = e.target?.closest?.("a[href]");
+        if (!a) return;
+        schedule(a.getAttribute("href") || "");
+      },
+      { passive: true }
+    );
+  };
+
   // Motion（内建 WAAPI 轻量适配层）
   // - 提供最小可用的 `animate()` 与 `stagger()`，满足本站动效需求
   // - 无第三方依赖；不支持 WAAPI 的浏览器安全降级为 no-op
@@ -2566,38 +2943,28 @@
   };
 
   const initConnectivityToasts = () => {
-    let online = true;
-    try {
-      online = Boolean(navigator.onLine);
-    } catch (_) {
-      online = true;
-    }
+    let lastOnline = Boolean(netStore.getState()?.online);
 
-    const notify = (next) => {
-      const isOnline = Boolean(next);
+    const notify = (isOnline) => {
+      const next = Boolean(isOnline);
       toast({
-        title: isOnline ? "网络已恢复" : "当前离线",
-        message: isOnline
+        title: next ? "网络已恢复" : "当前离线",
+        message: next
           ? "已恢复联网，可正常更新与获取最新内容。"
           : "你仍可浏览已缓存页面；需要联网才能首次缓存新页面。",
-        tone: isOnline ? "info" : "warn",
+        tone: next ? "info" : "warn",
         timeout: 3200,
       });
     };
 
     // 首次加载即离线：提示一次
-    if (!online) notify(false);
+    if (!lastOnline) notify(false);
 
-    window.addEventListener("online", () => {
-      if (online) return;
-      online = true;
-      notify(true);
-    });
-
-    window.addEventListener("offline", () => {
-      if (!online) return;
-      online = false;
-      notify(false);
+    netStore.subscribe((s) => {
+      const nextOnline = Boolean(s?.online);
+      if (nextOnline === lastOnline) return;
+      lastOnline = nextOnline;
+      notify(nextOnline);
     });
   };
 
@@ -6582,6 +6949,295 @@
   };
 
   // -------------------------
+  // Docs Portal（交互式文档入口）
+  // -------------------------
+
+  const initDocsPortalPage = () => {
+    const nav = $("#docs-nav");
+    const content = $("#docs-content");
+    const titleEl = $("#docs-title");
+    const hintEl = $("#docs-hint");
+    if (!nav || !content) return;
+
+    const DOCS_UI = {
+      hashScrollDelayMs: 40,
+    };
+
+    const DOCS = [
+      { id: "STYLE_GUIDE", title: "风格与规范", file: "docs/STYLE_GUIDE.md" },
+      { id: "DATA_MODEL", title: "数据模型", file: "docs/DATA_MODEL.md" },
+      { id: "DEPLOYMENT", title: "部署与发布", file: "docs/DEPLOYMENT.md" },
+    ];
+
+    const normalizeDocId = (value) => {
+      const raw = String(value || "")
+        .trim()
+        .replace(/\.md$/i, "")
+        .replace(/[^\w-]/g, "_")
+        .toUpperCase();
+      if (!raw) return "";
+      return raw;
+    };
+
+    const pickDoc = (raw) => {
+      const id = normalizeDocId(raw);
+      const hit = DOCS.find((d) => d.id === id);
+      return hit || DOCS[0];
+    };
+
+    const slugify = (text) => {
+      const raw = String(text || "").trim().toLowerCase();
+      const s = raw
+        .replace(/[^\w\u4e00-\u9fa5]+/g, "-")
+        .replace(/-+/g, "-")
+        .replace(/^-|-$/g, "");
+      return s || "section";
+    };
+
+    const sanitizeHref = (href) => {
+      const raw = String(href || "").trim();
+      if (!raw) return null;
+      if (raw.startsWith("//")) return null;
+      if (raw.startsWith("javascript:")) return null;
+      if (raw.startsWith("#")) return raw;
+      if (raw.startsWith("mailto:") || raw.startsWith("tel:")) return raw;
+      return raw;
+    };
+
+    const renderInline = (text) => {
+      const s = String(text || "");
+      const out = [];
+      let i = 0;
+      while (i < s.length) {
+        const ch = s[i];
+        if (ch === "`") {
+          const end = s.indexOf("`", i + 1);
+          if (end > i) {
+            const code = s.slice(i + 1, end);
+            out.push(`<code>${escapeHtml(code)}</code>`);
+            i = end + 1;
+            continue;
+          }
+        }
+
+        if (ch === "[") {
+          const close = s.indexOf("]", i + 1);
+          if (close > i && s[close + 1] === "(") {
+            const end = s.indexOf(")", close + 2);
+            if (end > close) {
+              const label = s.slice(i + 1, close);
+              const href = sanitizeHref(s.slice(close + 2, end));
+              if (href) {
+                out.push(
+                  `<a href="${escapeHtml(href)}" rel="noopener noreferrer">${escapeHtml(label)}</a>`
+                );
+              } else {
+                out.push(escapeHtml(label));
+              }
+              i = end + 1;
+              continue;
+            }
+          }
+        }
+
+        // 普通文本：尽量批量推进
+        const nextSpecial = (() => {
+          const nextTick = s.indexOf("`", i + 1);
+          const nextBracket = s.indexOf("[", i + 1);
+          const candidates = [nextTick, nextBracket].filter((x) => x >= 0);
+          return candidates.length > 0 ? Math.min(...candidates) : -1;
+        })();
+
+        const sliceEnd = nextSpecial >= 0 ? nextSpecial : s.length;
+        out.push(escapeHtml(s.slice(i, sliceEnd)));
+        i = sliceEnd;
+      }
+      return out.join("");
+    };
+
+    const renderMarkdown = (md) => {
+      const lines = String(md || "").replace(/\r\n/g, "\n").split("\n");
+      const html = [];
+
+      let inCode = false;
+      let codeLang = "";
+      let codeBuf = [];
+
+      let inUl = false;
+      let inOl = false;
+
+      const closeLists = () => {
+        if (inUl) html.push("</ul>");
+        if (inOl) html.push("</ol>");
+        inUl = false;
+        inOl = false;
+      };
+
+      const openUl = () => {
+        if (!inUl) html.push("<ul>");
+        inUl = true;
+      };
+
+      const openOl = () => {
+        if (!inOl) html.push("<ol>");
+        inOl = true;
+      };
+
+      const flushCode = () => {
+        if (!inCode) return;
+        const lang = String(codeLang || "").trim().toLowerCase();
+        const klass = lang ? ` class="language-${escapeHtml(lang)}"` : "";
+        html.push(`<pre><code${klass}>${escapeHtml(codeBuf.join("\n"))}</code></pre>`);
+        inCode = false;
+        codeLang = "";
+        codeBuf = [];
+      };
+
+      for (const line of lines) {
+        const raw = String(line || "");
+
+        const fence = raw.match(/^```(.*)$/);
+        if (fence) {
+          if (inCode) {
+            flushCode();
+          } else {
+            closeLists();
+            inCode = true;
+            codeLang = String(fence[1] || "").trim();
+            codeBuf = [];
+          }
+          continue;
+        }
+
+        if (inCode) {
+          codeBuf.push(raw);
+          continue;
+        }
+
+        const trimmed = raw.trim();
+        if (!trimmed) {
+          closeLists();
+          continue;
+        }
+
+        const h = trimmed.match(/^(#{1,4})\s+(.+)$/);
+        if (h) {
+          closeLists();
+          const level = Math.min(4, h[1].length);
+          const text = String(h[2] || "").trim();
+          const id = slugify(text);
+          html.push(`<h${level} id="${escapeHtml(id)}">${renderInline(text)}</h${level}>`);
+          continue;
+        }
+
+        const ul = trimmed.match(/^[-*]\s+(.+)$/);
+        if (ul) {
+          if (inOl) closeLists();
+          openUl();
+          html.push(`<li>${renderInline(ul[1])}</li>`);
+          continue;
+        }
+
+        const ol = trimmed.match(/^(\d+)\.\s+(.+)$/);
+        if (ol) {
+          if (inUl) closeLists();
+          openOl();
+          html.push(`<li>${renderInline(ol[2])}</li>`);
+          continue;
+        }
+
+        closeLists();
+        if (trimmed.startsWith(">")) {
+          const q = trimmed.replace(/^>\s?/, "");
+          html.push(`<blockquote><p>${renderInline(q)}</p></blockquote>`);
+          continue;
+        }
+
+        html.push(`<p>${renderInline(trimmed)}</p>`);
+      }
+
+      flushCode();
+      closeLists();
+
+      return html.join("\n");
+    };
+
+    const renderNav = (activeId) => {
+      nav.innerHTML = DOCS.map((d) => {
+        const active = d.id === activeId;
+        const aria = active ? ' aria-current="page"' : "";
+        return `<a class="docs-nav-link${active ? " active" : ""}" href="docs.html?doc=${encodeURIComponent(
+          d.id
+        )}" data-doc="${escapeHtml(d.id)}"${aria}>${escapeHtml(d.title)}</a>`;
+      }).join("");
+    };
+
+    const load = async (doc) => {
+      renderNav(doc.id);
+      if (titleEl) titleEl.textContent = doc.title;
+      if (hintEl) hintEl.textContent = `来源：${doc.file}`;
+
+      content.innerHTML =
+        '<div class="docs-loading"><div class="docs-loading-bar"></div><p>正在加载文档…（高延迟网络下会优先使用缓存并后台刷新）</p></div>';
+
+      const v = detectAssetVersion() || String(getData()?.version || "") || "";
+      const url = v ? `${doc.file}?v=${encodeURIComponent(v)}` : doc.file;
+
+      try {
+        const md = await netClient.requestText(url);
+        content.innerHTML = renderMarkdown(md);
+
+        // hash 锚点滚动（如 docs.html?doc=...#section-id）
+        const hash = String(window.location.hash || "").replace(/^#/, "");
+        if (hash) {
+          window.setTimeout(() => {
+            const target = document.getElementById(hash);
+            target?.scrollIntoView?.({ behavior: prefersReducedMotion() ? "auto" : "smooth" });
+          }, DOCS_UI.hashScrollDelayMs);
+        }
+      } catch (_) {
+        content.innerHTML =
+          '<div class="docs-error"><h2>文档加载失败</h2><p>可能处于离线状态或网络较差。你仍可访问已缓存的页面，或稍后重试。</p></div>';
+      }
+    };
+
+    const params = getSearchParams();
+    const initial = readSearchString(params, ["doc", "d"]);
+    let current = pickDoc(initial);
+
+    renderNav(current.id);
+    load(current);
+
+    nav.addEventListener("click", (e) => {
+      const a = e.target?.closest?.("a[data-doc]");
+      if (!a) return;
+      e.preventDefault();
+
+      const next = pickDoc(a.dataset.doc || "");
+      if (!next || next.id === current.id) return;
+      current = next;
+
+      try {
+        const url = new URL(window.location.href);
+        url.searchParams.set("doc", next.id);
+        url.hash = "";
+        window.history.pushState({ doc: next.id }, "", url.toString());
+      } catch (_) {}
+
+      load(next);
+    });
+
+    window.addEventListener("popstate", () => {
+      const p = getSearchParams();
+      const raw = readSearchString(p, ["doc", "d"]);
+      const next = pickDoc(raw);
+      if (!next || next.id === current.id) return;
+      current = next;
+      load(next);
+    });
+  };
+
+  // -------------------------
   // Boot
   // -------------------------
 
@@ -6608,6 +7264,7 @@
 
     // 关键交互优先：主题 / 导航 / 搜索
     const critical = [
+      initNetworkStateLoop,
       initThemeToggle,
       initContrast,
       seedUpdateRadarIfNeeded,
@@ -6615,6 +7272,7 @@
       initHeaderQuickLinks,
       initNavigation,
       initSoftNavigation,
+      initLinkPrefetch,
       initBackToTop,
       initCopyLinkButtons,
       initPwaInstall,
@@ -6636,6 +7294,7 @@
       discover: initDiscoverPage,
       community: initCommunityPage,
       forum: initForumTopicPage,
+      docs: initDocsPortalPage,
     };
     const pageInit = pageInits[String(page || "")];
     if (typeof pageInit === "function") run(pageInit);

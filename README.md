@@ -82,35 +82,63 @@
 
 ```mermaid
 flowchart TB
-  subgraph Browser[浏览器（无框架）]
-    H[HTML 页面（多页入口：index / dashboard / updates / planner / discover / ...）]
-    CSS[styles.css（玻璃拟态 / Aurora / Bento）]
-    Boot[boot.js（早期主题/对比度/No-JS）]
-    Data[data.js（数据源：games/guides/topics）]
-    App[scripts.js（交互：搜索/收藏/筛选/对比/笔记/阅读）]
-    Motion[scripts.js（内建 MotionLite：WAAPI animate/stagger）]
-    LS[(localStorage)]
-    SW[sw.js（Service Worker）]
+  subgraph Client[客户端（Browser / 无框架）]
+    subgraph Shell[HTML 外壳（多页入口）]
+      Home[index.html]
+      Dashboard[dashboard.html]
+      Updates[updates.html]
+      Planner[planner.html]
+      Discover[discover.html]
+      DocsPortal[docs.html（交互式文档入口）]
+      Others[... 其他 *.html]
+    end
+
+    Styles[styles.css（Aurora / Glass / Bento）]
+    Boot[boot.js（首帧主题/高对比度/No-JS）]
+    Data[data.js（唯一数据源：games/guides/topics + version）]
+
+    subgraph Runtime[scripts.js（运行时：状态闭环 + 交互）]
+      UI[页面控制器（按 data-page 调度）]
+      Store[netStore（online/connection/inflight/error）]
+      Net[netClient（requestText/prefetch + timeout/retry + memory cache）]
+      Storage[(localStorage)]
+    end
+  end
+
+  subgraph SWLayer[Service Worker（离线缓存 + 高延迟体验）]
+    SW[sw.js]
+    Precache[PRECACHE_URLS（HTML / 关键资源 / docs/*.md）]
+    RuntimeCache[缓存策略：Nav 超时回退缓存 + 资源 SWR 后台刷新]
     Cache[(Cache Storage)]
   end
 
-  subgraph CI[GitHub Actions / tools]
-    Tools[tools/*.mjs（断链/缓存穿透/数据校验/SW 检查）]
+  subgraph Tooling[Tooling / CI（自检闭环）]
+    CI[GitHub Actions]
+    Tools[tools/*.mjs（断链/HTML/SW/数据/站点地图/Feed 校验）]
+    Vite[vite.config.mjs（可选：极限压缩构建）]
+    Dist[dist/（gkb.min.css / gkb.min.js）]
   end
 
-  H --> CSS
-  H --> Boot
-  H --> Data
-  H --> App
-  H --> Motion
-  App --> Motion
+  Shell --> Styles
+  Shell --> Boot
+  Shell --> Data
+  Shell --> Runtime
 
-  App <--> LS
-  App <--> SW
+  Runtime --> UI
+  Runtime --> Store
+  Runtime --> Net
+  Runtime <--> Storage
+
+  Net <--> SW
+  SW --> Precache
+  SW --> RuntimeCache
   SW <--> Cache
 
   CI --> Tools
-  Tools --> H
+  CI --> Vite
+  Tools --> Shell
+  Tools --> SW
+  Vite --> Dist
 ```
 
 ---
@@ -137,6 +165,7 @@ flowchart TB
 ├─ manifest.webmanifest    # PWA 元信息
 ├─ feed.xml                # Atom 更新订阅（由 tools/generate-feed.mjs 生成）
 ├─ opensearch.xml          # OpenSearch 描述文件（浏览器地址栏直搜）
+├─ docs.html               # 交互式文档入口（渲染 docs/*.md）
 ├─ *.html                  # 多页入口（静态外壳）
 ├─ images/                 # 图标与占位图（尽量本地，离线更稳）
 ├─ docs/                   # 规范与部署文档
@@ -172,6 +201,14 @@ npm run build:vite
 - `dist/gkb.min.css`
 
 说明：该构建不会改变默认的“无构建直接部署”路径；你可以按需选择将 `dist/` 作为部署目录。
+
+### 6.4 交互式文档入口（Docs Portal）
+
+除了直接阅读 `docs/*.md`，也可以使用站内的交互式入口：
+
+- 打开：`docs.html`
+- 直达：`docs.html?doc=STYLE_GUIDE` / `docs.html?doc=DATA_MODEL` / `docs.html?doc=DEPLOYMENT`
+- 说明：页面会同源加载并渲染 `docs/*.md`；在 HTTPS/localhost 下启用 Service Worker 时，文档会被预缓存，离线也可阅读。
 
 ---
 

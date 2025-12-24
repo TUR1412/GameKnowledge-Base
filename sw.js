@@ -15,12 +15,28 @@ const VERSION = (() => {
     return "dev";
   }
 })();
+
+const CACHE_PREFIX = "gkb-cache-";
 const CACHE_NAME = `gkb-cache-${VERSION}`;
+
+// 高延迟网络下的“丝滑体验”核心：缓存优先返回 + 后台刷新（SWR）
+// - 导航：网络优先，但超时回退缓存（避免卡白屏）；同时后台尝试刷新
+// - 资源：命中缓存立即返回；后台刷新以保持更新
+const NAV_NETWORK_TIMEOUT_MS = 4500;
+const NAV_PREFER_CACHE_AFTER_MS = 1200;
+const ASSET_NETWORK_TIMEOUT_MS = 6000;
+
+const PRECACHE_MESSAGE_TYPE = "GKB_PRECACHE";
+const PRECACHE_PROGRESS_TYPE = "GKB_PRECACHE_PROGRESS";
+const PRECACHE_DONE_TYPE = "GKB_PRECACHE_DONE";
+const PRECACHE_PROGRESS_EVERY = 8;
+const PRECACHE_PROGRESS_MIN_INTERVAL_MS = 1200;
 
 const PRECACHE_URLS = [
   "index.html",
   "dashboard.html",
   "discover.html",
+  "docs.html",
   "planner.html",
   "updates.html",
   "all-games.html",
@@ -39,6 +55,9 @@ const PRECACHE_URLS = [
   "offline.html",
   "opensearch.xml",
   "feed.xml",
+  `docs/STYLE_GUIDE.md?v=${VERSION}`,
+  `docs/DATA_MODEL.md?v=${VERSION}`,
+  `docs/DEPLOYMENT.md?v=${VERSION}`,
 
   `styles.css?v=${VERSION}`,
   `data.js?v=${VERSION}`,
@@ -62,11 +81,36 @@ const isSameOrigin = (requestUrl) => {
 
 const isNavigation = (request) => request.mode === "navigate";
 
+const fetchWithTimeout = async (request, timeoutMs) => {
+  const ms = Math.max(0, Number(timeoutMs || 0) || 0);
+  if (ms === 0) return fetch(request);
+
+  try {
+    if (!("AbortController" in self)) return fetch(request);
+  } catch (_) {
+    return fetch(request);
+  }
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), ms);
+  try {
+    return await fetch(request, { signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+};
+
 const safePut = async (cache, request, response) => {
   try {
     if (!response || !response.ok) return;
     await cache.put(request, response);
   } catch (_) {}
+};
+
+const fetchAndCache = async ({ cache, request, timeoutMs }) => {
+  const res = await fetchWithTimeout(request, timeoutMs);
+  await safePut(cache, request, res.clone());
+  return res;
 };
 
 self.addEventListener("install", (event) => {
@@ -85,7 +129,7 @@ self.addEventListener("activate", (event) => {
       const keys = await caches.keys();
       await Promise.all(
         keys
-          .filter((k) => k.startsWith("gkb-cache-") && k !== CACHE_NAME)
+          .filter((k) => k.startsWith(CACHE_PREFIX) && k !== CACHE_NAME)
           .map((k) => caches.delete(k))
       );
       await self.clients.claim();
@@ -103,27 +147,48 @@ self.addEventListener("fetch", (event) => {
       const cache = await caches.open(CACHE_NAME);
 
       if (isNavigation(request)) {
+        const cached =
+          (await cache.match(request)) || (await cache.match(request, { ignoreSearch: true }));
+
+        if (cached) {
+          const networkPromise = fetchAndCache({
+            cache,
+            request,
+            timeoutMs: NAV_NETWORK_TIMEOUT_MS,
+          }).catch(() => null);
+
+          // 缓存秒回：如果网络在短窗口内没回来，就直接用缓存避免白屏；同时后台刷新
+          const timeoutPromise = new Promise((resolve) =>
+            setTimeout(() => resolve(null), NAV_PREFER_CACHE_AFTER_MS)
+          );
+
+          const maybeFresh = await Promise.race([networkPromise, timeoutPromise]);
+          if (maybeFresh) return maybeFresh;
+          event.waitUntil(networkPromise);
+          return cached;
+        }
+
         try {
-          const fresh = await fetch(request);
-          await safePut(cache, request, fresh.clone());
-          return fresh;
+          return await fetchAndCache({ cache, request, timeoutMs: NAV_NETWORK_TIMEOUT_MS });
         } catch (_) {
-          // 对 data-page 类型的动态渲染页（game.html?id=... / guide-detail.html?id=... 等）
-          // 离线时应优先回退到同路径的模板页，因此对导航请求允许忽略 search 匹配。
-          const cached = (await cache.match(request)) || (await cache.match(request, { ignoreSearch: true }));
-          if (cached) return cached;
           return (await cache.match("offline.html")) || Response.error();
         }
       }
 
-      const cached = await cache.match(request);
-      if (cached) return cached;
-
       try {
-        const fresh = await fetch(request);
-        await safePut(cache, request, fresh.clone());
-        return fresh;
+        // 资源走 SWR：命中缓存立即返回，后台刷新以提高高延迟网络下的“体感流畅”
+        const cached = await cache.match(request);
+        if (cached) {
+          event.waitUntil(
+            fetchAndCache({ cache, request, timeoutMs: ASSET_NETWORK_TIMEOUT_MS }).catch(() => null)
+          );
+          return cached;
+        }
+
+        return await fetchAndCache({ cache, request, timeoutMs: ASSET_NETWORK_TIMEOUT_MS });
       } catch (_) {
+        const fallback = await cache.match(request);
+        if (fallback) return fallback;
         return Response.error();
       }
     })()
@@ -133,7 +198,7 @@ self.addEventListener("fetch", (event) => {
 self.addEventListener("message", (event) => {
   const data = event?.data;
   if (!data || typeof data !== "object") return;
-  if (data.type !== "GKB_PRECACHE") return;
+  if (data.type !== PRECACHE_MESSAGE_TYPE) return;
 
   const requestId = Number(data.requestId || 0) || 0;
   const rawUrls = Array.isArray(data.urls) ? data.urls : [];
@@ -185,17 +250,27 @@ self.addEventListener("message", (event) => {
 
         const done = ok + fail;
         const now = Date.now();
-        const shouldReport = done === urls.length || done % 8 === 0 || now - lastProgressAt >= 1200;
+        const shouldReport =
+          done === urls.length ||
+          done % PRECACHE_PROGRESS_EVERY === 0 ||
+          now - lastProgressAt >= PRECACHE_PROGRESS_MIN_INTERVAL_MS;
         if (shouldReport) {
           lastProgressAt = now;
           try {
-            client?.postMessage?.({ type: "GKB_PRECACHE_PROGRESS", requestId, ok, fail, total: urls.length, done });
+            client?.postMessage?.({
+              type: PRECACHE_PROGRESS_TYPE,
+              requestId,
+              ok,
+              fail,
+              total: urls.length,
+              done,
+            });
           } catch (_) {}
         }
       }
 
       try {
-        client?.postMessage?.({ type: "GKB_PRECACHE_DONE", requestId, ok, fail, total: urls.length });
+        client?.postMessage?.({ type: PRECACHE_DONE_TYPE, requestId, ok, fail, total: urls.length });
       } catch (_) {}
     })()
   );
