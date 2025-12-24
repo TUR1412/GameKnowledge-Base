@@ -9,11 +9,11 @@
 所有页面必须使用带版本号的静态资源引用：
 
 ```html
-<link rel="stylesheet" href="styles.css?v=20251222-6">
-<link rel="manifest" href="manifest.webmanifest?v=20251222-6">
-<script src="boot.js?v=20251222-6"></script>
-<script src="data.js?v=20251222-6" defer></script>
-<script src="scripts.js?v=20251222-6" defer></script>
+<link rel="stylesheet" href="styles.css?v=20251224-1">
+<link rel="manifest" href="manifest.webmanifest?v=20251224-1">
+<script src="boot.js?v=20251224-1"></script>
+<script src="data.js?v=20251224-1" defer></script>
+<script src="scripts.js?v=20251224-1" defer></script>
 ```
 
 当你修改以下任意文件时，请同步更新所有 HTML 页里的 `?v=`：
@@ -95,7 +95,7 @@ node tools/bump-version.mjs --dry-run
 
 `scripts.js` 里提供了全站统一的动效参数与封装：
 
-- `vendor/motion.js`：本项目自带的 **WAAPI 轻量动效层**（提供 `Motion.animate/stagger`，无额外依赖）
+- `MotionLite（内建）`：`scripts.js` 内置 **WAAPI 轻量动效层**（提供 `animate/stagger`，无额外依赖）
 - `MOTION.easeOut`：默认出场/弹性（例如 Toast / 弹窗开合）
 - `MOTION.durFast / durBase / durSlow`：统一时长档位
 - `motionAnimate(el, keyframes, options)`：统一入口（自动处理 `prefers-reduced-motion` + try/catch）

@@ -61,7 +61,6 @@ test("scanSite：应能发现断链与缺失图片资源", () => {
     <script src="boot.js?v=1"></script>
     <script src="data.js?v=1" defer></script>
     <script src="scripts.js?v=1" defer></script>
-    <script src="vendor/motion.js?v=1" defer></script>
   </head>
   <body>
     <a href="missing.html">missing</a>
@@ -98,7 +97,6 @@ test("main：通过时返回 0，失败时返回 1（不直接 process.exit）",
     <script src="boot.js?v=1"></script>
     <script src="data.js?v=1" defer></script>
     <script src="scripts.js?v=1" defer></script>
-    <script src="vendor/motion.js?v=1" defer></script>
   </head>
   <body>${body}</body>
 </html>`;
@@ -134,7 +132,7 @@ test("scanSite：应覆盖缓存穿透/版本一致性/外链资源等分支", (
       "utf8"
     );
 
-    const html = ({ vStyles, vManifest, vBoot, vData, vScripts, vMotion = vScripts, extraBody = "" }) => `<!doctype html>
+    const html = ({ vStyles, vManifest, vBoot, vData, vScripts, extraBody = "" }) => `<!doctype html>
 <html lang="zh-CN">
   <head>
     <link rel="stylesheet" href="styles.css?v=${vStyles}">
@@ -142,7 +140,6 @@ test("scanSite：应覆盖缓存穿透/版本一致性/外链资源等分支", (
     <script src="boot.js?v=${vBoot}"></script>
     <script src="data.js?v=${vData}" defer></script>
     <script src="scripts.js?v=${vScripts}" defer></script>
-    <script src="vendor/motion.js?v=${vMotion}" defer></script>
   </head>
   <body>${extraBody}</body>
 </html>`;
@@ -171,7 +168,6 @@ test("scanSite：应覆盖缓存穿透/版本一致性/外链资源等分支", (
     <script src="boot.js?v=1"></script>
     <script src="data.js?v=1" defer></script>
     <script src="scripts.js?v=1" defer></script>
-    <script src="vendor/motion.js?v=1" defer></script>
   </head>
   <body></body>
 </html>`,
@@ -215,7 +211,6 @@ test("scanSite：当无法解析全站版本号时应跳过 data.js 对齐检查
     <script src="boot.js"></script>
     <script src="data.js" defer></script>
     <script src="scripts.js" defer></script>
-    <script src="vendor/motion.js" defer></script>
   </head>
   <body></body>
 </html>`,
@@ -245,7 +240,6 @@ test("scanSite：应识别外链 stylesheet/img/media（分支覆盖）", () => 
     <script src="boot.js?v=1"></script>
     <script src="data.js?v=1" defer></script>
     <script src="scripts.js?v=1" defer></script>
-    <script src="vendor/motion.js?v=1" defer></script>
 
     <link rel="stylesheet" href="https://cdn.example.com/a.css">
     <link href="https://cdn.example.com/b.css" rel="stylesheet">
@@ -291,7 +285,6 @@ test("CLI：check-links.mjs 作为脚本运行应 process.exit(main())", () => {
     <script src="boot.js?v=1"></script>
     <script src="data.js?v=1" defer></script>
     <script src="scripts.js?v=1" defer></script>
-    <script src="vendor/motion.js?v=1" defer></script>
   </head>
   <body>
     <a href="page.html">ok</a>

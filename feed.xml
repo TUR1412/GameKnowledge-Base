@@ -1,0 +1,311 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>游戏攻略网 · 更新订阅</title>
+  <subtitle>GameKnowledge-Base：NEW / UPDATED 聚合订阅（本地数据驱动）</subtitle>
+  <id>https://tur1412.github.io/GameKnowledge-Base/feed.xml</id>
+  <updated>2025-12-18T00:00:00Z</updated>
+  <link rel="self" type="application/atom+xml" href="https://tur1412.github.io/GameKnowledge-Base/feed.xml"/>
+  <link rel="alternate" type="text/html" href="https://tur1412.github.io/GameKnowledge-Base/updates.html"/>
+  <generator>tools/generate-feed.mjs</generator>
+  <entry>
+    <title>【话题】《星光奇迹》新手求助：如何快速升级到30级？</title>
+    <id>https://tur1412.github.io/GameKnowledge-Base/forum-topic.html?id=starlight-leveling</id>
+    <link rel="alternate" type="text/html" href="https://tur1412.github.io/GameKnowledge-Base/forum-topic.html?id=starlight-leveling"/>
+    <updated>2025-12-18T00:00:00Z</updated>
+    <summary>分享效率最高的升级路线、日常活动与卡点避坑。</summary>
+  </entry>
+  <entry>
+    <title>【话题】《帝国时代IV》新DLC值得买吗？深度分析</title>
+    <id>https://tur1412.github.io/GameKnowledge-Base/forum-topic.html?id=aoe4-dlc</id>
+    <link rel="alternate" type="text/html" href="https://tur1412.github.io/GameKnowledge-Base/forum-topic.html?id=aoe4-dlc"/>
+    <updated>2025-12-16T00:00:00Z</updated>
+    <summary>从文明平衡、内容量与玩法变化角度全面拆解。</summary>
+  </entry>
+  <entry>
+    <title>【攻略】博德之门3最佳职业搭配指南</title>
+    <id>https://tur1412.github.io/GameKnowledge-Base/guide-detail.html?id=bg3-build</id>
+    <link rel="alternate" type="text/html" href="https://tur1412.github.io/GameKnowledge-Base/guide-detail.html?id=bg3-build"/>
+    <updated>2025-12-15T00:00:00Z</updated>
+    <summary>从职责分工与机制互补出发，构建稳定且爆发强的队伍组合。</summary>
+  </entry>
+  <entry>
+    <title>【话题】寻找《魔兽世界》公会成员</title>
+    <id>https://tur1412.github.io/GameKnowledge-Base/forum-topic.html?id=wow-guild</id>
+    <link rel="alternate" type="text/html" href="https://tur1412.github.io/GameKnowledge-Base/forum-topic.html?id=wow-guild"/>
+    <updated>2025-12-15T00:00:00Z</updated>
+    <summary>公会活动时间、招募职业与入会要求集中说明。</summary>
+  </entry>
+  <entry>
+    <title>【攻略】博德之门3：队伍配置与资源循环</title>
+    <id>https://tur1412.github.io/GameKnowledge-Base/guide-detail.html?id=bg3-party</id>
+    <link rel="alternate" type="text/html" href="https://tur1412.github.io/GameKnowledge-Base/guide-detail.html?id=bg3-party"/>
+    <updated>2025-12-12T00:00:00Z</updated>
+    <summary>围绕职责互补与控制链，保证施法位与行动点的效率。</summary>
+  </entry>
+  <entry>
+    <title>【话题】博德之门3最强派对组合</title>
+    <id>https://tur1412.github.io/GameKnowledge-Base/forum-topic.html?id=bg3-party</id>
+    <link rel="alternate" type="text/html" href="https://tur1412.github.io/GameKnowledge-Base/forum-topic.html?id=bg3-party"/>
+    <updated>2025-12-12T00:00:00Z</updated>
+    <summary>你更偏好稳健四保一，还是极限爆发速推？</summary>
+  </entry>
+  <entry>
+    <title>【游戏】博德之门3</title>
+    <id>https://tur1412.github.io/GameKnowledge-Base/game.html?id=baldurs-gate3</id>
+    <link rel="alternate" type="text/html" href="https://tur1412.github.io/GameKnowledge-Base/game.html?id=baldurs-gate3"/>
+    <updated>2025-12-10T00:00:00Z</updated>
+    <summary>以战斗回合制与丰富对话分支为核心，队伍配置与资源管理决定整体节奏。</summary>
+  </entry>
+  <entry>
+    <title>【话题】艾尔登法环最难 BOSS 排名</title>
+    <id>https://tur1412.github.io/GameKnowledge-Base/forum-topic.html?id=elden-boss</id>
+    <link rel="alternate" type="text/html" href="https://tur1412.github.io/GameKnowledge-Base/forum-topic.html?id=elden-boss"/>
+    <updated>2025-12-08T00:00:00Z</updated>
+    <summary>别急着吵——先说你是哪种流派、哪个周目、有没有骨灰。</summary>
+  </entry>
+  <entry>
+    <title>【游戏】地平线 西之绝境</title>
+    <id>https://tur1412.github.io/GameKnowledge-Base/game.html?id=horizon-fw</id>
+    <link rel="alternate" type="text/html" href="https://tur1412.github.io/GameKnowledge-Base/game.html?id=horizon-fw"/>
+    <updated>2025-12-05T00:00:00Z</updated>
+    <summary>强调弱点拆解与装备搭配的开放世界动作冒险，狩猎节奏与探索规划都很关键。</summary>
+  </entry>
+  <entry>
+    <title>【攻略】地平线：弱点拆解与狩猎效率</title>
+    <id>https://tur1412.github.io/GameKnowledge-Base/guide-detail.html?id=horizon-hunt</id>
+    <link rel="alternate" type="text/html" href="https://tur1412.github.io/GameKnowledge-Base/guide-detail.html?id=horizon-hunt"/>
+    <updated>2025-12-05T00:00:00Z</updated>
+    <summary>利用元素克制与部位拆解，提高对机械兽的击杀效率。</summary>
+  </entry>
+  <entry>
+    <title>【话题】2025 年最值得期待的游戏（你投哪一票？）</title>
+    <id>https://tur1412.github.io/GameKnowledge-Base/forum-topic.html?id=upcoming-games</id>
+    <link rel="alternate" type="text/html" href="https://tur1412.github.io/GameKnowledge-Base/forum-topic.html?id=upcoming-games"/>
+    <updated>2025-12-01T00:00:00Z</updated>
+    <summary>按类型投票 + 说出你的理由（剧情、战斗、世界观还是创新）。</summary>
+  </entry>
+  <entry>
+    <title>【攻略】文明6：科技胜利的终极战略</title>
+    <id>https://tur1412.github.io/GameKnowledge-Base/guide-detail.html?id=civ6-science</id>
+    <link rel="alternate" type="text/html" href="https://tur1412.github.io/GameKnowledge-Base/guide-detail.html?id=civ6-science"/>
+    <updated>2025-11-30T00:00:00Z</updated>
+    <summary>路线、城市规划、区域联动与关键政策卡，一次讲透科技胜利。</summary>
+  </entry>
+  <entry>
+    <title>【游戏】星光奇迹</title>
+    <id>https://tur1412.github.io/GameKnowledge-Base/game.html?id=starlight-miracle</id>
+    <link rel="alternate" type="text/html" href="https://tur1412.github.io/GameKnowledge-Base/game.html?id=starlight-miracle"/>
+    <updated>2025-11-20T00:00:00Z</updated>
+    <summary>一款融合东方幻想与现代科技的开放世界角色扮演游戏。探索未知星域、打造流派构筑、挑战多阶段 Boss。</summary>
+  </entry>
+  <entry>
+    <title>【话题】巫师3最佳结局攻略</title>
+    <id>https://tur1412.github.io/GameKnowledge-Base/forum-topic.html?id=witcher3-endings</id>
+    <link rel="alternate" type="text/html" href="https://tur1412.github.io/GameKnowledge-Base/forum-topic.html?id=witcher3-endings"/>
+    <updated>2025-11-18T00:00:00Z</updated>
+    <summary>关键在于你对希里选择的“态度”，而不只是某一个选项。</summary>
+  </entry>
+  <entry>
+    <title>【话题】艾尔登法环 Boss 难度讨论</title>
+    <id>https://tur1412.github.io/GameKnowledge-Base/forum-topic.html?id=elden-ring-bosses</id>
+    <link rel="alternate" type="text/html" href="https://tur1412.github.io/GameKnowledge-Base/forum-topic.html?id=elden-ring-bosses"/>
+    <updated>2025-11-05T00:00:00Z</updated>
+    <summary>先写清楚：你的武器、等级、护符与骨灰（不然没法对齐难度）。</summary>
+  </entry>
+  <entry>
+    <title>【攻略】技能与装备：如何搭配出最顺手的手感</title>
+    <id>https://tur1412.github.io/GameKnowledge-Base/guide-detail.html?id=skills-equipment</id>
+    <link rel="alternate" type="text/html" href="https://tur1412.github.io/GameKnowledge-Base/guide-detail.html?id=skills-equipment"/>
+    <updated>2025-11-02T00:00:00Z</updated>
+    <summary>技能循环 + 装备词条 = 手感与强度的统一。</summary>
+  </entry>
+  <entry>
+    <title>【攻略】鬼泣5：但丁全武器连招指南</title>
+    <id>https://tur1412.github.io/GameKnowledge-Base/guide-detail.html?id=dmc5-combo</id>
+    <link rel="alternate" type="text/html" href="https://tur1412.github.io/GameKnowledge-Base/guide-detail.html?id=dmc5-combo"/>
+    <updated>2025-10-28T00:00:00Z</updated>
+    <summary>从基础连段到取消思路，帮助你更稳定拿到高评分。</summary>
+  </entry>
+  <entry>
+    <title>【话题】2025 年最期待的 RPG 游戏</title>
+    <id>https://tur1412.github.io/GameKnowledge-Base/forum-topic.html?id=upcoming-rpgs</id>
+    <link rel="alternate" type="text/html" href="https://tur1412.github.io/GameKnowledge-Base/forum-topic.html?id=upcoming-rpgs"/>
+    <updated>2025-10-22T00:00:00Z</updated>
+    <summary>我先来：希望“任务设计”不要只靠跑腿凑数。</summary>
+  </entry>
+  <entry>
+    <title>【游戏】艾尔登法环</title>
+    <id>https://tur1412.github.io/GameKnowledge-Base/game.html?id=elden-ring</id>
+    <link rel="alternate" type="text/html" href="https://tur1412.github.io/GameKnowledge-Base/game.html?id=elden-ring"/>
+    <updated>2025-10-05T00:00:00Z</updated>
+    <summary>探索交界地、构筑流派、挑战高压 Boss。路线规划与资源管理是前期体验的关键。</summary>
+  </entry>
+  <entry>
+    <title>【话题】文明6领袖强度与胜利路线</title>
+    <id>https://tur1412.github.io/GameKnowledge-Base/forum-topic.html?id=civ6-leaders</id>
+    <link rel="alternate" type="text/html" href="https://tur1412.github.io/GameKnowledge-Base/forum-topic.html?id=civ6-leaders"/>
+    <updated>2025-09-30T00:00:00Z</updated>
+    <summary>不同地图/速度/AI 难度下强度排序差异很大，先说规则再讨论。</summary>
+  </entry>
+  <entry>
+    <title>【攻略】十字军之王3：王朝运营与继承稳态</title>
+    <id>https://tur1412.github.io/GameKnowledge-Base/guide-detail.html?id=ck3-dynasty</id>
+    <link rel="alternate" type="text/html" href="https://tur1412.github.io/GameKnowledge-Base/guide-detail.html?id=ck3-dynasty"/>
+    <updated>2025-09-20T00:00:00Z</updated>
+    <summary>通过婚姻、继承与内政治理控制扩张节奏，避免断代与叛乱。</summary>
+  </entry>
+  <entry>
+    <title>【游戏】只狼：影逝二度</title>
+    <id>https://tur1412.github.io/GameKnowledge-Base/game.html?id=sekiro</id>
+    <link rel="alternate" type="text/html" href="https://tur1412.github.io/GameKnowledge-Base/game.html?id=sekiro"/>
+    <updated>2025-09-12T00:00:00Z</updated>
+    <summary>核心是架势条与节奏博弈。学会招架、识破与义手组合后，难度曲线会明显变友好。</summary>
+  </entry>
+  <entry>
+    <title>【话题】策略游戏 AI 难度平衡</title>
+    <id>https://tur1412.github.io/GameKnowledge-Base/forum-topic.html?id=ai-difficulty</id>
+    <link rel="alternate" type="text/html" href="https://tur1412.github.io/GameKnowledge-Base/forum-topic.html?id=ai-difficulty"/>
+    <updated>2025-09-12T00:00:00Z</updated>
+    <summary>你更接受“AI 作弊”，还是更接受“AI 很聪明但数值公平”？</summary>
+  </entry>
+  <entry>
+    <title>【游戏】十字军之王3</title>
+    <id>https://tur1412.github.io/GameKnowledge-Base/game.html?id=crusader-kings3</id>
+    <link rel="alternate" type="text/html" href="https://tur1412.github.io/GameKnowledge-Base/game.html?id=crusader-kings3"/>
+    <updated>2025-09-08T00:00:00Z</updated>
+    <summary>从领地治理到家族联姻，决策链条复杂但极具叙事张力，是典型的长线策略体验。</summary>
+  </entry>
+  <entry>
+    <title>【游戏】黑暗灵魂3</title>
+    <id>https://tur1412.github.io/GameKnowledge-Base/game.html?id=dark-souls3</id>
+    <link rel="alternate" type="text/html" href="https://tur1412.github.io/GameKnowledge-Base/game.html?id=dark-souls3"/>
+    <updated>2025-09-01T00:00:00Z</updated>
+    <summary>路线选择、武器质变与体力管理是通关核心。Boss 机制理解比数值更重要。</summary>
+  </entry>
+  <entry>
+    <title>【游戏】战神4</title>
+    <id>https://tur1412.github.io/GameKnowledge-Base/game.html?id=god-of-war</id>
+    <link rel="alternate" type="text/html" href="https://tur1412.github.io/GameKnowledge-Base/game.html?id=god-of-war"/>
+    <updated>2025-08-28T00:00:00Z</updated>
+    <summary>战斗与叙事紧密结合。符文技能、装备词条与属性搭配能明显改变战斗节奏。</summary>
+  </entry>
+  <entry>
+    <title>【话题】多人策略游戏外交技巧</title>
+    <id>https://tur1412.github.io/GameKnowledge-Base/forum-topic.html?id=diplomacy</id>
+    <link rel="alternate" type="text/html" href="https://tur1412.github.io/GameKnowledge-Base/forum-topic.html?id=diplomacy"/>
+    <updated>2025-08-28T00:00:00Z</updated>
+    <summary>‘承诺的可验证性’与‘背刺成本’才是外交的核心。</summary>
+  </entry>
+  <entry>
+    <title>【游戏】文明6</title>
+    <id>https://tur1412.github.io/GameKnowledge-Base/game.html?id=civilization6</id>
+    <link rel="alternate" type="text/html" href="https://tur1412.github.io/GameKnowledge-Base/game.html?id=civilization6"/>
+    <updated>2025-08-18T00:00:00Z</updated>
+    <summary>通过城市规划、科技路线与外交博弈塑造文明。胜利条件多样，玩法深度极高。</summary>
+  </entry>
+  <entry>
+    <title>【攻略】角色构建与属性分配</title>
+    <id>https://tur1412.github.io/GameKnowledge-Base/guide-detail.html?id=character-build</id>
+    <link rel="alternate" type="text/html" href="https://tur1412.github.io/GameKnowledge-Base/guide-detail.html?id=character-build"/>
+    <updated>2025-08-10T00:00:00Z</updated>
+    <summary>通用构筑方法论：目标、资源、收益与容错的平衡。</summary>
+  </entry>
+  <entry>
+    <title>【话题】魂系游戏的学习曲线：你是怎么入坑的？</title>
+    <id>https://tur1412.github.io/GameKnowledge-Base/forum-topic.html?id=dark-souls</id>
+    <link rel="alternate" type="text/html" href="https://tur1412.github.io/GameKnowledge-Base/forum-topic.html?id=dark-souls"/>
+    <updated>2025-08-02T00:00:00Z</updated>
+    <summary>分享你的关键转折点：从‘挫败’到‘上头’发生了什么？</summary>
+  </entry>
+  <entry>
+    <title>【游戏】鬼泣5</title>
+    <id>https://tur1412.github.io/GameKnowledge-Base/game.html?id=devil-may-cry5</id>
+    <link rel="alternate" type="text/html" href="https://tur1412.github.io/GameKnowledge-Base/game.html?id=devil-may-cry5"/>
+    <updated>2025-07-22T00:00:00Z</updated>
+    <summary>从基础连段到高阶取消，节奏与风格评分并重。练习场与关键招式理解能显著提升体验。</summary>
+  </entry>
+  <entry>
+    <title>【攻略】稀有装备获取指南</title>
+    <id>https://tur1412.github.io/GameKnowledge-Base/guide-detail.html?id=rare-equipment</id>
+    <link rel="alternate" type="text/html" href="https://tur1412.github.io/GameKnowledge-Base/guide-detail.html?id=rare-equipment"/>
+    <updated>2025-07-18T00:00:00Z</updated>
+    <summary>从掉落逻辑与路线规划出发，提升刷装效率并减少重复劳动。</summary>
+  </entry>
+  <entry>
+    <title>【话题】动作游戏反应速度训练方法</title>
+    <id>https://tur1412.github.io/GameKnowledge-Base/forum-topic.html?id=reaction-time</id>
+    <link rel="alternate" type="text/html" href="https://tur1412.github.io/GameKnowledge-Base/forum-topic.html?id=reaction-time"/>
+    <updated>2025-07-18T00:00:00Z</updated>
+    <summary>练习不是重复，而是‘可测量的目标 + 反馈 + 复盘’。</summary>
+  </entry>
+  <entry>
+    <title>【攻略】主线与支线任务攻略</title>
+    <id>https://tur1412.github.io/GameKnowledge-Base/guide-detail.html?id=quest-guides</id>
+    <link rel="alternate" type="text/html" href="https://tur1412.github.io/GameKnowledge-Base/guide-detail.html?id=quest-guides"/>
+    <updated>2025-06-30T00:00:00Z</updated>
+    <summary>任务优先级、关键节点与易错点汇总，避免错过奖励与剧情分支。</summary>
+  </entry>
+  <entry>
+    <title>【话题】手柄 vs 键鼠：哪种更适合动作游戏？</title>
+    <id>https://tur1412.github.io/GameKnowledge-Base/forum-topic.html?id=controller</id>
+    <link rel="alternate" type="text/html" href="https://tur1412.github.io/GameKnowledge-Base/forum-topic.html?id=controller"/>
+    <updated>2025-06-26T00:00:00Z</updated>
+    <summary>先别站队：看游戏、看角色、看你追求的上限还是舒适。</summary>
+  </entry>
+  <entry>
+    <title>【攻略】经济运营：资源与扩张的黄金比例</title>
+    <id>https://tur1412.github.io/GameKnowledge-Base/guide-detail.html?id=strategy-economy</id>
+    <link rel="alternate" type="text/html" href="https://tur1412.github.io/GameKnowledge-Base/guide-detail.html?id=strategy-economy"/>
+    <updated>2025-05-20T00:00:00Z</updated>
+    <summary>从资源曲线出发，建立可持续扩张的运营模型。</summary>
+  </entry>
+  <entry>
+    <title>【攻略】科技树路线规划：如何少走弯路</title>
+    <id>https://tur1412.github.io/GameKnowledge-Base/guide-detail.html?id=tech-tree</id>
+    <link rel="alternate" type="text/html" href="https://tur1412.github.io/GameKnowledge-Base/guide-detail.html?id=tech-tree"/>
+    <updated>2025-05-18T00:00:00Z</updated>
+    <summary>用“收益/回合”视角规划科技路线，把关键节点卡在正确的时间点。</summary>
+  </entry>
+  <entry>
+    <title>【攻略】战斗战术：以弱胜强的关键原则</title>
+    <id>https://tur1412.github.io/GameKnowledge-Base/guide-detail.html?id=battle-tactics</id>
+    <link rel="alternate" type="text/html" href="https://tur1412.github.io/GameKnowledge-Base/guide-detail.html?id=battle-tactics"/>
+    <updated>2025-04-12T00:00:00Z</updated>
+    <summary>信息、位置、节奏、交换：四个维度构成战术优势。</summary>
+  </entry>
+  <entry>
+    <title>【攻略】Boss 攻略：读懂机制比堆数值更重要</title>
+    <id>https://tur1412.github.io/GameKnowledge-Base/guide-detail.html?id=boss-guide</id>
+    <link rel="alternate" type="text/html" href="https://tur1412.github.io/GameKnowledge-Base/guide-detail.html?id=boss-guide"/>
+    <updated>2025-03-25T00:00:00Z</updated>
+    <summary>如何拆解 Boss：招式库、惩罚窗口、资源交换与阶段转场。</summary>
+  </entry>
+  <entry>
+    <title>【攻略】连招入门：从稳定到华丽</title>
+    <id>https://tur1412.github.io/GameKnowledge-Base/guide-detail.html?id=combo-guide</id>
+    <link rel="alternate" type="text/html" href="https://tur1412.github.io/GameKnowledge-Base/guide-detail.html?id=combo-guide"/>
+    <updated>2025-02-18T00:00:00Z</updated>
+    <summary>把“稳定输出”练成肌肉记忆后，再叠加取消与位移细节。</summary>
+  </entry>
+  <entry>
+    <title>【攻略】交易系统：低风险赚取第一桶金</title>
+    <id>https://tur1412.github.io/GameKnowledge-Base/guide-detail.html?id=trading-guide</id>
+    <link rel="alternate" type="text/html" href="https://tur1412.github.io/GameKnowledge-Base/guide-detail.html?id=trading-guide"/>
+    <updated>2025-01-10T00:00:00Z</updated>
+    <summary>从供需与路线出发，建立稳定的交易回路与风险控制。</summary>
+  </entry>
+  <entry>
+    <title>【攻略】隐藏任务：如何系统性地“扫图”</title>
+    <id>https://tur1412.github.io/GameKnowledge-Base/guide-detail.html?id=hidden-quests</id>
+    <link rel="alternate" type="text/html" href="https://tur1412.github.io/GameKnowledge-Base/guide-detail.html?id=hidden-quests"/>
+    <updated>2024-12-20T00:00:00Z</updated>
+    <summary>用“区域-线索-触发条件”三段式记录法，避免漏掉关键支线。</summary>
+  </entry>
+  <entry>
+    <title>【攻略】飞船改装：从功能到美学的统一</title>
+    <id>https://tur1412.github.io/GameKnowledge-Base/guide-detail.html?id=ship-customization</id>
+    <link rel="alternate" type="text/html" href="https://tur1412.github.io/GameKnowledge-Base/guide-detail.html?id=ship-customization"/>
+    <updated>2024-11-05T00:00:00Z</updated>
+    <summary>按用途配置模块：航速/载重/护盾/火力，最后再做外观美化。</summary>
+  </entry>
+</feed>

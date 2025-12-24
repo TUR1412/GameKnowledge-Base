@@ -37,11 +37,12 @@ const PRECACHE_URLS = [
   "starlight-miracle.html",
   "404.html",
   "offline.html",
+  "opensearch.xml",
+  "feed.xml",
 
   `styles.css?v=${VERSION}`,
   `data.js?v=${VERSION}`,
   `scripts.js?v=${VERSION}`,
-  `vendor/motion.js?v=${VERSION}`,
   `boot.js?v=${VERSION}`,
   `manifest.webmanifest?v=${VERSION}`,
 

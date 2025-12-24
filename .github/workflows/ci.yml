@@ -27,6 +27,7 @@ jobs:
           node --check tools/check-sitemap.mjs
           node --check tools/check-sw.mjs
           node --check tools/bump-version.mjs
+          node --check tools/generate-feed.mjs
           node --check tools/generate-sitemap.mjs
           node --check tools/validate-data.mjs
 
@@ -45,6 +46,9 @@ jobs:
 
       - name: Service Worker Precache Check
         run: node tools/check-sw.mjs
+
+      - name: Atom Feed Check
+        run: node tools/generate-feed.mjs --check
 
       - name: Data Model Validation
         run: node tools/validate-data.mjs

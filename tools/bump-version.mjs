@@ -47,8 +47,6 @@ const bumpAssetVersionsInHtml = (content, version) => {
     { label: "boot", re: /boot\.js\?v=[^"']+/g, required: true },
     { label: "data", re: /data\.js\?v=[^"']+/g, required: true },
     { label: "scripts", re: /scripts\.js\?v=[^"']+/g, required: true },
-    // 可选：动效库等第三方静态资源（存在则一起 bump，缺失不视为错误）
-    { label: "motion", re: /vendor\/motion\.js\?v=[^"']+/g, required: false },
   ];
 
   let next = content;
@@ -80,8 +78,7 @@ const bumpDocsStyleGuide = (content, version) => {
     .replace(/manifest\.webmanifest\?v=[^\s"']+/g, `manifest.webmanifest?v=${version}`)
     .replace(/boot\.js\?v=[^\s"']+/g, `boot.js?v=${version}`)
     .replace(/data\.js\?v=[^\s"']+/g, `data.js?v=${version}`)
-    .replace(/scripts\.js\?v=[^\s"']+/g, `scripts.js?v=${version}`)
-    .replace(/vendor\/motion\.js\?v=[^\s"']+/g, `vendor/motion.js?v=${version}`);
+    .replace(/scripts\.js\?v=[^\s"']+/g, `scripts.js?v=${version}`);
 };
 
 const main = () => {

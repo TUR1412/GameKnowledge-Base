@@ -85,7 +85,6 @@ export const validateServiceWorker = ({ workspaceRoot }) => {
     "styles.css?v=${VERSION}",
     "data.js?v=${VERSION}",
     "scripts.js?v=${VERSION}",
-    "vendor/motion.js?v=${VERSION}",
     "boot.js?v=${VERSION}",
     "manifest.webmanifest?v=${VERSION}",
   ];

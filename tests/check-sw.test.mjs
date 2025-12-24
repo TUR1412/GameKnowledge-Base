@@ -80,7 +80,6 @@ test("validateServiceWorker：通过与失败分支", () => {
         \`styles.css?v=\${VERSION}\`,
         \`data.js?v=\${VERSION}\`,
         \`scripts.js?v=\${VERSION}\`,
-        \`vendor/motion.js?v=\${VERSION}\`,
         \`boot.js?v=\${VERSION}\`,
         \`manifest.webmanifest?v=\${VERSION}\`
       ];
@@ -168,7 +167,6 @@ test("main：通过时返回 0 并输出统计信息", () => {
         \`styles.css?v=\${VERSION}\`,
         \`data.js?v=\${VERSION}\`,
         \`scripts.js?v=\${VERSION}\`,
-        \`vendor/motion.js?v=\${VERSION}\`,
         \`boot.js?v=\${VERSION}\`,
         \`manifest.webmanifest?v=\${VERSION}\`
       ];
@@ -209,7 +207,6 @@ test("CLI：check-sw.mjs 作为脚本运行应 process.exit(main())", () => {
         \`styles.css?v=\${VERSION}\`,
         \`data.js?v=\${VERSION}\`,
         \`scripts.js?v=\${VERSION}\`,
-        \`vendor/motion.js?v=\${VERSION}\`,
         \`boot.js?v=\${VERSION}\`,
         \`manifest.webmanifest?v=\${VERSION}\`
       ];

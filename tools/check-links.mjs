@@ -40,7 +40,6 @@ export const scanSite = ({ workspaceRoot }) => {
       { label: "boot", regex: /src="boot\.js\?v=([^"]+)"/ },
       { label: "data", regex: /src="data\.js\?v=([^"]+)"/ },
       { label: "scripts", regex: /src="scripts\.js\?v=([^"]+)"/ },
-      { label: "motion", regex: /src="vendor\/motion\.js\?v=([^"]+)"/ },
     ];
 
     const versions = {};

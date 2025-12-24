@@ -60,6 +60,7 @@
 - **探索（Discover）**：基于收藏/最近访问/在玩状态做本地个性化推荐 + 一键生成路线
 - **路线规划（Planner）**：把游戏/攻略组合成“可执行路线”，支持拖拽排序 + 分享链接导入/导出
 - **更新中心（Updates）**：聚合 NEW / UPDATED 内容，一键标记已读，保持信息流干净
+- **Atom 更新订阅（feed.xml）**：更新中心提供订阅入口，可在阅读器/聚合器里追踪 NEW / UPDATED
 - **指挥舱（Dashboard）**：最近访问 / 收藏 / 攻略进度 / 更新概览 + 本地数据备份/迁移
 - **本地收藏体系**：游戏/攻略/话题收藏，支持“只看收藏”
 - **最近访问**：主页展示最近浏览的游戏/攻略
@@ -73,6 +74,7 @@
 - **无障碍高对比度模式**：全站可切换更清晰的文本与边界（适合强光环境）
 - **离线包一键缓存**：在命令面板中触发缓存图标/封面/深度页资源，提高离线可用性（含进度回执）
 - **本地备份/迁移**：导出/导入/清空 `localStorage` 数据（收藏/筛选/回复等）
+- **OpenSearch（地址栏直搜）**：支持浏览器添加站点搜索（`opensearch.xml`），可从地址栏跳转到游戏库搜索结果
 
 ---
 
@@ -86,7 +88,7 @@ flowchart TB
     Boot[boot.js（早期主题/对比度/No-JS）]
     Data[data.js（数据源：games/guides/topics）]
     App[scripts.js（交互：搜索/收藏/筛选/对比/笔记/阅读）]
-    Motion[vendor/motion.js（WAAPI 轻量动效层：animate/stagger）]
+    Motion[scripts.js（内建 MotionLite：WAAPI animate/stagger）]
     LS[(localStorage)]
     SW[sw.js（Service Worker）]
     Cache[(Cache Storage)]
@@ -133,6 +135,8 @@ flowchart TB
 ├─ styles.css              # 全站样式：Aurora/Glass/Bento + 组件覆盖策略
 ├─ sw.js                   # Service Worker：离线缓存 + 更新 + 扩展预缓存
 ├─ manifest.webmanifest    # PWA 元信息
+├─ feed.xml                # Atom 更新订阅（由 tools/generate-feed.mjs 生成）
+├─ opensearch.xml          # OpenSearch 描述文件（浏览器地址栏直搜）
 ├─ *.html                  # 多页入口（静态外壳）
 ├─ images/                 # 图标与占位图（尽量本地，离线更稳）
 ├─ docs/                   # 规范与部署文档
@@ -171,10 +175,10 @@ flowchart TB
 本项目对核心资源使用 `?v=` 版本号来避免缓存“幽灵更新”：
 
 ```html
-<link rel="stylesheet" href="styles.css?v=20251222-6">
-<script src="boot.js?v=20251222-6"></script>
-<script src="data.js?v=20251222-6" defer></script>
-<script src="scripts.js?v=20251222-6" defer></script>
+<link rel="stylesheet" href="styles.css?v=20251224-1">
+<script src="boot.js?v=20251224-1"></script>
+<script src="data.js?v=20251224-1" defer></script>
+<script src="scripts.js?v=20251224-1" defer></script>
 ```
 
 当你修改 `styles.css` / `scripts.js` / `data.js` / `sw.js` / `manifest.webmanifest` 时，务必同步 bump 版本号。
@@ -194,7 +198,7 @@ node tools/bump-version.mjs
 核心数据集中在 `data.js`：
 
 ```js
-version: "20251222-6",
+version: "20251224-1",
 
 games: {
   "elden-ring": { title: "艾尔登法环", updated: "2025-10-05", ... }
@@ -228,6 +232,10 @@ node tools/check-links.mjs
 
 # SW 预缓存策略检查
 node tools/check-sw.mjs
+
+# Atom Feed 生成 / 校验（CI 会跑 --check）
+node tools/generate-feed.mjs
+node tools/generate-feed.mjs --check
 ```
 
 ---

@@ -20,6 +20,21 @@
 - Service Worker：离线回退支持忽略 search（动态渲染页断网可直接打开模板页）
 - 安全性：收紧 CSP（移除 `style-src 'unsafe-inline'`，补齐 `form-action 'self'`）
 
+## 2025-12-24
+
+### Added
+- Atom 更新订阅：新增 `feed.xml`（Atom），并在更新中心提供订阅入口
+- OpenSearch：新增 `opensearch.xml`，支持浏览器地址栏直搜并跳转到游戏库结果页
+- CI 加固：新增 Feed 一致性校验（`node tools/generate-feed.mjs --check`）
+
+### Changed
+- 动效层内建：将 WAAPI 动效轻量层内联到 `scripts.js`，减少额外请求与维护点
+- 启动调度：按 `data-page` 精确执行页面 init，减少无效调用
+- Service Worker：预缓存补齐 `feed.xml` / `opensearch.xml`
+
+### Removed
+- `vendor/motion.js` 及其在 HTML / SW / 工具链 / 单测中的引用
+
 ## 2025-12-22
 
 ### Added
