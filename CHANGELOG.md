@@ -28,11 +28,13 @@
 - CI 加固：新增 Feed 一致性校验（`node tools/generate-feed.mjs --check`）
 - 可选构建：新增 Vite 极限压缩配置（`vite.config.mjs`）与构建入口（`src/bundle.mjs`）
 - 工具链共享：新增 `tools/lib/site.mjs` 统一复用站点 base/url/xml/data 逻辑
+- 交互式文档入口：新增 `docs.html`，站内渲染 `docs/*.md`（维护/贡献更顺手）
+- 高延迟体验增强：新增运行时网络状态闭环（netStore/netClient）与内部链接 hover/focus 预取
 
 ### Changed
 - 动效层内建：将 WAAPI 动效轻量层内联到 `scripts.js`，减少额外请求与维护点
 - 启动调度：按 `data-page` 精确执行页面 init，减少无效调用
-- Service Worker：预缓存补齐 `feed.xml` / `opensearch.xml`
+- Service Worker：导航请求短窗口等待网络，超时回退缓存并后台刷新；资源请求改为 SWR（缓存优先 + 后台更新）
 - 工具脚本去重：站点相关工具复用 `tools/lib/site.mjs`，降低重复实现与维护成本
 - URL 参数解析去重：抽象 `readSearch*` helper，多个页面共享同一套解析逻辑
 

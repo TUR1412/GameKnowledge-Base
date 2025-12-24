@@ -6,6 +6,18 @@
 
 ## [Unreleased]
 
+## [20251224-3] - 2025-12-24
+
+### 新增
+- 交互式文档入口：新增 `docs.html`（同源加载并渲染 `docs/*.md`），并纳入 SW 预缓存
+- 运行时网络状态闭环：新增 `netStore` / `netClient`（timeout/retry、memory cache、inflight 计数）
+- 预取加速：链接 hover/focus 预取内部 `.html`，提高高延迟网络下跨页体感
+
+### 变更
+- Service Worker：导航请求支持“短窗口等待网络，否则回退缓存并后台刷新”；资源请求改为 SWR（缓存优先 + 后台更新）
+- Connectivity Toast：由 `netStore` 订阅驱动，减少重复监听并统一状态来源
+- 版本号：bump 至 `20251224-3`（同步更新全站 `?v=` 与 `data.js.version`）
+
 ## [20251224-2] - 2025-12-24
 
 ### 新增
