@@ -15,5 +15,5 @@
 - [√] 新增 OpenSearch：`opensearch.xml` + 全站 `<link rel="search"...>`
 - [√] 新增 Atom Feed：`tools/generate-feed.mjs` + `feed.xml` + CI `--check`
 - [√] 更新 README 与 HelloAGENTS 知识库（SSOT）
-- [ ] 推送远程仓库（等待 git 权限确认/执行）
-- [ ] 清理本地克隆目录（仅在推送成功后执行）
+- [√] 推送远程仓库（已推送至分支 `singularity-refactor-20251224`）
+- [√] 清理本地克隆目录（推送成功后执行）
