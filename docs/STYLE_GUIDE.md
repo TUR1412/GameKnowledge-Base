@@ -9,11 +9,11 @@
 所有页面必须使用带版本号的静态资源引用：
 
 ```html
-<link rel="stylesheet" href="styles.css?v=20251224-5">
-<link rel="manifest" href="manifest.webmanifest?v=20251224-5">
-<script src="boot.js?v=20251224-5"></script>
-<script src="data.js?v=20251224-5" defer></script>
-<script src="scripts.js?v=20251224-5" defer></script>
+<link rel="stylesheet" href="styles.css?v=20251225-1">
+<link rel="manifest" href="manifest.webmanifest?v=20251225-1">
+<script src="boot.js?v=20251225-1"></script>
+<script src="data.js?v=20251225-1" defer></script>
+<script src="scripts.js?v=20251225-1" defer></script>
 ```
 
 当你修改以下任意文件时，请同步更新所有 HTML 页里的 `?v=`：
@@ -57,6 +57,8 @@ node tools/bump-version.mjs --dry-run
 ## 3) 交互与状态（推荐）
 
 - 主题：`localStorage["gkb-theme"]`
+- 对比度：`localStorage["gkb-contrast"]`（`high` / `normal`）
+  - 约定：当用户未显式设置时，站点可跟随系统 `prefers-contrast: more` / `forced-colors: active`（由 `boot.js` 首帧注入，`scripts.js` 负责二次对齐与持久化）
 - 搜索：Command Palette（`Ctrl + K` / `/`）
 - 筛选/收藏/话题回复：全部落地到 `localStorage`，刷新不丢（含 `gkb-saved-games` / `gkb-saved-guides` / `gkb-saved-topics`）
 - 游戏/攻略笔记：`gkb-game-notes:*` / `gkb-guide-notes:*`

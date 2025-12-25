@@ -2205,7 +2205,14 @@
 
   const initContrast = () => {
     const saved = storage.get(STORAGE_KEYS.contrast);
-    applyContrast(saved === "high" ? "high" : "normal", { persist: false });
+    if (saved === "high" || saved === "normal") {
+      applyContrast(saved, { persist: false });
+      return;
+    }
+
+    // boot.js 可能已根据系统偏好写入 dataset（prefers-contrast / forced-colors）
+    const booted = document.documentElement.dataset.contrast === "high";
+    applyContrast(booted ? "high" : "normal", { persist: false });
   };
 
   // -------------------------

@@ -2,7 +2,7 @@ import path from "node:path";
 import { defineConfig } from "vite";
 
 // Vite 极限压缩配置（可选）
-// - 目标：给“部署者”提供一条可选的极限压缩路径（minify + tree-shaking + terser）
+// - 目标：给“部署者”提供一条可选的极限压缩路径（minify + tree-shaking）
 // - 注意：本项目默认仍采用“无构建、可直接静态托管”的交付方式；该构建产物不会被运行时强制依赖
 export default defineConfig({
   build: {
@@ -22,26 +22,9 @@ export default defineConfig({
       fileName: () => "gkb.min.js",
     },
 
-    // 体积优先：使用 terser 做更激进的压缩（需要 devDependency: terser）
-    minify: "terser",
-    terserOptions: {
-      compress: {
-        passes: 4,
-        ecma: 2019,
-        drop_console: true,
-        drop_debugger: true,
-        booleans_as_integers: true,
-        keep_infinity: true,
-        pure_getters: true,
-        toplevel: true,
-      },
-      mangle: {
-        toplevel: true,
-      },
-      format: {
-        comments: false,
-      },
-    },
+    // 依赖最小化：使用内置 esbuild 压缩（避免额外 terser 依赖）
+    // 说明：极少数场景下 terser 可能进一步缩小体积；但本项目优先“零运行时依赖 + 工具链轻量”。
+    minify: "esbuild",
 
     rollupOptions: {
       treeshake: {

@@ -1,24 +1,14 @@
 import fs from "node:fs";
 import path from "node:path";
-import vm from "node:vm";
 import { pathToFileURL } from "node:url";
 
-export const readText = (filePath) => fs.readFileSync(filePath, "utf8");
+import { loadDataFromDataJs, readText } from "./lib/site.mjs";
+
+export { loadDataFromDataJs, readText } from "./lib/site.mjs";
 
 export const isNonEmptyString = (v) => typeof v === "string" && v.trim().length > 0;
 export const isNumber = (v) => typeof v === "number" && Number.isFinite(v);
 export const isDateString = (v) => isNonEmptyString(v) && /^\d{4}-\d{2}-\d{2}$/.test(v.trim());
-
-export const loadDataFromDataJs = ({ workspaceRoot }) => {
-  const dataPath = path.join(workspaceRoot, "data.js");
-  if (!fs.existsSync(dataPath)) return null;
-
-  const code = readText(dataPath);
-  const context = { window: { GKB: {} } };
-  vm.createContext(context);
-  vm.runInContext(code, context, { filename: "data.js" });
-  return context.window?.GKB?.data || null;
-};
 
 export const validateIcon = ({ where, icon, existsRel }) => {
   if (!isNonEmptyString(icon)) return [`[DATA] ${where}: icon 不能为空`];

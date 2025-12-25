@@ -14,6 +14,7 @@
 - `boot.js`
   - 在页面最早期执行：恢复主题、高对比度、No-JS 标记
   - 目标：减少“闪白/闪主题”的视觉抖动
+  - 约定：当用户未显式设置时，可跟随系统 `prefers-contrast: more` / `forced-colors: active`
 
 - `styles.css`
   - Aurora/Glass/Bento 视觉系统

@@ -39,12 +39,16 @@
   - 工具链共享库：`normalizeBase/buildUrl/escapeXml/loadDataFromDataJs/listRootHtml` 等
   - 目标：减少重复实现，降低“修一处漏一处”的风险
 
+- `tools/check-all.mjs`
+  - 本地一键跑完 CI 同款校验（语法/单测覆盖/构建/断链/SW/Feed/数据模型）
+  - 对应 npm 脚本：`npm run check:all`
+
 ---
 
 ## 1.1 可选构建（Vite）
 
 - `vite.config.mjs`
-  - 极限压缩构建配置（terser + treeshake），用于生成可选的压缩产物
+  - 极限压缩构建配置（esbuild minify + treeshake），用于生成可选的压缩产物
 - `src/bundle.mjs`
   - Vite 入口：打包并压缩 `styles.css` 与 `scripts.js`
 - 命令：

@@ -42,7 +42,21 @@
     }
   };
 
-  const contrast = readStoredContrast();
+  const getSystemContrast = () => {
+    try {
+      const prefersHigh =
+        window.matchMedia && window.matchMedia("(prefers-contrast: more)").matches;
+      const forcedColors =
+        window.matchMedia && window.matchMedia("(forced-colors: active)").matches;
+      return prefersHigh || forcedColors ? "high" : "normal";
+    } catch (_) {
+      return "normal";
+    }
+  };
+
+  const storedContrast = readStoredContrast();
+  const contrast =
+    storedContrast === "high" || storedContrast === "normal" ? storedContrast : getSystemContrast();
   if (contrast === "high") root.dataset.contrast = "high";
 
   const syncThemeColor = (next) => {

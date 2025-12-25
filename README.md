@@ -71,7 +71,7 @@
 - **游戏对比（Compare）**：在“所有游戏”页多选对比，底部对比栏 + 对比弹窗（最多 4 项）
 - **更新雷达（NEW / UPDATED）**：为数据条目建立“已读基线”，后续新增/更新自动标记
 - **微交互统一动效**：Planner 增删/拖拽反馈、Compare 弹窗/对比栏、收藏星标弹性反馈（可降级）
-- **无障碍高对比度模式**：全站可切换更清晰的文本与边界（适合强光环境）
+- **无障碍高对比度模式**：全站可切换更清晰的文本与边界（支持跟随系统 `prefers-contrast` / `forced-colors`）
 - **离线包一键缓存**：在命令面板中触发缓存图标/封面/深度页资源，提高离线可用性（含进度回执）
 - **本地备份/迁移**：导出/导入/清空 `localStorage` 数据（收藏/筛选/回复等）
 - **OpenSearch（地址栏直搜）**：支持浏览器添加站点搜索（`opensearch.xml`），可从地址栏跳转到游戏库搜索结果
@@ -285,6 +285,9 @@ topics: {
 ## 10) 工具与校验（CI 同款）
 
 ```bash
+# 一键跑完 CI 同款校验（语法 / 单测覆盖 / 构建 / 断链 / SW / Feed / 数据模型）
+npm run check:all
+
 # JS 语法检查
 node --check boot.js
 node --check scripts.js
@@ -305,6 +308,7 @@ node tools/generate-feed.mjs
 node tools/generate-feed.mjs --check
 
 # 可选：极限压缩构建（Vite）
+# - 默认使用内置 esbuild 压缩（依赖更少，避免额外 terser devDependency）
 npm run build:vite
 ```
 

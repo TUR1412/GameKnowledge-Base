@@ -2,6 +2,21 @@
 
 本项目以“静态站点稳定交付”为目标：每次大改都会同步更新资源版本号（`?v=`），并通过 CI 做断链/资源/语法校验。
 
+## 2025-12-25
+
+### Added
+- 一键自检：新增 `tools/check-all.mjs` 与 `npm run check:all`，本地可快速跑完 CI 同款校验链路
+- 工具链单测：新增 `tests/site-lib.test.mjs`，覆盖 `tools/lib/site.mjs` 的关键逻辑与分支
+
+### Changed
+- 无障碍：高对比度模式支持跟随系统 `prefers-contrast: more` / `forced-colors: active`（用户未显式设置时）
+- 工具链去重：`tools/validate-data.mjs` 复用 `tools/lib/site.mjs` 的数据加载与文本读写逻辑
+- 可选构建：Vite 压缩切换为内置 `esbuild`（减少依赖）
+- 版本号：bump 至 `20251225-1`（同步更新全站 `?v=` 与 `data.js.version`）
+
+### Removed
+- `terser` devDependency（改用 Vite 内置压缩）
+
 ## 2025-12-21
 
 ### Added

@@ -6,6 +6,18 @@
 
 ## [Unreleased]
 
+## [20251225-1] - 2025-12-25
+
+### 新增
+- 一键自检脚本：新增 `tools/check-all.mjs` 与 `npm run check:all`，本地可跑完 CI 同款校验链路（语法/单测覆盖/构建/断链/SW/Feed/数据模型）
+- 工具链单测补齐：新增 `tests/site-lib.test.mjs`，覆盖 `tools/lib/site.mjs` 关键分支，维持覆盖率阈值
+
+### 变更
+- 对比度策略升级：高对比度模式在无用户显式设置时可跟随系统 `prefers-contrast: more` / `forced-colors: active`（首帧由 `boot.js` 注入，`scripts.js` 二次对齐）
+- 工具链去重：`tools/validate-data.mjs` 复用 `tools/lib/site.mjs` 的 `loadDataFromDataJs/readText`，降低重复实现与维护成本
+- 可选构建依赖收敛：Vite 压缩切换为内置 `esbuild`（移除 `terser` devDependency）
+- 版本号：bump 至 `20251225-1`（同步更新全站 `?v=` 与 `data.js.version`）
+
 ## [20251224-5] - 2025-12-24
 
 ### 新增
