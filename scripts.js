@@ -37,10 +37,33 @@
     updateRadar: "gkb-update-radar",
     plans: "gkb-plans",
     discoverPrefs: "gkb-discover-prefs",
+    telemetryEnabled: "gkb-telemetry-enabled",
+    telemetryEvents: "gkb-telemetry-events",
   };
 
   const $ = (selector, root = document) => root.querySelector(selector);
   const $$ = (selector, root = document) => Array.from(root.querySelectorAll(selector));
+
+  const runIdleTask = (fn, { timeout = 900 } = {}) => {
+    const safeRun = () => {
+      try {
+        fn();
+      } catch (err) {
+        console.error(err);
+      }
+    };
+
+    const t = Math.max(0, Number(timeout || 0) || 0);
+
+    try {
+      if ("requestIdleCallback" in window) {
+        window.requestIdleCallback(safeRun, { timeout: t || 900 });
+        return;
+      }
+    } catch (_) {}
+
+    window.setTimeout(safeRun, 0);
+  };
 
   const safeJsonParse = (value, fallback) => {
     try {
@@ -89,6 +112,82 @@
     storage.set(key, JSON.stringify(next));
     return next;
   };
+
+  // -------------------------
+  // Telemetry（本地埋点：无后端/无外发，默认启用，可本地关闭）
+  // - 目标：为“交互优化/性能优化”提供事实依据（而不是为了追踪用户）
+  // - 约束：不记录任何敏感信息；对文本字段强制截断；事件数量上限防止膨胀
+  // -------------------------
+
+  const telemetry = (() => {
+    const MAX_EVENTS = 420;
+    const MAX_STR = 96;
+    const MAX_KEY = 48;
+
+    const isEnabled = () => storage.get(STORAGE_KEYS.telemetryEnabled) !== "0";
+
+    const sanitizeMeta = (meta) => {
+      if (!meta || typeof meta !== "object" || Array.isArray(meta)) return undefined;
+      const out = {};
+
+      Object.entries(meta).forEach(([k, v]) => {
+        const key = String(k || "").trim().slice(0, MAX_KEY);
+        if (!key) return;
+
+        if (typeof v === "string") out[key] = v.slice(0, MAX_STR);
+        else if (typeof v === "number" && Number.isFinite(v)) out[key] = v;
+        else if (typeof v === "boolean") out[key] = v;
+        else if (Array.isArray(v)) out[key] = v.length;
+      });
+
+      return Object.keys(out).length > 0 ? out : undefined;
+    };
+
+    const read = () => {
+      const raw = storage.get(STORAGE_KEYS.telemetryEvents);
+      const list = safeJsonParse(raw, []);
+      if (!Array.isArray(list)) return [];
+      return list
+        .filter((x) => x && typeof x === "object" && !Array.isArray(x))
+        .slice(Math.max(0, list.length - MAX_EVENTS));
+    };
+
+    const write = (events) => {
+      const list = Array.isArray(events) ? events : [];
+      const trimmed = list.slice(Math.max(0, list.length - MAX_EVENTS));
+      return storage.set(STORAGE_KEYS.telemetryEvents, JSON.stringify(trimmed));
+    };
+
+    const log = (name, meta) => {
+      if (!isEnabled()) return false;
+      const n = String(name || "").trim();
+      if (!n) return false;
+
+      const ev = { ts: Date.now(), name: n };
+
+      try {
+        const page = String(getPage?.() || "").trim();
+        if (page) ev.page = page;
+      } catch (_) {}
+
+      const m = sanitizeMeta(meta);
+      if (m) ev.meta = m;
+
+      try {
+        const list = read();
+        list.push(ev);
+        return write(list);
+      } catch (_) {
+        return false;
+      }
+    };
+
+    const clear = () => storage.remove(STORAGE_KEYS.telemetryEvents);
+
+    const setEnabled = (on) => storage.set(STORAGE_KEYS.telemetryEnabled, on ? "1" : "0");
+
+    return { isEnabled, log, read, clear, setEnabled };
+  })();
 
   const normalizeGameLibraryStatus = (value) => {
     const v = String(value || "").trim().toLowerCase();
@@ -924,6 +1023,7 @@
     window.GKB.runtime.netStore = netStore;
     window.GKB.runtime.net = netClient;
     window.GKB.runtime.health = createHealthMonitor({ store: netStore });
+    window.GKB.runtime.telemetry = telemetry;
     window.GKB.health = () => window.GKB.runtime.health.snapshot();
   } catch (_) {
     // ignore
@@ -954,19 +1054,36 @@
     } catch (_) {}
   };
 
+  const canPrefetchNow = () => {
+    const s = netStore.getState();
+    if (!s || !s.online) return false;
+    if (s.saveData) return false;
+    const type = String(s.effectiveType || "");
+    if (type === "slow-2g" || type === "2g") return false;
+    return true;
+  };
+
+  const prefetchedUrls = new Set();
+
+  const prefetchUrls = (urls, { limit = 8, reason = "" } = {}) => {
+    if (!canPrefetchNow()) return false;
+    const next = Array.from(new Set((Array.isArray(urls) ? urls : []).map((x) => String(x || "").trim()).filter(Boolean)))
+      .filter((href) => (href ? !prefetchedUrls.has(href) : false))
+      .slice(0, Math.max(0, Number(limit || 0) || 0));
+    if (next.length === 0) return false;
+
+    next.forEach((href) => prefetchedUrls.add(href));
+    if (prefetchedUrls.size > 900) prefetchedUrls.clear();
+
+    telemetry.log("prefetch", { reason: String(reason || "auto").slice(0, 24), n: next.length });
+    runIdleTask(() => next.forEach((href) => netClient.prefetch(href)), { timeout: 1200 });
+    return true;
+  };
+
   const initLinkPrefetch = () => {
     const prefetched = new Set();
     let hoverTimer = 0;
     let lastHoverHref = "";
-
-    const canPrefetchNow = () => {
-      const s = netStore.getState();
-      if (!s || !s.online) return false;
-      if (s.saveData) return false;
-      const type = String(s.effectiveType || "");
-      if (type === "slow-2g" || type === "2g") return false;
-      return true;
-    };
 
     const normalize = (href) => {
       const raw = String(href || "").trim();
@@ -4412,7 +4529,33 @@
     const filter = (s) => {
       const q = (s.query || "").toLowerCase();
       const savedSet = new Set(readStringList(STORAGE_KEYS.savedGames));
+      const libraryMap = readGameLibraryMap();
       let shown = 0;
+
+      const counts = {
+        genre: new Map(),
+        platform: new Map(),
+        year: new Map(),
+        rating: new Map(),
+        library: new Map(),
+        saved: 0,
+      };
+
+      const bump = (map, key) => {
+        const k = String(key || "").trim();
+        if (!k) return;
+        map.set(k, (Number(map.get(k) || 0) || 0) + 1);
+      };
+
+      const ratingBucket = (value) => {
+        const v = Number(value);
+        if (!Number.isFinite(v)) return "<6";
+        if (v >= 9) return "9+";
+        if (v >= 8) return "8-9";
+        if (v >= 7) return "7-8";
+        if (v >= 6) return "6-7";
+        return "<6";
+      };
 
       cards.forEach((card) => {
         const title = ($("h3", card)?.textContent || "").toLowerCase();
@@ -4434,13 +4577,50 @@
 
         const okSaved = !s.savedOnly || (gid && savedSet.has(gid));
         card.dataset.saved = gid && savedSet.has(gid) ? "true" : "false";
-        const visible = okQuery && okGenre && okPlatform && okYear && okRating && okSaved;
+
+        const libraryStatus = gid ? getGameLibraryStatus(gid, libraryMap) : "none";
+        card.dataset.library = libraryStatus;
+        const okLibrary = s.library.length === 0 || s.library.includes(libraryStatus);
+
+        const visible = okQuery && okGenre && okPlatform && okYear && okRating && okLibrary && okSaved;
         card.hidden = !visible;
-        if (visible) shown += 1;
+        if (!visible) return;
+        shown += 1;
+
+        bump(counts.genre, genre);
+        platformTokens.forEach((p) => bump(counts.platform, p));
+        const y = Number(year);
+        bump(counts.year, Number.isFinite(y) && y <= 2019 ? "older" : String(year || ""));
+        bump(counts.rating, ratingBucket(rating));
+        bump(counts.library, libraryStatus);
+        if (gid && savedSet.has(gid)) counts.saved += 1;
       });
 
       if (emptyEl) emptyEl.hidden = shown !== 0;
       if (countEl) countEl.textContent = `共 ${shown} 个结果`;
+
+      const syncCountsFor = (name, map) => {
+        $$(`input[name="${name}"]`, root).forEach((el) => {
+          const label = el.closest?.("label");
+          if (!label) return;
+          let span = $(".filter-count", label);
+          if (!span) {
+            span = document.createElement("span");
+            span.className = "filter-count";
+            label.appendChild(span);
+          }
+          const c = Number(map.get(el.value) || 0) || 0;
+          span.textContent = `(${c})`;
+          el.disabled = c === 0 && !el.checked;
+        });
+      };
+
+      syncCountsFor("genre", counts.genre);
+      syncCountsFor("platform", counts.platform);
+      syncCountsFor("year", counts.year);
+      syncCountsFor("rating", counts.rating);
+      syncCountsFor("library", counts.library);
+      syncCountsFor("saved", new Map([["saved", counts.saved]]));
     };
 
     const renderActiveFilters = (s) => {
@@ -4452,6 +4632,35 @@
         chips.push({ label, onClear });
       };
 
+      const labelGenre = (g) =>
+        ({
+          rpg: "角色扮演",
+          strategy: "策略",
+          action: "动作",
+          adventure: "冒险",
+          simulation: "模拟",
+          other: "其他",
+        }[String(g || "")] || String(g || ""));
+
+      const labelPlatform = (p) =>
+        ({
+          pc: "PC",
+          ps5: "PS5",
+          ps4: "PS4",
+          "xbox-series": "Xbox Series",
+          "xbox-one": "Xbox One",
+          switch: "Switch",
+          mobile: "手机/平板",
+        }[String(p || "")] || String(p || ""));
+
+      const labelLibrary = (v) =>
+        ({
+          wishlist: "想玩",
+          playing: "在玩",
+          done: "已通关",
+          none: "未设置",
+        }[String(v || "")] || String(v || ""));
+
       if (s.query) {
         pushChip(`关键词：${s.query}`, () => {
           if (searchInput) searchInput.value = "";
@@ -4459,7 +4668,7 @@
       }
 
       s.genres.forEach((g) =>
-        pushChip(`类型：${g}`, () => {
+        pushChip(`类型：${labelGenre(g)}`, () => {
           $$('input[name="genre"]', root).forEach((el) => {
             if (el.value === g) el.checked = false;
           });
@@ -4467,7 +4676,7 @@
       );
 
       s.platforms.forEach((p) =>
-        pushChip(`平台：${p}`, () => {
+        pushChip(`平台：${labelPlatform(p)}`, () => {
           $$('input[name="platform"]', root).forEach((el) => {
             if (el.value === p) el.checked = false;
           });
@@ -4486,6 +4695,14 @@
         pushChip(`评分：${r}`, () => {
           $$('input[name="rating"]', root).forEach((el) => {
             if (el.value === r) el.checked = false;
+          });
+        })
+      );
+
+      s.library.forEach((l) =>
+        pushChip(`我的库：${labelLibrary(l)}`, () => {
+          $$('input[name="library"]', root).forEach((el) => {
+            if (el.value === l) el.checked = false;
           });
         })
       );
@@ -4520,6 +4737,7 @@
         if (s.platforms.length > 0) params.set("platform", s.platforms.join(","));
         if (s.years.length > 0) params.set("year", s.years.join(","));
         if (s.ratings.length > 0) params.set("rating", s.ratings.join(","));
+        if (s.library.length > 0) params.set("library", s.library.join(","));
         if (s.savedOnly) params.set("saved", "1");
         if (s.sort && s.sort !== "popular") params.set("sort", s.sort);
         if (s.view === "list") params.set("view", "list");
@@ -4536,6 +4754,26 @@
       renderActiveFilters(s);
       writeState(s);
       syncUrl(s);
+
+      const hasIntent =
+        Boolean(s.query) ||
+        s.genres.length > 0 ||
+        s.platforms.length > 0 ||
+        s.years.length > 0 ||
+        s.ratings.length > 0 ||
+        s.library.length > 0 ||
+        Boolean(s.savedOnly);
+
+      if (hasIntent) {
+        const visible = Array.from(listEl.children).filter(
+          (el) => el && el.classList?.contains?.("game-card") && !el.hidden
+        );
+        const urls = visible
+          .slice(0, 6)
+          .map((card) => card.querySelector?.('a.btn[href]')?.getAttribute?.("href") || "")
+          .filter(Boolean);
+        prefetchUrls(urls, { limit: 6, reason: "games_results" });
+      }
     };
 
     // 初始化状态：URL > localStorage > default
@@ -4552,6 +4790,7 @@
             platforms: [],
             years: [],
             ratings: [],
+            library: [],
             savedOnly: false,
             sort: "",
             view: "",
@@ -4569,6 +4808,7 @@
           platforms: readSearchList(params, "platform"),
           years: readSearchList(params, "year"),
           ratings: readSearchList(params, "rating"),
+          library: readSearchList(params, "library"),
           savedOnly: readSearchBool(params, "saved", { truthy: ["1"] }),
           sort: sortKey,
           view,
@@ -4581,6 +4821,7 @@
           platforms: [],
           years: [],
           ratings: [],
+          library: [],
           savedOnly: false,
           sort: "",
           view: "",
@@ -4596,6 +4837,7 @@
         platforms: [],
         years: [],
         ratings: [],
+        library: [],
         savedOnly: false,
         sort: sortSelect?.value || "popular",
         view: "grid",
@@ -4626,6 +4868,11 @@
       if (nextRatings.length > 0) s.ratings = nextRatings;
     }
 
+    if (url.library.length > 0) {
+      const nextLibrary = filterKnown("library", url.library);
+      if (nextLibrary.length > 0) s.library = nextLibrary;
+    }
+
     if (url.savedOnly) s.savedOnly = true;
 
     if (sortSelect) {
@@ -4640,6 +4887,21 @@
 
     const onSubmitLike = (e) => {
       e?.preventDefault?.();
+      try {
+        const s = stateFromUi();
+        telemetry.log("games_filter", {
+          source: String(e?.type || "ui").slice(0, 12),
+          qLen: String(s.query || "").length,
+          genres: s.genres.length,
+          platforms: s.platforms.length,
+          years: s.years.length,
+          ratings: s.ratings.length,
+          library: s.library.length,
+          savedOnly: Boolean(s.savedOnly),
+          sort: String(s.sort || "popular"),
+          view: String(s.view || "grid"),
+        });
+      } catch (_) {}
       sync();
     };
 
@@ -4659,7 +4921,17 @@
     }
 
     resetBtn?.addEventListener("click", () => {
-      s = { query: "", genres: [], platforms: [], years: [], ratings: [], sort: "popular", view: "grid" };
+      s = {
+        query: "",
+        genres: [],
+        platforms: [],
+        years: [],
+        ratings: [],
+        library: [],
+        savedOnly: false,
+        sort: "popular",
+        view: "grid",
+      };
       applyStateToUi(s);
       sync();
     });
@@ -4698,6 +4970,36 @@
     const searchBtn = $("#guide-search-btn");
     const sortSelect = $("#guide-sort");
     const countEl = $("#guides-count");
+
+    const renderInitialSkeleton = (count = 8) => {
+      if (!grid) return;
+      try {
+        grid.setAttribute("aria-busy", "true");
+      } catch (_) {}
+
+      const card = () => `
+        <div class="game-card guide-card is-skeleton-card" aria-hidden="true">
+          <div class="game-card-image">
+            <div class="skeleton skeleton-media"></div>
+          </div>
+          <div class="game-card-content">
+            <div class="skeleton-stack">
+              <div class="skeleton skeleton-line lg"></div>
+              <div class="skeleton skeleton-line"></div>
+              <div class="skeleton skeleton-line"></div>
+              <div class="skeleton skeleton-line sm"></div>
+            </div>
+          </div>
+        </div>
+      `;
+
+      grid.innerHTML = Array.from({ length: Math.max(1, Number(count || 0) || 8) })
+        .map(card)
+        .join("");
+
+      if (countEl) countEl.textContent = "加载中…";
+      if (empty) empty.hidden = true;
+    };
 
     const items = Object.entries(guides).map(([id, guide]) => ({ id, guide }));
     const allTags = Array.from(
@@ -4776,6 +5078,7 @@
         state.savedOnly = !state.savedOnly;
         writeState(state);
         renderTags();
+        telemetry.log("guides_filter", { kind: "savedOnly", on: Boolean(state.savedOnly) });
         apply();
         return;
       }
@@ -4785,6 +5088,7 @@
       state.tags = state.tags.includes(t) ? state.tags.filter((x) => x !== t) : [...state.tags, t];
       writeState(state);
       renderTags();
+      telemetry.log("guides_filter", { kind: "tag", tags: state.tags.length });
       apply();
     });
 
@@ -4889,6 +5193,7 @@
       if (had) saved.delete(gid);
       else saved.add(gid);
       writeStringList(STORAGE_KEYS.savedGuides, Array.from(saved));
+      telemetry.log("guide_save", { id: String(gid).slice(0, 48), saved: !had });
 
       toast({
         title: had ? "已取消收藏" : "已收藏",
@@ -4927,6 +5232,15 @@
     };
 
     const apply = () => {
+      try {
+        grid.setAttribute("aria-busy", "true");
+      } catch (_) {}
+      const done = () => {
+        try {
+          grid.removeAttribute("aria-busy");
+        } catch (_) {}
+      };
+
       saved = new Set(readStringList(STORAGE_KEYS.savedGuides));
       const q = (state.query || "").trim().toLowerCase();
       const tagSet = new Set(state.tags);
@@ -4964,6 +5278,7 @@
           if (countEl) countEl.textContent = "共 0 条攻略";
           if (empty) empty.hidden = false;
         });
+        done();
         syncUrl();
         return;
       }
@@ -5035,6 +5350,14 @@
 
         if (countEl) countEl.textContent = `共 ${sorted.length} 条攻略（虚拟列表）`;
         if (empty) empty.hidden = true;
+        done();
+
+        if (state.query || state.tags.length > 0 || state.savedOnly) {
+          prefetchUrls(
+            sorted.slice(0, 6).map(({ id }) => `guide-detail.html?id=${encodeURIComponent(id)}`),
+            { limit: 6, reason: "guides_results" }
+          );
+        }
         syncUrl();
         return;
       }
@@ -5045,6 +5368,14 @@
         if (countEl) countEl.textContent = `共 ${sorted.length} 条攻略`;
         if (empty) empty.hidden = true;
       });
+      done();
+
+      if (state.query || state.tags.length > 0 || state.savedOnly) {
+        prefetchUrls(
+          sorted.slice(0, 6).map(({ id }) => `guide-detail.html?id=${encodeURIComponent(id)}`),
+          { limit: 6, reason: "guides_results" }
+        );
+      }
       syncUrl();
     };
 
@@ -5055,11 +5386,18 @@
       sortSelect.value = state.sort || "default";
     }
     renderTags();
-    apply();
+    renderInitialSkeleton(8);
+    window.requestAnimationFrame(() => apply());
 
     const syncFromInput = () => {
       state = { ...state, query: searchInput?.value?.trim() || "" };
       writeState(state);
+      telemetry.log("guides_search", {
+        qLen: state.query.length,
+        tags: state.tags.length,
+        savedOnly: Boolean(state.savedOnly),
+        sort: String(state.sort || "default"),
+      });
       apply();
     };
 
@@ -7889,8 +8227,30 @@
       if (titleEl) titleEl.textContent = doc.title;
       if (hintEl) hintEl.textContent = `来源：${doc.file}`;
 
-      content.innerHTML =
-        '<div class="docs-loading"><div class="docs-loading-bar"></div><p>正在加载文档…（高延迟网络下会优先使用缓存并后台刷新）</p></div>';
+      telemetry.log("docs_open", { doc: doc.id });
+
+      try {
+        content.setAttribute("aria-busy", "true");
+      } catch (_) {}
+
+      content.innerHTML = `
+        <div class="docs-loading" role="status" aria-live="polite">
+          <div class="ink-loader">
+            <svg viewBox="0 0 64 64" aria-hidden="true" focusable="false">
+              <path class="ink-path" d="M10 36c10-18 22-26 34-24c8 1 12 8 10 16c-2 10-12 18-26 18c-10 0-18-4-18-10z"/>
+            </svg>
+            <div class="ink-loader-body" aria-hidden="true">
+              <div class="skeleton-stack">
+                <div class="skeleton skeleton-line lg"></div>
+                <div class="skeleton skeleton-line"></div>
+                <div class="skeleton skeleton-line"></div>
+                <div class="skeleton skeleton-line sm"></div>
+              </div>
+            </div>
+          </div>
+          <p>正在加载文档…（高延迟网络下会优先使用缓存并后台刷新）</p>
+        </div>
+      `;
 
       const v = detectAssetVersion() || String(getData()?.version || "") || "";
       const url = v ? `${doc.file}?v=${encodeURIComponent(v)}` : doc.file;
@@ -7908,8 +8268,13 @@
           }, DOCS_UI.hashScrollDelayMs);
         }
       } catch (_) {
+        telemetry.log("docs_error", { doc: doc.id });
         content.innerHTML =
           '<div class="docs-error"><h2>文档加载失败</h2><p>可能处于离线状态或网络较差。你仍可访问已缓存的页面，或稍后重试。</p></div>';
+      } finally {
+        try {
+          content.removeAttribute("aria-busy");
+        } catch (_) {}
       }
     };
 
@@ -7955,6 +8320,10 @@
 
   document.addEventListener("DOMContentLoaded", () => {
     document.documentElement.classList.add("js");
+    try {
+      const id = String(getParam("id") || "").trim();
+      telemetry.log("page_view", { id: id ? id.slice(0, 48) : "", hasId: Boolean(id) });
+    } catch (_) {}
 
     const run = (fn) => {
       try {

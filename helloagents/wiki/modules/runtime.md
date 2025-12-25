@@ -18,6 +18,10 @@
 
 - `styles.css`
   - Aurora/Glass/Bento 视觉系统
+  - EVO-VIS v2：黄金比例排版/间距 tokens（`--phi/--text-*/--space-*`）+ 12 级阴影阶梯（`--elev-1..12`）
+  - 通用栅格：12 列 grid helper（`.grid-12` / `.span-*` / `*-span-*`）为页面布局提供统一语义
+  - 统一容器质感：主要卡片/面板采用毛玻璃（`backdrop-filter`）+ 内高光 + 动态渐变边框（mask ring；尊重 `prefers-reduced-motion`）
+  - 加载态能力：Skeleton（`.skeleton*` / `.is-skeleton-card`）与 SVG Path Loader（`.ink-loader`）
   - 对 `prefers-reduced-motion` 提供降级规则
   - Motion tokens：统一关键交互的时长与 Bezier（按钮/弹窗/滚动 reveal）
   - 超长文本体验：标题提供截断 + 渐变遮罩（mask 支持时更细腻）
@@ -33,7 +37,9 @@
     - 按 `data-page` 精确调度页面级 init，减少无效调用
     - 网络状态闭环：`netStore` 统一维护 online/connection/inflight/error，减少散落监听
     - 高延迟优化：内部链接 hover/focus 预取（prefetch），让跨页更“跟手”
+    - 意图预取：在筛选/搜索等明确意图场景预取 Top-N 详情页（弱网/省流/离线自动降级）
     - 长列表虚拟化：当列表规模巨大时自动启用虚拟列表（只渲染可视区），避免一次性创建海量 DOM
+    - 本地埋点：`telemetry` 仅记录本地事件（默认启用可关闭），用于定位交互与性能优化机会；调试句柄暴露在 `GKB.runtime.telemetry`
     - 工程自诊断：提供 `GKB.health()` 与 `GKB.runtime.health.start()` 采样输出（FPS/LongTask/CLS/LCP/内存等）
   - 动效：
     - 内建 `MotionLite`（WAAPI 轻量层：`animate/stagger`）

@@ -6,6 +6,21 @@
 
 ## [Unreleased]
 
+## [20251225-2] - 2025-12-25
+
+### 新增
+- EVO-VIS v2：新增黄金比例（phi）排版/间距 tokens（`--phi/--text-*/--space-*`），并补齐 12 级阴影阶梯（`--elev-1..12`）
+- 容器视觉统一：主要卡片/面板升级为高级毛玻璃（`backdrop-filter`）+ 内高光 + 动态渐变边框（mask ring；尊重 `prefers-reduced-motion`）
+- Skeleton Screen：新增 `.skeleton*` / `.is-skeleton-card`，并在攻略库首帧注入骨架屏（降低空白感）
+- SVG Path Loading：文档加载 UI 升级为“墨迹描边”SVG loader + skeleton stack（更贴合国风动效）
+- 本地埋点：新增 `telemetry` 模块（仅本地存储、可关闭），并暴露 `GKB.runtime.telemetry`
+
+### 变更
+- 游戏库筛选：补齐“我的游戏库”筛选逻辑（`wishlist/playing/done/none`），并支持 URL 同步 `?library=...`
+- 游戏库筛选体验：筛选项实时展示可用数量并自动禁用 0 结果选项（多级筛选可用性更明确）
+- 搜索预取：在攻略库/游戏库检测到明确意图时，预取前 N 个详情页（复用 `netClient.prefetch`，弱网/省流/离线自动降级）
+- 版本号：bump 至 `20251225-2`（同步更新全站 `?v=` 与 `data.js.version`）
+
 ## [20251225-1] - 2025-12-25
 
 ### 新增

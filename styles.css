@@ -7543,3 +7543,468 @@ body[data-guide-line="relaxed"] {
         align-items: center;
     }
 }
+
+/* ==========================================================================
+   V20251225 “无限进化协议” · 第一阶段：视觉系统重构（EVO-VIS v2）
+   - 12 级响应式栅格（通用 classes + tokens）
+   - 动态阴影层级（12 阶 elev ladder）
+   - 黄金比例（phi）字体/间距系统（以 clamp 保持可读性）
+   - 容器统一：高级毛玻璃（backdrop-filter）+ 动态渐变边框
+   - SVG Path Loading（墨迹描边）+ Skeleton shimmer
+   ========================================================================== */
+
+:root {
+    /* 黄金比例（用于排版层级；实际字号使用 clamp 避免过大/过小） */
+    --phi: 1.61803398875;
+    --phi-inv: 0.61803398875;
+
+    /* 12 列栅格（默认 gap 复用旧的 --grid-gap，同时补齐可选档位） */
+    --grid-cols: 12;
+    --grid-gap-xs: 10px;
+    --grid-gap-sm: 12px;
+    --grid-gap-md: 16px;
+    --grid-gap-lg: 18px;
+    --grid-gap-xl: 22px;
+
+    /* 字体阶梯（phi 语义：标题级差；实现上用 clamp 保障移动端与超宽屏一致性） */
+    --text-0: clamp(0.92rem, 0.90rem + 0.20vw, 1.00rem);
+    --text-1: clamp(1.00rem, 0.96rem + 0.35vw, 1.12rem);
+    --text-2: clamp(1.12rem, 1.04rem + 0.55vw, 1.32rem);
+    --text-3: clamp(1.32rem, 1.18rem + 0.85vw, 1.70rem);
+    --text-4: clamp(1.70rem, 1.40rem + 1.20vw, 2.30rem);
+    --text-5: clamp(2.30rem, 1.80rem + 1.80vw, 3.20rem);
+
+    --leading-tight: 1.15;
+    --leading-base: 1.55;
+    --leading-loose: 1.75;
+
+    /* 间距（按“phi 感知”排列：小步进更密集，大步进更大胆） */
+    --space-1: 6px;
+    --space-2: 10px;
+    --space-3: 16px;
+    --space-4: 26px;
+    --space-5: 42px;
+    --space-6: 68px;
+
+    /* 毛玻璃 tokens（以 surface 系列为 SSOT；高对比与低动效会降级） */
+    --glass-blur: 18px;
+    --glass-saturation: 1.18;
+    --glass-brightness: 1.08;
+    --glass-bg: var(--surface);
+    --glass-bg-strong: var(--surface-strong);
+    --glass-border: var(--surface-border);
+    --glass-border-soft: rgba(0, 0, 0, 0.06);
+    --glass-inner: rgba(255, 255, 255, 0.26);
+
+    /* 动态渐变边框（国漫“流光”） */
+    --grad-a: rgba(93, 63, 211, 0.65);
+    --grad-b: rgba(0, 194, 255, 0.55);
+    --grad-c: rgba(255, 87, 87, 0.55);
+    --border-grad: linear-gradient(135deg, var(--grad-a), var(--grad-b), var(--grad-c));
+
+    /* 阴影阶梯：12 级（用于不同层级：卡片/浮层/对话框/导航等） */
+    --elev-1: 0 1px 2px rgba(15, 23, 42, 0.06), 0 1px 1px rgba(15, 23, 42, 0.04);
+    --elev-2: 0 2px 6px rgba(15, 23, 42, 0.08), 0 1px 2px rgba(15, 23, 42, 0.05);
+    --elev-3: 0 6px 14px rgba(15, 23, 42, 0.10), 0 2px 6px rgba(15, 23, 42, 0.06);
+    --elev-4: 0 10px 24px rgba(15, 23, 42, 0.12), 0 3px 10px rgba(15, 23, 42, 0.08);
+    --elev-5: 0 14px 34px rgba(15, 23, 42, 0.14), 0 4px 14px rgba(15, 23, 42, 0.10);
+    --elev-6: 0 18px 45px rgba(15, 23, 42, 0.16), 0 6px 18px rgba(15, 23, 42, 0.11);
+    --elev-7: 0 22px 56px rgba(15, 23, 42, 0.18), 0 8px 22px rgba(15, 23, 42, 0.12);
+    --elev-8: 0 26px 70px rgba(15, 23, 42, 0.20), 0 10px 26px rgba(15, 23, 42, 0.12);
+    --elev-9: 0 32px 84px rgba(15, 23, 42, 0.22), 0 12px 32px rgba(15, 23, 42, 0.13);
+    --elev-10: 0 40px 96px rgba(15, 23, 42, 0.24), 0 16px 40px rgba(15, 23, 42, 0.14);
+    --elev-11: 0 52px 120px rgba(15, 23, 42, 0.26), 0 18px 52px rgba(15, 23, 42, 0.14);
+    --elev-12: 0 64px 148px rgba(15, 23, 42, 0.28), 0 24px 64px rgba(15, 23, 42, 0.15);
+
+    /* 将既有 card shadow 映射到新阶梯（兼容历史样式） */
+    --card-shadow: var(--elev-5);
+    --card-shadow-strong: var(--elev-7);
+}
+
+:root[data-theme="dark"] {
+    --glass-border-soft: rgba(255, 255, 255, 0.10);
+    --glass-inner: rgba(255, 255, 255, 0.10);
+
+    --grad-a: rgba(106, 92, 255, 0.65);
+    --grad-b: rgba(0, 194, 255, 0.55);
+    --grad-c: rgba(255, 87, 87, 0.55);
+
+    --elev-1: 0 1px 2px rgba(0, 0, 0, 0.38);
+    --elev-2: 0 2px 6px rgba(0, 0, 0, 0.45);
+    --elev-3: 0 6px 16px rgba(0, 0, 0, 0.52);
+    --elev-4: 0 10px 26px rgba(0, 0, 0, 0.58);
+    --elev-5: 0 14px 34px rgba(0, 0, 0, 0.62);
+    --elev-6: 0 18px 46px rgba(0, 0, 0, 0.66);
+    --elev-7: 0 24px 58px rgba(0, 0, 0, 0.70);
+    --elev-8: 0 30px 74px rgba(0, 0, 0, 0.74);
+    --elev-9: 0 38px 92px rgba(0, 0, 0, 0.78);
+    --elev-10: 0 48px 112px rgba(0, 0, 0, 0.80);
+    --elev-11: 0 60px 136px rgba(0, 0, 0, 0.82);
+    --elev-12: 0 72px 160px rgba(0, 0, 0, 0.84);
+
+    --card-shadow: var(--elev-6);
+    --card-shadow-strong: var(--elev-8);
+}
+
+:root[data-contrast="high"] {
+    /* 可读性优先：高对比时关闭毛玻璃与动态边框 */
+    --glass-blur: 0px;
+    --glass-saturation: 1;
+    --glass-brightness: 1;
+    --border-grad: linear-gradient(135deg, rgba(0, 0, 0, 0.22), rgba(0, 0, 0, 0.12));
+}
+
+@media (prefers-reduced-motion: reduce) {
+    :root {
+        /* 避免“玻璃拖影感” */
+        --glass-blur: 0px;
+    }
+}
+
+/* 排版覆盖：让全站层级更统一（不依赖外部字体加载，仍遵循既有 font-sans） */
+body {
+    font-size: var(--text-1);
+    line-height: var(--leading-base);
+}
+
+h1 {
+    font-size: var(--text-5);
+    line-height: var(--leading-tight);
+    letter-spacing: -0.02em;
+}
+
+h2 {
+    font-size: var(--text-4);
+    line-height: var(--leading-tight);
+    letter-spacing: -0.015em;
+}
+
+h3 {
+    font-size: var(--text-3);
+    line-height: 1.2;
+    letter-spacing: -0.01em;
+}
+
+h4 {
+    font-size: var(--text-2);
+    line-height: 1.25;
+}
+
+h5,
+h6 {
+    font-size: var(--text-1);
+    line-height: 1.3;
+}
+
+p {
+    line-height: var(--leading-loose);
+}
+
+/* -------------------------
+   12 列栅格：通用工具类
+   ------------------------- */
+
+.grid-12 {
+    display: grid;
+    grid-template-columns: repeat(var(--grid-cols), minmax(0, 1fr));
+    gap: var(--grid-gap-lg);
+}
+
+.grid-gap-xs { gap: var(--grid-gap-xs); }
+.grid-gap-sm { gap: var(--grid-gap-sm); }
+.grid-gap-md { gap: var(--grid-gap-md); }
+.grid-gap-lg { gap: var(--grid-gap-lg); }
+.grid-gap-xl { gap: var(--grid-gap-xl); }
+
+.span-1 { grid-column: span 1; }
+.span-2 { grid-column: span 2; }
+.span-3 { grid-column: span 3; }
+.span-4 { grid-column: span 4; }
+.span-5 { grid-column: span 5; }
+.span-6 { grid-column: span 6; }
+.span-7 { grid-column: span 7; }
+.span-8 { grid-column: span 8; }
+.span-9 { grid-column: span 9; }
+.span-10 { grid-column: span 10; }
+.span-11 { grid-column: span 11; }
+.span-12 { grid-column: span 12; }
+
+@media (min-width: 576px) {
+    .sm-span-12 { grid-column: span 12; }
+    .sm-span-8 { grid-column: span 8; }
+    .sm-span-6 { grid-column: span 6; }
+    .sm-span-4 { grid-column: span 4; }
+}
+
+@media (min-width: 768px) {
+    .md-span-12 { grid-column: span 12; }
+    .md-span-8 { grid-column: span 8; }
+    .md-span-6 { grid-column: span 6; }
+    .md-span-4 { grid-column: span 4; }
+}
+
+@media (min-width: 992px) {
+    .lg-span-12 { grid-column: span 12; }
+    .lg-span-8 { grid-column: span 8; }
+    .lg-span-6 { grid-column: span 6; }
+    .lg-span-4 { grid-column: span 4; }
+}
+
+@media (min-width: 1200px) {
+    .xl-span-12 { grid-column: span 12; }
+    .xl-span-8 { grid-column: span 8; }
+    .xl-span-6 { grid-column: span 6; }
+    .xl-span-4 { grid-column: span 4; }
+}
+
+/* -------------------------
+   玻璃容器统一（卡片/面板/浮层）
+   ------------------------- */
+
+.game-card,
+.discussion-card,
+.article-card,
+.bento-card,
+.reply-card,
+.mini-card,
+.recent-card,
+.note-panel,
+.checklist-panel,
+.docs-main,
+.filters-sidebar,
+.cmdk-panel,
+.compare-panel {
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--card-shadow), inset 0 1px 0 var(--glass-inner);
+    backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturation)) brightness(var(--glass-brightness));
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturation)) brightness(var(--glass-brightness));
+}
+
+/* 动态渐变边框：用 mask 只绘制“边框环”，不污染内容背景 */
+@supports ((-webkit-mask-composite: xor) or (mask-composite: exclude)) {
+    .game-card,
+    .discussion-card,
+    .article-card,
+    .bento-card,
+    .reply-card,
+    .mini-card,
+    .recent-card,
+    .note-panel,
+    .checklist-panel,
+    .docs-main,
+    .filters-sidebar,
+    .cmdk-panel,
+    .compare-panel {
+        position: relative;
+        overflow: hidden;
+    }
+
+    .game-card::before,
+    .discussion-card::before,
+    .article-card::before,
+    .bento-card::before,
+    .reply-card::before,
+    .mini-card::before,
+    .recent-card::before,
+    .note-panel::before,
+    .checklist-panel::before,
+    .docs-main::before,
+    .filters-sidebar::before,
+    .cmdk-panel::before,
+    .compare-panel::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        border-radius: inherit;
+        padding: 1px;
+        background: var(--border-grad);
+        opacity: 0.70;
+        pointer-events: none;
+        -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+        -webkit-mask-composite: xor;
+        mask-composite: exclude;
+    }
+}
+
+@keyframes evo-border-flow {
+    0% { background-position: 0% 0%; }
+    100% { background-position: 200% 0%; }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    .game-card:hover::before,
+    .mini-card:hover::before,
+    .bento-card:hover::before,
+    .article-card:hover::before,
+    .recent-card:hover::before,
+    .discussion-card:hover::before {
+        background-size: 220% 100%;
+        animation: evo-border-flow 2.2s linear infinite;
+    }
+}
+
+/* 交互型卡片 hover：统一“抬升”策略（避免每块各写一套） */
+.game-card,
+.mini-card,
+.bento-card,
+.article-card,
+.recent-card,
+.discussion-card,
+.topic-card,
+.reply-card {
+    transition:
+        transform var(--dur-3) var(--ease-out),
+        box-shadow var(--dur-3) var(--ease-out),
+        border-color var(--dur-3) var(--ease-out);
+    will-change: transform;
+}
+
+.game-card:hover,
+.mini-card:hover,
+.bento-card:hover,
+.article-card:hover,
+.recent-card:hover,
+.discussion-card:hover,
+.topic-card:hover,
+.reply-card:hover {
+    box-shadow: var(--card-shadow-strong), inset 0 1px 0 var(--glass-inner);
+    transform: translateY(-2px);
+}
+
+/* -------------------------
+   SVG Path Loading（墨迹描边）
+   ------------------------- */
+
+.ink-loader {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    color: var(--text-primary);
+}
+
+.ink-loader-body {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.ink-loader svg {
+    width: 56px;
+    height: 56px;
+    flex: 0 0 auto;
+}
+
+.ink-loader .ink-path {
+    stroke: currentColor;
+    stroke-width: 2.2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    fill: none;
+    stroke-dasharray: 220;
+    stroke-dashoffset: 220;
+    opacity: 0.85;
+    animation: ink-draw 1.35s var(--ease-out) infinite;
+}
+
+@keyframes ink-draw {
+    0% { stroke-dashoffset: 220; opacity: 0.25; }
+    35% { opacity: 0.95; }
+    78% { stroke-dashoffset: 0; opacity: 0.95; }
+    100% { stroke-dashoffset: -220; opacity: 0.25; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .ink-loader .ink-path {
+        animation: none;
+        stroke-dashoffset: 0;
+        opacity: 0.85;
+    }
+}
+
+/* -------------------------
+   Skeleton Screen（骨架屏）
+   ------------------------- */
+
+.skeleton {
+    position: relative;
+    border-radius: 14px;
+    background: rgba(0, 0, 0, 0.06);
+    overflow: hidden;
+}
+
+[data-theme="dark"] .skeleton {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.skeleton::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(255, 255, 255, 0.26),
+        transparent
+    );
+    transform: translateX(-60%);
+    animation: skeleton-shimmer 1.1s linear infinite;
+}
+
+@keyframes skeleton-shimmer {
+    0% { transform: translateX(-60%); }
+    100% { transform: translateX(60%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .skeleton::after {
+        animation: none;
+        opacity: 0;
+    }
+}
+
+.skeleton-line {
+    height: 12px;
+    border-radius: 999px;
+}
+
+.skeleton-line.sm { height: 10px; }
+.skeleton-line.lg { height: 16px; }
+
+.skeleton-stack {
+    display: grid;
+    gap: 10px;
+}
+
+.skeleton-media {
+    height: 120px;
+    border-radius: 14px;
+}
+
+.skeleton-media.sm {
+    height: 96px;
+}
+
+.filter-count {
+    margin-left: 6px;
+    color: var(--text-secondary);
+    font-size: 0.85em;
+    font-weight: 700;
+    opacity: 0.85;
+}
+
+/* Skeleton card：避免毛玻璃/渐变边框带来额外合成层，降低首屏压力 */
+.is-skeleton-card {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    box-shadow: var(--elev-2) !important;
+    transform: none !important;
+}
+
+.is-skeleton-card::before {
+    display: none !important;
+}
+
+.is-skeleton-card:hover {
+    transform: none !important;
+    box-shadow: var(--elev-2) !important;
+}
