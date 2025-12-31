@@ -57,6 +57,7 @@ const PRECACHE_URLS = [
   "feed.xml",
   `docs/STYLE_GUIDE.md?v=${VERSION}`,
   `docs/DATA_MODEL.md?v=${VERSION}`,
+  `docs/CONTRIBUTING.md?v=${VERSION}`,
   `docs/DEPLOYMENT.md?v=${VERSION}`,
 
   `styles.css?v=${VERSION}`,

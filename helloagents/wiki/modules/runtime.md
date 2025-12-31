@@ -9,7 +9,7 @@
 - `*.html`
   - 多页入口（静态外壳），通过 `data-page` 标识页面类型
   - 动态页约定：`game.html?id=...` / `guide-detail.html?id=...` / `forum-topic.html?id=...`
-  - 文档入口：`docs.html`（站内交互式渲染 `docs/*.md`）
+  - 文档入口：`docs.html`（站内交互式渲染 `docs/*.md`，含贡献指南/数据模型/部署说明）
 
 - `boot.js`
   - 在页面最早期执行：恢复主题、高对比度、No-JS 标记

@@ -8011,6 +8011,7 @@
     const DOCS = [
       { id: "STYLE_GUIDE", title: "风格与规范", file: "docs/STYLE_GUIDE.md" },
       { id: "DATA_MODEL", title: "数据模型", file: "docs/DATA_MODEL.md" },
+      { id: "CONTRIBUTING", title: "贡献指南", file: "docs/CONTRIBUTING.md" },
       { id: "DEPLOYMENT", title: "部署与发布", file: "docs/DEPLOYMENT.md" },
     ];
 

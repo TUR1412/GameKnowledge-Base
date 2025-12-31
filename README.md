@@ -221,7 +221,7 @@ npm run build:vite
 除了直接阅读 `docs/*.md`，也可以使用站内的交互式入口：
 
 - 打开：`docs.html`
-- 直达：`docs.html?doc=STYLE_GUIDE` / `docs.html?doc=DATA_MODEL` / `docs.html?doc=DEPLOYMENT`
+- 直达：`docs.html?doc=STYLE_GUIDE` / `docs.html?doc=DATA_MODEL` / `docs.html?doc=CONTRIBUTING` / `docs.html?doc=DEPLOYMENT`
 - 说明：页面会同源加载并渲染 `docs/*.md`；在 HTTPS/localhost 下启用 Service Worker 时，文档会被预缓存，离线也可阅读。
 
 ---
@@ -242,10 +242,10 @@ npm run build:vite
 本项目对核心资源使用 `?v=` 版本号来避免缓存“幽灵更新”：
 
 ```html
-<link rel="stylesheet" href="styles.css?v=20251224-4">
-<script src="boot.js?v=20251224-4"></script>
-<script src="data.js?v=20251224-4" defer></script>
-<script src="scripts.js?v=20251224-4" defer></script>
+<link rel="stylesheet" href="styles.css?v=20251231-2">
+<script src="boot.js?v=20251231-2"></script>
+<script src="data.js?v=20251231-2" defer></script>
+<script src="scripts.js?v=20251231-2" defer></script>
 ```
 
 当你修改 `styles.css` / `scripts.js` / `data.js` / `sw.js` / `manifest.webmanifest` 时，务必同步 bump 版本号。
@@ -265,7 +265,7 @@ node tools/bump-version.mjs
 核心数据集中在 `data.js`：
 
 ```js
-version: "20251224-4",
+version: "20251231-2",
 
 games: {
   "elden-ring": { title: "艾尔登法环", updated: "2025-10-05", ... }
@@ -311,6 +311,10 @@ node tools/generate-feed.mjs --check
 # - 默认使用内置 esbuild 压缩（依赖更少，避免额外 terser devDependency）
 npm run build:vite
 ```
+
+贡献者入口：
+
+- 贡献指南：`docs/CONTRIBUTING.md`（GitHub 也会识别根目录 `CONTRIBUTING.md`）
 
 ---
 

@@ -6,6 +6,17 @@
 
 ## [Unreleased]
 
+## [20251231-2] - 2025-12-31
+
+### 新增
+- 贡献指南：新增 `docs/CONTRIBUTING.md` 与根目录 `CONTRIBUTING.md`（站内/站外双入口）
+- Docs Portal：新增 `CONTRIBUTING` 文档导航（支持 `docs.html?doc=CONTRIBUTING` 直达）
+- 离线预缓存：`sw.js` 预缓存新增 `docs/CONTRIBUTING.md`（随版本号更新）
+
+### 变更
+- README：补齐贡献者入口，并同步示例版本号与 docs 直达链接
+- 版本号：bump 至 `20251231-2`（全站 `?v=` 与 `data.js.version` 同步）
+
 ## [20251231-1] - 2025-12-31
 
 ### 新增
