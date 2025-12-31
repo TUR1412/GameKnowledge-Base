@@ -9,11 +9,11 @@
 所有页面必须使用带版本号的静态资源引用：
 
 ```html
-<link rel="stylesheet" href="styles.css?v=20251225-2">
-<link rel="manifest" href="manifest.webmanifest?v=20251225-2">
-<script src="boot.js?v=20251225-2"></script>
-<script src="data.js?v=20251225-2" defer></script>
-<script src="scripts.js?v=20251225-2" defer></script>
+<link rel="stylesheet" href="styles.css?v=20251231-1">
+<link rel="manifest" href="manifest.webmanifest?v=20251231-1">
+<script src="boot.js?v=20251231-1"></script>
+<script src="data.js?v=20251231-1" defer></script>
+<script src="scripts.js?v=20251231-1" defer></script>
 ```
 
 当你修改以下任意文件时，请同步更新所有 HTML 页里的 `?v=`：
@@ -117,6 +117,22 @@ node tools/bump-version.mjs --dry-run
 - **优先动画 transform/opacity/filter**（GPU 友好），避免频繁 layout 抖动
 - 如必须动画布局（例如列表删除的 collapse），只允许在“单个元素”上短时执行，并确保可以降级
 - 事件绑定优先事件委托（避免“每次 render 绑 N 个 listener”）
+
+---
+
+## 7) 视觉系统（Design Tokens / Aurora Glass）
+
+为了避免“补丁越打越散”，本项目约定 **视觉系统以 `styles.css` 的 token 为 SSOT**：
+
+- 渐变边框 / 光晕：`--grad-a/b/c`、`--border-grad`、`--glow-*`
+- 毛玻璃：`--glass-*`（高对比度与 Reduced Motion 会降级）
+- 层级阴影：`--elev-1..12` / `--card-shadow*`
+- 关键按钮手感：`--btn-shadow*`（按钮/图标按钮统一消费）
+
+建议实践：
+
+- 需要“换风格/换品牌色”时，**优先改 token**，而不是到处改组件的 `rgba(...)`。
+- 高对比度模式（`data-contrast="high"`）以可读性优先：关闭动态边框流动与强烈玻璃效果。
 
 ### 6.4 View Transition（跨页/同页）
 

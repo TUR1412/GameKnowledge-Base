@@ -8008,3 +8008,247 @@ p {
     transform: none !important;
     box-shadow: var(--elev-2) !important;
 }
+
+/* ==========================================================================
+   V20251231 UI/UX 视觉革命 v3（Aurora Glass · SSOT 收敛）
+   说明：
+   - 继续沿用“末尾覆盖”策略降低回归风险
+   - 将全站“流光边框/光晕/按钮手感”收敛到 token，消除历史漂移
+   ========================================================================== */
+
+/* -------------------------
+   Design Tokens（SSOT）
+   ------------------------- */
+
+:root {
+    /* 让流光渐变与当前品牌色一致（暖橙 / 青绿 / 天青） */
+    --grad-a: rgba(255, 107, 74, 0.64);
+    --grad-b: rgba(20, 184, 166, 0.50);
+    --grad-c: rgba(47, 128, 237, 0.46);
+    --border-grad: linear-gradient(135deg, var(--grad-a), var(--grad-b), var(--grad-c));
+
+    /* Button elevation：与 elev 阶梯对齐，避免各处写不同 rgba */
+    --btn-shadow: var(--elev-3);
+    --btn-shadow-hover: var(--elev-5);
+    --btn-shadow-press: var(--elev-2);
+
+    /* 细节：让玻璃更“干净”，减少灰雾感（仍可被高对比/低动效降级覆盖） */
+    --glass-saturation: 1.22;
+    --glass-brightness: 1.06;
+}
+
+:root[data-theme="dark"] {
+    --grad-a: rgba(255, 138, 107, 0.68);
+    --grad-b: rgba(45, 212, 191, 0.55);
+    --grad-c: rgba(96, 165, 250, 0.55);
+}
+
+:root[data-contrast="high"] {
+    /* 可读性优先：更实的边界、关闭流光 */
+    --grad-a: rgba(0, 0, 0, 0.28);
+    --grad-b: rgba(0, 0, 0, 0.18);
+    --grad-c: rgba(0, 0, 0, 0.12);
+}
+
+:root[data-contrast="high"] .btn,
+:root[data-contrast="high"] .btn-small,
+:root[data-contrast="high"] .btn-secondary,
+:root[data-contrast="high"] .icon-button {
+    box-shadow: var(--elev-2) !important;
+}
+
+:root[data-contrast="high"] .btn::before,
+:root[data-contrast="high"] .btn-small::before {
+    opacity: 0 !important;
+}
+
+/* 高对比度：关闭 hover 边框流动（减少干扰） */
+@media (prefers-reduced-motion: no-preference) {
+    :root[data-contrast="high"] .game-card:hover::before,
+    :root[data-contrast="high"] .mini-card:hover::before,
+    :root[data-contrast="high"] .bento-card:hover::before,
+    :root[data-contrast="high"] .article-card:hover::before,
+    :root[data-contrast="high"] .recent-card:hover::before,
+    :root[data-contrast="high"] .discussion-card:hover::before {
+        animation: none !important;
+        background-size: 100% 100% !important;
+    }
+}
+
+/* -------------------------
+   Buttons（世界级手感）
+   ------------------------- */
+
+.btn,
+.btn-small {
+    box-shadow: var(--btn-shadow), 0 10px 22px var(--glow-primary);
+    transform: translateZ(0);
+}
+
+.btn::before,
+.btn-small::before {
+    background: var(--border-grad);
+    opacity: 0.0;
+}
+
+.btn:hover,
+.btn-small:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--btn-shadow-hover), 0 18px 45px var(--glow-primary);
+}
+
+.btn:hover::before,
+.btn-small:hover::before {
+    opacity: 0.9;
+}
+
+.btn:active,
+.btn-small:active {
+    transform: translateY(-1px) scale(0.99);
+    box-shadow: var(--btn-shadow-press), 0 10px 20px rgba(0, 0, 0, 0.10);
+}
+
+.btn-secondary {
+    box-shadow: var(--btn-shadow), 0 10px 22px var(--glow-secondary);
+}
+
+.btn-secondary:hover {
+    box-shadow: var(--btn-shadow-hover), 0 18px 45px var(--glow-secondary);
+}
+
+.btn-outline {
+    background: var(--glass-bg-strong);
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--elev-2);
+}
+
+.btn-outline:hover {
+    background: var(--glass-bg-strong);
+    border-color: var(--grad-a);
+    box-shadow: var(--elev-3);
+}
+
+/* -------------------------
+   Icon Button（统一层级）
+   ------------------------- */
+
+.icon-button {
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--elev-2), inset 0 1px 0 var(--glass-inner);
+    backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturation)) brightness(var(--glass-brightness));
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturation)) brightness(var(--glass-brightness));
+}
+
+.icon-button:hover {
+    box-shadow: var(--elev-4), inset 0 1px 0 var(--glass-inner);
+}
+
+.icon-button:active {
+    box-shadow: var(--elev-2), inset 0 1px 0 var(--glass-inner);
+}
+
+@supports ((-webkit-mask-composite: xor) or (mask-composite: exclude)) {
+    .icon-button {
+        position: relative;
+        overflow: hidden;
+    }
+
+    .icon-button::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        border-radius: inherit;
+        padding: 1px;
+        background: var(--border-grad);
+        opacity: 0.45;
+        pointer-events: none;
+        -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+        -webkit-mask-composite: xor;
+        mask-composite: exclude;
+    }
+
+    .icon-button:hover::before {
+        opacity: 0.68;
+    }
+}
+
+/* -------------------------
+   Hero / Banner（统一光晕来源）
+   ------------------------- */
+
+.hero-banner::before {
+    background:
+        radial-gradient(520px 300px at 12% 22%, var(--grad-a), transparent 70%),
+        radial-gradient(520px 320px at 85% 34%, var(--grad-b), transparent 75%),
+        radial-gradient(420px 280px at 28% 88%, var(--grad-c), transparent 80%);
+    opacity: 0.85;
+    filter: blur(14px);
+}
+
+.banner {
+    position: relative;
+    overflow: hidden;
+    background: transparent;
+    color: var(--text-primary);
+}
+
+.banner::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+        radial-gradient(680px 360px at 16% 35%, var(--grad-a), transparent 72%),
+        radial-gradient(720px 420px at 86% 20%, var(--grad-b), transparent 76%),
+        radial-gradient(520px 380px at 30% 88%, var(--grad-c), transparent 82%);
+    filter: blur(16px);
+    opacity: 0.75;
+    z-index: 0;
+}
+
+/* 将原本“深色大横幅 + 白字”的实现升级为玻璃面板（主题自适配） */
+.banner-content {
+    position: relative;
+    z-index: 1;
+    max-width: 760px;
+    padding: clamp(28px, 3.5vw, 44px);
+    border-radius: 24px;
+    background: var(--glass-bg-strong);
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--elev-6), inset 0 1px 0 var(--glass-inner);
+    backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturation)) brightness(var(--glass-brightness));
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturation)) brightness(var(--glass-brightness));
+}
+
+.banner h1 {
+    color: var(--text-primary);
+}
+
+.banner p {
+    color: var(--text-secondary);
+}
+
+.banner h1 span::after {
+    background-color: var(--primary-light);
+}
+
+/* -------------------------
+   Motion 降级（避免“玻璃拖影感”）
+   ------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+    .btn:hover,
+    .btn-small:hover,
+    .icon-button:hover,
+    .game-card:hover,
+    .mini-card:hover,
+    .bento-card:hover,
+    .article-card:hover,
+    .recent-card:hover,
+    .discussion-card:hover,
+    .topic-card:hover,
+    .reply-card:hover {
+        transform: none;
+    }
+}
