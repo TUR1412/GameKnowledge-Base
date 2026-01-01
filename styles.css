@@ -7661,7 +7661,23 @@ body[data-guide-line="relaxed"] {
     }
 }
 
-/* 排版覆盖：让全站层级更统一（不依赖外部字体加载，仍遵循既有 font-sans） */
+@media (prefers-reduced-transparency: reduce) {
+    :root {
+        /* 尊重“减少透明度”偏好：毛玻璃退化为实体面板 */
+        --glass-blur: 0px;
+        --glass-saturation: 1;
+        --glass-brightness: 1;
+    }
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    :root {
+        /* 兼容不支持 backdrop-filter 的环境：避免出现“半透明但不模糊”的视觉割裂 */
+        --glass-blur: 0px;
+    }
+}
+
+/* 排版覆盖：让全站层级更统一（不依赖外部字体加载，仍遵循既有 font-sans） */    
 body {
     font-size: var(--text-1);
     line-height: var(--leading-base);

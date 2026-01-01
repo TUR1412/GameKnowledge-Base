@@ -2,6 +2,16 @@
 
 本项目以“静态站点稳定交付”为目标：每次大改都会同步更新资源版本号（`?v=`），并通过 CI 做断链/资源/语法校验。
 
+## 2026-01-01 (20260101-1)
+
+### Added
+- 运维脚本：新增 `tools/project-genesis.ps1`，用于一键 clone / bump 版本 / 跑校验 / 提交（可选 push）
+
+### Changed
+- UI：毛玻璃系统新增降级策略（`prefers-reduced-transparency` 与不支持 `backdrop-filter` 的环境）
+- README：新增项目 Title ASCII 艺术字、快捷入口链接、Highlights（Emoji 特性清单），并同步示例版本号
+- 版本号：bump 至 `20260101-1`（同步更新全站 `?v=` 与 `data.js.version`）
+
 ## 2025-12-31 (20251231-2)
 
 ### Added

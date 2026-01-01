@@ -1,8 +1,26 @@
+```text
+   ██████╗  █████╗ ███╗   ███╗███████╗    ██╗  ██╗██████╗
+  ██╔════╝ ██╔══██╗████╗ ████║██╔════╝    ██║ ██╔╝██╔══██╗
+  ██║  ███╗███████║██╔████╔██║█████╗      █████╔╝ ██████╔╝
+  ██║   ██║██╔══██║██║╚██╔╝██║██╔══╝      ██╔═██╗ ██╔══██╗
+  ╚██████╔╝██║  ██║██║ ╚═╝ ██║███████╗    ██║  ██╗██████╔╝
+   ╚═════╝ ╚═╝  ╚═╝╚═╝     ╚═╝╚══════╝    ╚═╝  ╚═╝╚═════╝
+
+  GameKnowledge-Base · 游戏攻略网（Static / No Framework / Data-Driven / PWA）
+```
+
 # 游戏攻略网 · GameKnowledge-Base
 
 <p align="center">
   <strong>纯静态 · 无框架 · 数据驱动 · PWA 离线 · 本地状态持久化</strong><br>
   一次维护数据，多页统一渲染。适合 GitHub Pages / 任意静态托管。
+</p>
+
+<p align="center">
+  <a href="https://tur1412.github.io/GameKnowledge-Base/">在线预览</a> ·
+  <a href="https://tur1412.github.io/GameKnowledge-Base/docs.html">Docs Portal</a> ·
+  <a href="docs/DEPLOYMENT.md">部署</a> ·
+  <a href="docs/CONTRIBUTING.md">贡献</a>
 </p>
 
 <p align="center">
@@ -75,6 +93,16 @@
 - **离线包一键缓存**：在命令面板中触发缓存图标/封面/深度页资源，提高离线可用性（含进度回执）
 - **本地备份/迁移**：导出/导入/清空 `localStorage` 数据（收藏/筛选/回复等）
 - **OpenSearch（地址栏直搜）**：支持浏览器添加站点搜索（`opensearch.xml`），可从地址栏跳转到游戏库搜索结果
+
+---
+
+## ✨ Highlights（为什么它“像产品”）
+
+- 🧊 **Aurora / Glass / Bento 视觉语言**：不依赖框架，也能获得“玻璃拟态 + 分层阴影”的现代 UI 质感
+- 🎛️ **交互密度可控**：命令面板、筛选、对比、更新中心、路线规划等关键功能统一“状态闭环”
+- ⚡ **高延迟体验闭环**：prefetch + timeout/retry + 内存缓存，弱网/离线自动降级
+- 🧠 **本地数据即后端**：收藏/进度/偏好/埋点全在 localStorage，可导出/迁移/清空
+- ♿ **无障碍优先**：高对比度模式、`prefers-contrast`/`forced-colors` 与动效降级策略
 
 ---
 
@@ -242,10 +270,10 @@ npm run build:vite
 本项目对核心资源使用 `?v=` 版本号来避免缓存“幽灵更新”：
 
 ```html
-<link rel="stylesheet" href="styles.css?v=20251231-2">
-<script src="boot.js?v=20251231-2"></script>
-<script src="data.js?v=20251231-2" defer></script>
-<script src="scripts.js?v=20251231-2" defer></script>
+<link rel="stylesheet" href="styles.css?v=20260101-1">
+<script src="boot.js?v=20260101-1"></script>
+<script src="data.js?v=20260101-1" defer></script>
+<script src="scripts.js?v=20260101-1" defer></script>
 ```
 
 当你修改 `styles.css` / `scripts.js` / `data.js` / `sw.js` / `manifest.webmanifest` 时，务必同步 bump 版本号。
@@ -265,7 +293,7 @@ node tools/bump-version.mjs
 核心数据集中在 `data.js`：
 
 ```js
-version: "20251231-2",
+version: "20260101-1",
 
 games: {
   "elden-ring": { title: "艾尔登法环", updated: "2025-10-05", ... }
