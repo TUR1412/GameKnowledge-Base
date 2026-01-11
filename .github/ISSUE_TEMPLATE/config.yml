@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Docs Portal / 文档入口
+    url: https://tur1412.github.io/GameKnowledge-Base/docs.html
+    about: Read docs first (STYLE_GUIDE / DATA_MODEL / DEPLOYMENT / CONTRIBUTING) / 先读文档（规范/数据模型/部署/贡献）

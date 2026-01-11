@@ -1,0 +1,49 @@
+name: "✨ Feature Request / 功能建议"
+description: "Suggest an idea / 提出功能建议"
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for your suggestion!
+        感谢你的建议。请尽量描述清楚“场景/目标/收益/替代方案”，便于评估与落地。
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: "Problem / 痛点"
+      description: "What problem are you trying to solve? / 你想解决什么问题？"
+      placeholder: |
+        例如：在攻略详情页想快速查看“前置任务/推荐路线”，目前需要多次跳转。
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: "Proposal / 方案设想"
+      description: "What would you like to happen? / 你希望如何实现？"
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: "Alternatives / 备选方案"
+      description: "Any alternative solutions? / 有没有替代方案？"
+    validations:
+      required: false
+
+  - type: dropdown
+    id: scope
+    attributes:
+      label: "Scope / 影响范围"
+      options:
+        - "UI only / 仅 UI"
+        - "Data model / 数据模型"
+        - "Tooling / 工具链"
+        - "PWA / 离线与缓存"
+        - "Unknown / 不确定"
+    validations:
+      required: true

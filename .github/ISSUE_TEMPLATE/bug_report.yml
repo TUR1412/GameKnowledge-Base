@@ -1,0 +1,79 @@
+name: "🐛 Bug Report / Bug 报告"
+description: "Report a bug to help us improve / 报告 bug 帮助改进"
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug.
+        感谢你提交 Bug 报告。为加速定位，请尽量填写完整信息。
+
+        ⚠️ Security issues: do NOT file a public issue. Use GitHub Security Advisories if available.
+        ⚠️ 安全问题请勿公开提交 Issue：优先使用 GitHub Security Advisories（若可用）。
+
+  - type: input
+    id: version
+    attributes:
+      label: "Version / 版本"
+      description: "data.js version (window.GKB.data.version) / data.js 的版本号"
+      placeholder: "20260112-3"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: browser
+    attributes:
+      label: "Browser / 浏览器"
+      options:
+        - "Chrome"
+        - "Edge"
+        - "Firefox"
+        - "Safari"
+        - "Other (please specify) / 其他（请说明）"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: device
+    attributes:
+      label: "Device / 设备"
+      options:
+        - "Desktop / 桌面"
+        - "Mobile / 手机"
+        - "Tablet / 平板"
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: "Steps to Reproduce / 复现步骤"
+      description: "Minimal steps preferred / 建议最小化步骤"
+      placeholder: |
+        1. Go to ...
+        2. Click ...
+        3. See error ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: "Expected Behavior / 期望行为"
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: "Actual Behavior / 实际行为"
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: "Logs / 日志（可选）"
+      description: "If relevant, attach Diagnostics bundle or console logs / 如有需要可附诊断包或控制台日志"
+      render: text

@@ -127,5 +127,7 @@ All interaction data stays in the browser via `localStorage`—no server, no tra
 ## Contributing / 贡献
 
 请查看 `docs/CONTRIBUTING.md` 与 `docs/STYLE_GUIDE.md`，确保版本号与缓存穿透一致。
+安全问题请参考 `docs/SECURITY.md`；参与协作请遵守 `docs/CODE_OF_CONDUCT.md`。
 
 See `docs/CONTRIBUTING.md` and `docs/STYLE_GUIDE.md` for workflow, style, and versioning rules.
+For security matters, see `docs/SECURITY.md`. For community expectations, see `docs/CODE_OF_CONDUCT.md`.

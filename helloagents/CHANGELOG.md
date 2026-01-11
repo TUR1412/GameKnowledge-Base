@@ -8,6 +8,7 @@
 
 ### 新增
 - Bundle Size 预算门禁：新增 `tools/check-bundlesize.mjs` 校验 Vite 构建产物 `dist/gkb.min.{css,js}` gzip 体积，并纳入 `check:all` 与 CI（默认 CSS≤30kB/JS≤80kB，可通过 env 覆盖）
+- 社区标准化：新增 `SECURITY.md` / `CODE_OF_CONDUCT.md`（并同步到 Docs Portal），补齐 Issue/PR 模板提升协作一致性
 
 ## [20260112-3] - 2026-01-12
 
