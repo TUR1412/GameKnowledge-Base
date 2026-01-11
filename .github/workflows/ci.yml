@@ -27,6 +27,7 @@ jobs:
           node --check sw.js
           node --check tools/check-links.mjs
           node --check tools/check-html.mjs
+          node --check tools/check-manifest.mjs
           node --check tools/check-bundlesize.mjs
           node --check tools/check-a11y.mjs
           node --check tools/check-sitemap.mjs
@@ -56,6 +57,9 @@ jobs:
 
       - name: HTML Structure Check
         run: node tools/check-html.mjs
+
+      - name: Web App Manifest Check
+        run: node tools/check-manifest.mjs
 
       - name: A11y / SEO Basic Check
         run: node tools/check-a11y.mjs

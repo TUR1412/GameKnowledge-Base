@@ -16,6 +16,7 @@ const main = () => {
     ["node", ["--check", "tools/check-all.mjs"]],
     ["node", ["--check", "tools/check-links.mjs"]],
     ["node", ["--check", "tools/check-html.mjs"]],
+    ["node", ["--check", "tools/check-manifest.mjs"]],
     ["node", ["--check", "tools/check-bundlesize.mjs"]],
     ["node", ["--check", "tools/check-a11y.mjs"]],
     ["node", ["--check", "tools/check-sitemap.mjs"]],
@@ -47,6 +48,7 @@ const main = () => {
     // Site integrity checks (CI parity)
     ["node", ["tools/check-links.mjs"]],
     ["node", ["tools/check-html.mjs"]],
+    ["node", ["tools/check-manifest.mjs"]],
     ["node", ["tools/check-a11y.mjs"]],
     ["node", ["tools/check-sitemap.mjs"]],
     ["node", ["tools/check-sw.mjs"]],

@@ -15,6 +15,10 @@
 - `tools/check-html.mjs`
   - HTML 结构约束（例如必需 meta、关键节点等）
   - 图片性能门禁：要求 `<img>` 显式声明 `loading/decoding`（降低 CLS 与首屏资源竞争）
+  - CLS 细化：对 `images/placeholders/*` 的 `<img>` 强制要求 `width/height`（进一步降低布局抖动）
+
+- `tools/check-manifest.mjs`
+  - PWA Manifest 质量门禁：校验 `manifest.webmanifest` 必备字段、图标/快捷入口资源存在性、禁止外链
 
 - `tools/check-a11y.mjs`
   - A11y/SEO 基础门禁：要求 `<html>` 具有 `lang`、必须有 `<title>` 与 meta description
@@ -82,6 +86,8 @@
 ## 3) 变更历史
 
 - [202601120351_image-performance-gate](../../history/2026-01/202601120351_image-performance-gate/) - 图片性能门禁（img loading/decoding）+ Atomic Design 规范补齐
+- [202601120642_placeholder-img-dimensions-gate](../../history/2026-01/202601120642_placeholder-img-dimensions-gate/) - CLS：占位图尺寸门禁（width/height）+ 页面补齐
+- [202601120701_manifest-quality-gate](../../history/2026-01/202601120701_manifest-quality-gate/) - PWA Manifest 质量门禁（结构/资源/外链）
 - [202601120525_bundle-size-budget-gate](../../history/2026-01/202601120525_bundle-size-budget-gate/) - 可选构建产物体积预算门禁（dist gzip）
 - [202601120558_a11y-seo-gate](../../history/2026-01/202601120558_a11y-seo-gate/) - A11y/SEO 基础门禁 + CSP 兼容检查
 - [202601120607_nav-aria-current](../../history/2026-01/202601120607_nav-aria-current/) - 主导航 aria-current 规范化（.active 对齐）
