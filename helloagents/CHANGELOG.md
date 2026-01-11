@@ -14,6 +14,10 @@
 - A11y/SEO 门禁：新增 `tools/check-a11y.mjs` 校验 `lang/title/description` 与 CSP 兼容（禁止 inline style / on* handler），并纳入 `check:all` 与 CI
 - A11y 细化：主导航（`#site-nav`）当前页链接统一补齐 `aria-current="page"`，并由门禁防回退
 
+### 变更
+- PWA 离线预缓存：`sw.js` 补齐 `docs/SECURITY.md` 与 `docs/CODE_OF_CONDUCT.md`（Docs Portal 离线可读）
+- README：补齐 CI/CodeQL 状态徽章，并更新质量门禁清单（对齐 `npm run check:all`）
+
 ## [20260112-3] - 2026-01-12
 
 ### 新增

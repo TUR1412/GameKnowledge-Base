@@ -58,6 +58,8 @@ const PRECACHE_URLS = [
   `docs/STYLE_GUIDE.md?v=${VERSION}`,
   `docs/DATA_MODEL.md?v=${VERSION}`,
   `docs/CONTRIBUTING.md?v=${VERSION}`,
+  `docs/SECURITY.md?v=${VERSION}`,
+  `docs/CODE_OF_CONDUCT.md?v=${VERSION}`,
   `docs/DEPLOYMENT.md?v=${VERSION}`,
 
   `styles.css?v=${VERSION}`,

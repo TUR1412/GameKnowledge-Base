@@ -6,6 +6,14 @@
 <p align="center"><strong>游戏攻略网 · Data-driven Game Knowledge Base</strong></p>
 <p align="center">纯静态 · 无框架 · Local-first · PWA 离线 · Quantum Glass</p>
 <p align="center">
+  <a href="https://github.com/TUR1412/GameKnowledge-Base/actions/workflows/ci.yml">
+    <img alt="CI" src="https://github.com/TUR1412/GameKnowledge-Base/actions/workflows/ci.yml/badge.svg?branch=master">
+  </a>
+  <a href="https://github.com/TUR1412/GameKnowledge-Base/actions/workflows/codeql.yml">
+    <img alt="CodeQL" src="https://github.com/TUR1412/GameKnowledge-Base/actions/workflows/codeql.yml/badge.svg?branch=master">
+  </a>
+</p>
+<p align="center">
   <a href="#概览--overview">概览</a> · <a href="#体验亮点--highlights">亮点</a> · <a href="#快速开始--quick-start">快速开始</a> · <a href="#结构--structure">结构</a> · <a href="#design-language--design-language">设计语言</a> · <a href="#contributing--贡献">贡献</a>
 </p>
 
@@ -120,7 +128,9 @@ All interaction data stays in the browser via `localStorage`—no server, no tra
 
 质量门禁 / Gate:
 
-- `node tools/check-runtime.mjs`：校验诊断/日志/面板入口是否被误删（HTML/CSS/JS），已纳入 `npm run check:all` 与 CI
+- `npm run check:all`：一键跑完 CI 同款门禁（Syntax / Unit Tests + Coverage / Build + Bundle Budget / Links / HTML / A11y / Sitemap / SW / Runtime / Feed / Data Model）
+- 常用单项：`node tools/check-runtime.mjs` / `node tools/check-links.mjs` / `node tools/check-html.mjs` / `node tools/check-a11y.mjs` / `node tools/check-sw.mjs` / `node tools/check-bundlesize.mjs`
+- 安全扫描（CI）：CodeQL（见 `.github/workflows/codeql.yml`）
 
 ---
 
