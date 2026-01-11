@@ -14,6 +14,7 @@
 
 ### 变更
 - 静态图片默认策略：根目录 HTML 的 `<img>` 统一补齐 `loading="lazy" decoding="async"`；首页 Hero 图提升为 `eager + fetchpriority`
+- 工具链：`tools/check-html.mjs` 可测试化（导出 `validateHtml`/`main`）并新增单测 `tests/check-html.test.mjs`
 - 版本号 bump 至 `20260112-3`（全站 `?v=` 与 `data.js.version` 同步）
 
 ## [20260112-2] - 2026-01-12

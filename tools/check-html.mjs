@@ -1,22 +1,19 @@
 import fs from "node:fs";
 import path from "node:path";
-
-const WORKSPACE_ROOT = process.cwd();
+import { pathToFileURL } from "node:url";
 
 const readText = (filePath) => fs.readFileSync(filePath, "utf8");
 
-const listRootHtmlFiles = () =>
+const listRootHtmlFiles = (workspaceRoot) =>
   fs
-    .readdirSync(WORKSPACE_ROOT, { withFileTypes: true })
+    .readdirSync(workspaceRoot, { withFileTypes: true })
     .filter((d) => d.isFile() && d.name.toLowerCase().endsWith(".html"))
     .map((d) => d.name)
     .sort();
 
 const has = (content, re) => re.test(content);
 
-const errors = [];
-
-const checkHeadBasics = (fileName, content) => {
+const checkHeadBasics = (fileName, content, errors) => {
   const required = [
     { label: "charset", re: /<meta\s+charset="utf-8"\s*>/i },
     { label: "viewport", re: /<meta\s+name="viewport"\s+content="[^"]+"\s*>/i },
@@ -36,7 +33,7 @@ const checkHeadBasics = (fileName, content) => {
   }
 };
 
-const checkNoInlineScripts = (fileName, content) => {
+const checkNoInlineScripts = (fileName, content, errors) => {
   // 禁止内联脚本：避免与 CSP 冲突，同时降低 XSS 风险
   const inlineScriptRe = /<script\b(?![^>]*\bsrc=)[^>]*>/gi;
   if (inlineScriptRe.test(content)) {
@@ -44,7 +41,7 @@ const checkNoInlineScripts = (fileName, content) => {
   }
 };
 
-const checkSkipLink = (fileName, content) => {
+const checkSkipLink = (fileName, content, errors) => {
   if (!has(content, /<a\s+class="skip-link"\s+href="#main"\s*>/i)) {
     errors.push(`[HTML] ${fileName}: 缺少 skip-link（<a class="skip-link" href="#main">）`);
   }
@@ -53,7 +50,7 @@ const checkSkipLink = (fileName, content) => {
   }
 };
 
-const checkImages = (fileName, content) => {
+const checkImages = (fileName, content, errors) => {
   const imgRe = /<img\b[^>]*>/gi;
   for (const m of content.matchAll(imgRe)) {
     const tag = m[0] || "";
@@ -69,28 +66,53 @@ const checkImages = (fileName, content) => {
   }
 };
 
-const main = () => {
-  const htmlFiles = listRootHtmlFiles();
+export const validateHtml = ({ workspaceRoot = process.cwd() } = {}) => {
+  const errors = [];
+  let htmlFiles = [];
+
+  try {
+    htmlFiles = listRootHtmlFiles(workspaceRoot);
+  } catch (err) {
+    errors.push(`[HTML] 无法读取目录：${workspaceRoot}`);
+    errors.push(`[HTML] ${String(err?.message || err || "unknown error")}`);
+    return { ok: false, errors, htmlFiles: [] };
+  }
+
   if (htmlFiles.length === 0) {
-    console.error("❌ 未找到根目录 HTML 文件");
-    process.exit(1);
+    errors.push("[HTML] 未找到根目录 HTML 文件");
+    return { ok: false, errors, htmlFiles: [] };
   }
 
   for (const file of htmlFiles) {
-    const content = readText(path.join(WORKSPACE_ROOT, file));
-    checkHeadBasics(file, content);
-    checkNoInlineScripts(file, content);
-    checkSkipLink(file, content);
-    checkImages(file, content);
+    const content = readText(path.join(workspaceRoot, file));
+    checkHeadBasics(file, content, errors);
+    checkNoInlineScripts(file, content, errors);
+    checkSkipLink(file, content, errors);
+    checkImages(file, content, errors);
   }
 
-  if (errors.length > 0) {
-    console.error("❌ HTML 结构检查未通过：");
-    errors.forEach((e) => console.error(`- ${e}`));
-    process.exit(1);
-  }
-
-  console.log(`✅ HTML 结构检查通过：扫描 HTML=${htmlFiles.length}`);
+  if (errors.length > 0) return { ok: false, errors, htmlFiles };
+  return { ok: true, errors: [], htmlFiles };
 };
 
-main();
+export const main = ({ workspaceRoot = process.cwd(), stdout = console.log, stderr = console.error } = {}) => {
+  const result = validateHtml({ workspaceRoot });
+  if (!result.ok) {
+    stderr("❌ HTML 结构检查未通过：");
+    result.errors.forEach((e) => stderr(`- ${e}`));
+    return 1;
+  }
+  stdout(`✅ HTML 结构检查通过：扫描 HTML=${result.htmlFiles.length}`);
+  return 0;
+};
+
+const isRunAsScript = () => {
+  const entry = process.argv[1];
+  if (!entry) return false;
+  return import.meta.url === pathToFileURL(entry).href;
+};
+
+/* c8 ignore next */
+if (isRunAsScript()) {
+  process.exit(main());
+}
