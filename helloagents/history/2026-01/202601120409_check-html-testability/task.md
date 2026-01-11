@@ -1,6 +1,6 @@
 ﻿# 任务清单: check-html 可测试化与单测补齐
 
-目录: `helloagents/plan/202601120409_check-html-testability/`
+目录: `helloagents/history/2026-01/202601120409_check-html-testability/`
 
 ---
 
@@ -17,4 +17,11 @@
 
 ## 4) 验证与发布
 - [√] 4.1 运行 `npm run check:all`
-- [ ] 4.2 提交并 push 到 `origin/master`
+- [√] 4.2 提交并 push 到 `origin/master`
+
+---
+
+## 执行总结
+
+- 校验链路：`npm run check:all` 通过（含 HTML 图片门禁、Runtime 门禁、覆盖率阈值、Vite build、断链/SW/Feed/数据模型校验）
+- 工具链质量：`tools/check-html.mjs` 统一为可测试 API（`validateHtml`/`main`）并补齐单测

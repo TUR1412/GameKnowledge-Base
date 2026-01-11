@@ -8,6 +8,7 @@
 
 | 时间戳 | 功能名称 | 类型 | 状态 | 方案包路径 |
 |--------|----------|------|------|------------|
+| 202601120409 | check-html-testability | 工具链/测试 | ✅已完成 | [2026-01/202601120409_check-html-testability](2026-01/202601120409_check-html-testability/) |
 | 202601120351 | image-performance-gate | 工具链/性能 | ✅已完成 | [2026-01/202601120351_image-performance-gate](2026-01/202601120351_image-performance-gate/) |
 | 202601120253 | local-logging-and-runtime-checks | 运行时/工具链 | ✅已完成 | [2026-01/202601120253_local-logging-and-runtime-checks](2026-01/202601120253_local-logging-and-runtime-checks/) |
 | 202601120222 | observability-runtime-diagnostics | 运行时/可观测性 | ✅已完成 | [2026-01/202601120222_observability-runtime-diagnostics](2026-01/202601120222_observability-runtime-diagnostics/) |
@@ -23,6 +24,7 @@
 
 ### 2026-01
 
+- [202601120409_check-html-testability](2026-01/202601120409_check-html-testability/) - `tools/check-html.mjs` 可测试化（validateHtml/main）+ 单测补齐
 - [202601120351_image-performance-gate](2026-01/202601120351_image-performance-gate/) - 图片性能门禁（img loading/decoding）+ Atomic Design 规范补齐
 - [202601120253_local-logging-and-runtime-checks](2026-01/202601120253_local-logging-and-runtime-checks/) - 本地日志监控 + 运行时质量门禁（诊断面板扩展 / CI 门禁）
 - [202601120222_observability-runtime-diagnostics](2026-01/202601120222_observability-runtime-diagnostics/) - 运行时可观测性：错误边界 + 诊断面板 + 健康指标增强
