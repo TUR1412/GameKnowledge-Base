@@ -8,6 +8,7 @@
 
 | 时间戳 | 功能名称 | 类型 | 状态 | 方案包路径 |
 |--------|----------|------|------|------------|
+| 202601120551 | dependabot-standardization | 工具链/协作 | ✅已完成 | [2026-01/202601120551_dependabot-standardization](2026-01/202601120551_dependabot-standardization/) |
 | 202601120540 | community-standards | 文档/协作 | ✅已完成 | [2026-01/202601120540_community-standards](2026-01/202601120540_community-standards/) |
 | 202601120525 | bundle-size-budget-gate | 工具链/性能 | ✅已完成 | [2026-01/202601120525_bundle-size-budget-gate](2026-01/202601120525_bundle-size-budget-gate/) |
 | 202601120409 | check-html-testability | 工具链/测试 | ✅已完成 | [2026-01/202601120409_check-html-testability](2026-01/202601120409_check-html-testability/) |
@@ -26,6 +27,7 @@
 
 ### 2026-01
 
+- [202601120551_dependabot-standardization](2026-01/202601120551_dependabot-standardization/) - Dependabot 标准化（npm / GitHub Actions 每周更新）
 - [202601120540_community-standards](2026-01/202601120540_community-standards/) - 安全策略/行为准则 + GitHub 协作模板（Issue/PR）
 - [202601120525_bundle-size-budget-gate](2026-01/202601120525_bundle-size-budget-gate/) - 可选构建产物体积预算门禁（dist gzip）
 - [202601120409_check-html-testability](2026-01/202601120409_check-html-testability/) - `tools/check-html.mjs` 可测试化（validateHtml/main）+ 单测补齐
