@@ -53,6 +53,22 @@ const checkSkipLink = (fileName, content) => {
   }
 };
 
+const checkImages = (fileName, content) => {
+  const imgRe = /<img\b[^>]*>/gi;
+  for (const m of content.matchAll(imgRe)) {
+    const tag = m[0] || "";
+    if (!/\balt\s*=\s*"/i.test(tag)) {
+      errors.push(`[HTML] ${fileName}: <img> 缺少 alt 属性（可为空字符串）`);
+    }
+    if (!/\bloading\s*=\s*"(lazy|eager)"/i.test(tag)) {
+      errors.push(`[HTML] ${fileName}: <img> 缺少 loading="lazy|eager"（图片加载策略必须显式声明）`);
+    }
+    if (!/\bdecoding\s*=\s*"(async|auto|sync)"/i.test(tag)) {
+      errors.push(`[HTML] ${fileName}: <img> 缺少 decoding="async|auto|sync"（建议 async）`);
+    }
+  }
+};
+
 const main = () => {
   const htmlFiles = listRootHtmlFiles();
   if (htmlFiles.length === 0) {
@@ -65,6 +81,7 @@ const main = () => {
     checkHeadBasics(file, content);
     checkNoInlineScripts(file, content);
     checkSkipLink(file, content);
+    checkImages(file, content);
   }
 
   if (errors.length > 0) {
@@ -77,4 +94,3 @@ const main = () => {
 };
 
 main();
-

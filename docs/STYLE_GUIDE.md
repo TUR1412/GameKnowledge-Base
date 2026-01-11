@@ -9,11 +9,11 @@
 所有页面必须使用带版本号的静态资源引用：
 
 ```html
-<link rel="stylesheet" href="styles.css?v=20260112-2">
-<link rel="manifest" href="manifest.webmanifest?v=20260112-2">
-<script src="boot.js?v=20260112-2"></script>
-<script src="data.js?v=20260112-2" defer></script>
-<script src="scripts.js?v=20260112-2" defer></script>
+<link rel="stylesheet" href="styles.css?v=20260112-3">
+<link rel="manifest" href="manifest.webmanifest?v=20260112-3">
+<script src="boot.js?v=20260112-3"></script>
+<script src="data.js?v=20260112-3" defer></script>
+<script src="scripts.js?v=20260112-3" defer></script>
 ```
 
 当你修改以下任意文件时，请同步更新所有 HTML 页里的 `?v=`：
@@ -145,3 +145,54 @@ node tools/bump-version.mjs --dry-run
 - Root 级过渡：使用 `::view-transition-old(root)` / `::view-transition-new(root)` 做轻量“导演剪辑”淡入淡出（避免抢镜）
   - 必须在 `prefers-reduced-motion: reduce` 下关闭或极大缩短
 
+---
+
+## 8) 原子设计（Atomic Design）
+
+目标：在不引入框架的前提下，让 UI 具备“可组合、可扩展、可回归”的结构化演进能力。
+
+### 8.1 原子（Atoms）
+
+Atoms 是最小可复用的 UI 单元，应尽量无业务语义、可跨页面复用：
+
+- 按钮：`.btn` / `.btn-secondary` / `.btn-small`
+- 图标按钮：`.icon-button` / `.icon-button-text`
+- 标记与标签：`.badge` / `.chip` / `.tag`
+- 文本与排版：token（`--text-*` / `--space-*` / `--elev-*`）+ 标题/段落基础样式
+
+约定：新增视觉风格或“手感”调整时，优先改 token（SSOT），再由 Atoms 自动继承。
+
+### 8.2 分子（Molecules）
+
+Molecules 是由多个 Atoms 组合的“可重复 UI 片段”，例如：
+
+- 卡片：`.bento-card` / `.mini-card` / `.stat-card`
+- 信息列表：`.meta-list`
+- Toast / Dialog 的头部与操作区（统一按钮规格、间距与层级）
+
+约定：页面内出现 2 次以上的相同组合，优先沉淀为 Molecule（避免每页都写一套“私有 CSS”）。
+
+### 8.3 组织（Organisms）
+
+Organisms 是更大粒度的页面结构/模块组合：
+
+- Header / Nav（主导航 + 操作区）
+- Hero / Banner（主视觉与关键 CTA）
+- 指挥舱 / Planner / Discover 等页面级信息架构
+- 系统面板：Command Palette / Diagnostics / Compare（统一交互壳）
+
+约定：Organisms 的职责是“布局与信息架构”，不要把细节样式硬编码在 Organisms 内。
+
+### 8.4 图片性能（Lighthouse / CLS）
+
+为了降低 CLS 与首屏竞争，本项目约定对静态 HTML 中的图片显式声明加载策略：
+
+```html
+<!-- 默认：延迟加载 + 异步解码 -->
+<img loading="lazy" decoding="async" src="images/..." alt="...">
+
+<!-- 首屏关键图：显式 eager + 提高优先级（可选） -->
+<img loading="eager" fetchpriority="high" decoding="async" src="images/..." alt="...">
+```
+
+门禁：`tools/check-html.mjs` 会要求每个 `<img>` 都包含 `loading` 与 `decoding`，避免“无意识”回退到默认策略。

@@ -14,6 +14,7 @@
 
 - `tools/check-html.mjs`
   - HTML 结构约束（例如必需 meta、关键节点等）
+  - 图片性能门禁：要求 `<img>` 显式声明 `loading/decoding`（降低 CLS 与首屏资源竞争）
 
 - `tools/check-sw.mjs`
   - Service Worker 预缓存策略校验
@@ -66,4 +67,10 @@
 采用 Node Test Runner（`node --test`），对关键工具脚本做单测与覆盖率约束：
 
 - 覆盖率阈值由 `package.json` 与 CI 统一控制
-- 重点覆盖：断链/版本一致性/SW 预缓存解析/数据模型校验/运行时门禁等高风险分支
+- 重点覆盖：断链/版本一致性/SW 预缓存解析/数据模型校验/运行时门禁等高风险分支   
+
+---
+
+## 3) 变更历史
+
+- [202601120351_image-performance-gate](../../history/2026-01/202601120351_image-performance-gate/) - 图片性能门禁（img loading/decoding）+ Atomic Design 规范补齐

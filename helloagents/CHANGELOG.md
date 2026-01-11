@@ -6,6 +6,16 @@
 
 ## [Unreleased]
 
+## [20260112-3] - 2026-01-12
+
+### 新增
+- HTML 图片门禁：`tools/check-html.mjs` 强制 `<img>` 显式声明 `loading/decoding`（并要求存在 `alt`）
+- Atomic Design 规范：`docs/STYLE_GUIDE.md` 补齐 Atoms/Molecules/Organisms 分层与实践约定
+
+### 变更
+- 静态图片默认策略：根目录 HTML 的 `<img>` 统一补齐 `loading="lazy" decoding="async"`；首页 Hero 图提升为 `eager + fetchpriority`
+- 版本号 bump 至 `20260112-3`（全站 `?v=` 与 `data.js.version` 同步）
+
 ## [20260112-2] - 2026-01-12
 
 ### 新增
