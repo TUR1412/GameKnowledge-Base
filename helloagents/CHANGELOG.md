@@ -6,6 +6,9 @@
 
 ## [Unreleased]
 
+### 新增
+- Bundle Size 预算门禁：新增 `tools/check-bundlesize.mjs` 校验 Vite 构建产物 `dist/gkb.min.{css,js}` gzip 体积，并纳入 `check:all` 与 CI（默认 CSS≤30kB/JS≤80kB，可通过 env 覆盖）
+
 ## [20260112-3] - 2026-01-12
 
 ### 新增

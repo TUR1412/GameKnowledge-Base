@@ -27,6 +27,7 @@ jobs:
           node --check sw.js
           node --check tools/check-links.mjs
           node --check tools/check-html.mjs
+          node --check tools/check-bundlesize.mjs
           node --check tools/check-sitemap.mjs
           node --check tools/check-sw.mjs
           node --check tools/check-runtime.mjs
@@ -45,6 +46,9 @@ jobs:
 
       - name: Vite Ultimate Build
         run: npm run build:vite
+
+      - name: Bundle Size Budget Gate
+        run: node tools/check-bundlesize.mjs
 
       - name: Link / Asset / Cache Busting Check
         run: node tools/check-links.mjs

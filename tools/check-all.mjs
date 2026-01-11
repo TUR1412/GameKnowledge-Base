@@ -16,6 +16,7 @@ const main = () => {
     ["node", ["--check", "tools/check-all.mjs"]],
     ["node", ["--check", "tools/check-links.mjs"]],
     ["node", ["--check", "tools/check-html.mjs"]],
+    ["node", ["--check", "tools/check-bundlesize.mjs"]],
     ["node", ["--check", "tools/check-sitemap.mjs"]],
     ["node", ["--check", "tools/check-sw.mjs"]],
     ["node", ["--check", "tools/check-runtime.mjs"]],
@@ -40,6 +41,7 @@ const main = () => {
     // Optional: ultimate minify build (kept as a sanity check)
     // 说明：避免 Windows 下 spawn 直接调用 npm/npx 的 .cmd 解析差异，这里直接执行 Vite CLI。
     ["node", ["node_modules/vite/bin/vite.js", "build"]],
+    ["node", ["tools/check-bundlesize.mjs"]],
 
     // Site integrity checks (CI parity)
     ["node", ["tools/check-links.mjs"]],
