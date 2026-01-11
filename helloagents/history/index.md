@@ -8,6 +8,7 @@
 
 | 时间戳 | 功能名称 | 类型 | 状态 | 方案包路径 |
 |--------|----------|------|------|------------|
+| 202601120222 | observability-runtime-diagnostics | 运行时/可观测性 | ✅已完成 | [2026-01/202601120222_observability-runtime-diagnostics](2026-01/202601120222_observability-runtime-diagnostics/) |
 | 202601112050 | quantum-runtime-expansion | 重构/功能增强 | ✅已完成 | [2026-01/202601112050_quantum-runtime-expansion](2026-01/202601112050_quantum-runtime-expansion/) |
 | 202512242055 | singularity-refactor | 重构/功能增强 | ✅已完成 | [2025-12/202512242055_singularity-refactor](2025-12/202512242055_singularity-refactor/) |
 | 202512242324 | ui-visual-domain | 轻量迭代/视觉优化 | ✅已完成 | [2025-12/202512242324_ui-visual-domain](2025-12/202512242324_ui-visual-domain/) |
@@ -20,6 +21,7 @@
 
 ### 2026-01
 
+- [202601120222_observability-runtime-diagnostics](2026-01/202601120222_observability-runtime-diagnostics/) - 运行时可观测性：错误边界 + 诊断面板 + 健康指标增强
 - [202601112050_quantum-runtime-expansion](2026-01/202601112050_quantum-runtime-expansion/) - 量子运行时扩展与体验重构
 
 ### 2025-12

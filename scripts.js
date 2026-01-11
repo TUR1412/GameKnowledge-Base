@@ -40,6 +40,7 @@
     discoverPrefs: "gkb-discover-prefs",
     telemetryEnabled: "gkb-telemetry-enabled",
     telemetryEvents: "gkb-telemetry-events",
+    diagnosticsErrors: "gkb-diagnostics-errors",
   };
 
   const $ = (selector, root = document) => root.querySelector(selector);
@@ -50,6 +51,7 @@
       try {
         fn();
       } catch (err) {
+        diagnostics.captureError(err, { kind: "handled", source: "runIdleTask" });
         console.error(err);
       }
     };
@@ -1072,6 +1074,8 @@
       longTaskTotalMs: 0,
       cls: 0,
       lcpMs: 0,
+      fcpMs: 0,
+      inpMs: 0,
       samples: [],
       timer: 0,
       raf: 0,
@@ -1153,7 +1157,7 @@
       return `${v.toFixed(u === 0 ? 0 : 2)} ${units[u]}`;
     };
 
-    const snapshot = () => {
+    const snapshot = ({ log = true } = {}) => {
       const mem = getMemory();
       const domNodes = getDomNodes();
       const lsBytes = approxLocalStorageBytes();
@@ -1185,6 +1189,8 @@
         "性能/LongTask(ms)": Math.round(Number(state.longTaskTotalMs || 0) || 0),
         "性能/CLS": Number(state.cls || 0) || 0,
         "性能/LCP(ms)": Math.round(Number(state.lcpMs || 0) || 0),
+        "性能/FCP(ms)": Math.round(Number(state.fcpMs || 0) || 0),
+        "性能/INP(ms)": Math.round(Number(state.inpMs || 0) || 0),
         "渲染/VListUpdate(ms)": Math.round(Number(runtimeMetrics.vlistLastUpdateMs || 0) || 0),
         "渲染/VListMounted": Number(runtimeMetrics.vlistMounted || 0) || 0,
         "渲染/VListRange": String(runtimeMetrics.vlistRange || ""),
@@ -1197,29 +1203,32 @@
       if (report["性能/FPS"] > 0 && report["性能/FPS"] < 50) warnings.push("FPS 偏低（可能有重渲染或长任务）");
       if ((Number(report["性能/LongTask"]) || 0) > 0) warnings.push("存在 LongTask（可用 Performance 面板定位）");
       if (Number(report["性能/CLS"] || 0) >= 0.12) warnings.push("CLS 偏高（注意布局抖动/图片尺寸占位）");
+      if ((Number(report["性能/INP(ms)"]) || 0) >= 350) warnings.push("INP 偏高（交互响应延迟，优先排查长任务/重渲染）");
       if ((Number(net.requestsInFlight || 0) || 0) >= 6) warnings.push("并发请求较多（注意瀑布与缓存策略）");
 
-      console.groupCollapsed(`[GKB] 系统健康全景图 @ ${new Date().toLocaleString("zh-CN")}`);
-      try {
-        console.table(report);
-      } catch (_) {
-        console.log(report);
-      }
-
-      if (nav) {
+      if (log) {
+        console.groupCollapsed(`[GKB] 系统健康全景图 @ ${new Date().toLocaleString("zh-CN")}`);
         try {
-          console.table({
-            "导航/type": nav.type,
-            "导航/TTFB(ms)": Math.round(nav.ttfb),
-            "导航/DOM Interactive(ms)": Math.round(nav.domInteractive),
-            "导航/DCL(ms)": Math.round(nav.dcl),
-            "导航/Load(ms)": Math.round(nav.load),
-          });
-        } catch (_) {}
-      }
+          console.table(report);
+        } catch (_) {
+          console.log(report);
+        }
 
-      if (warnings.length > 0) console.warn("⚠️ Health Warnings:", warnings);
-      console.groupEnd();
+        if (nav) {
+          try {
+            console.table({
+              "导航/type": nav.type,
+              "导航/TTFB(ms)": Math.round(nav.ttfb),
+              "导航/DOM Interactive(ms)": Math.round(nav.domInteractive),
+              "导航/DCL(ms)": Math.round(nav.dcl),
+              "导航/Load(ms)": Math.round(nav.load),
+            });
+          } catch (_) {}
+        }
+
+        if (warnings.length > 0) console.warn("⚠️ Health Warnings:", warnings);
+        console.groupEnd();
+      }
 
       return { report, warnings, nav };
     };
@@ -1246,6 +1255,8 @@
       state.longTaskTotalMs = 0;
       state.cls = 0;
       state.lcpMs = 0;
+      state.fcpMs = 0;
+      state.inpMs = 0;
 
       // Long Task（主线程卡顿）
       observe("longtask", (entries) => {
@@ -1269,6 +1280,27 @@
         if (!last) return;
         state.lcpMs = Math.max(state.lcpMs, Number(last.startTime || 0) || 0);
       });
+
+      // FCP（首次内容绘制）
+      observe("paint", (entries) => {
+        entries.forEach((e) => {
+          if (String(e.name || "") !== "first-contentful-paint") return;
+          state.fcpMs = Math.max(state.fcpMs, Number(e.startTime || 0) || 0);
+        });
+      });
+
+      // INP（交互延迟：简化近似值，浏览器不支持则自动降级）
+      observe(
+        "event",
+        (entries) => {
+          entries.forEach((e) => {
+            const d = Number(e.duration || 0) || 0;
+            if (d <= 0) return;
+            state.inpMs = Math.max(state.inpMs, d);
+          });
+        },
+        { durationThreshold: 40 }
+      );
 
       // FPS loop
       state.raf = window.requestAnimationFrame(tickFps);
@@ -1320,15 +1352,169 @@
     };
   };
 
+  const healthMonitor = createHealthMonitor({ store: netStore });
+  const diagnostics = (() => {
+    const MAX_ERRORS = 80;
+    const MAX_STR = 240;
+    const MAX_STACK = 1600;
+    const MAX_META_KEYS = 12;
+    const MAX_META_STR = 120;
+
+    const truncate = (value, maxLen) => {
+      const s = String(value ?? "");
+      const m = Math.max(0, Number(maxLen || 0) || 0);
+      if (m === 0) return "";
+      if (s.length <= m) return s;
+      return `${s.slice(0, Math.max(0, m - 1))}…`;
+    };
+
+    const safeToString = (value) => {
+      if (value instanceof Error) {
+        const name = String(value.name || "Error");
+        const msg = String(value.message || "");
+        return msg ? `${name}: ${msg}` : name;
+      }
+      if (typeof value === "string") return value;
+      try {
+        return JSON.stringify(value);
+      } catch (_) {
+        return String(value);
+      }
+    };
+
+    const sanitizeMeta = (meta) => {
+      if (!meta || typeof meta !== "object" || Array.isArray(meta)) return undefined;
+      const out = {};
+      const entries = Object.entries(meta).slice(0, MAX_META_KEYS);
+      entries.forEach(([k, v]) => {
+        const key = truncate(String(k || "").trim(), 48);
+        if (!key) return;
+        if (typeof v === "string") out[key] = truncate(v, MAX_META_STR);
+        else if (typeof v === "number" && Number.isFinite(v)) out[key] = v;
+        else if (typeof v === "boolean") out[key] = v;
+      });
+      return Object.keys(out).length > 0 ? out : undefined;
+    };
+
+    const readErrors = () => {
+      const raw = storage.get(STORAGE_KEYS.diagnosticsErrors);
+      const list = safeJsonParse(raw, []);
+      if (!Array.isArray(list)) return [];
+      return list
+        .filter((x) => x && typeof x === "object" && !Array.isArray(x))
+        .slice(Math.max(0, list.length - MAX_ERRORS));
+    };
+
+    const writeErrors = (events) => {
+      const list = Array.isArray(events) ? events : [];
+      const trimmed = list.slice(Math.max(0, list.length - MAX_ERRORS));
+      return storage.set(STORAGE_KEYS.diagnosticsErrors, JSON.stringify(trimmed));
+    };
+
+    const captureError = (error, { kind = "error", source = "", meta } = {}) => {
+      const message = truncate(safeToString(error).trim(), MAX_STR);
+      if (!message) return false;
+
+      const entry = {
+        ts: Date.now(),
+        kind: truncate(kind, 32),
+        page: truncate(getPage?.() || "", 32),
+        source: truncate(source, 48),
+        message,
+      };
+
+      try {
+        const stack = error instanceof Error ? error.stack : "";
+        const s = truncate(String(stack || "").trim(), MAX_STACK);
+        if (s) entry.stack = s;
+      } catch (_) {}
+
+      const m = sanitizeMeta(meta);
+      if (m) entry.meta = m;
+
+      try {
+        const list = readErrors();
+        list.push(entry);
+        writeErrors(list);
+      } catch (_) {
+        // ignore
+      }
+
+      try {
+        telemetry.log("runtime_error", {
+          kind: entry.kind,
+          source: entry.source,
+          msg: entry.message,
+        });
+      } catch (_) {
+        // ignore
+      }
+
+      return true;
+    };
+
+    const clearErrors = () => storage.remove(STORAGE_KEYS.diagnosticsErrors);
+
+    const buildBundle = ({ includeTelemetry = true, includeHealth = true } = {}) => {
+      const data = getData?.() || null;
+      const version = String(data?.version || "");
+      const exportedAt = new Date().toISOString();
+      const page = String(getPage?.() || "");
+
+      const bundle = {
+        schema: "gkb-diagnostics",
+        version,
+        exportedAt,
+        page,
+        url: String(window.location?.href || ""),
+        userAgent: String(navigator.userAgent || ""),
+        errors: readErrors(),
+      };
+
+      if (includeTelemetry) {
+        try {
+          bundle.telemetry = telemetry.read().slice(-240);
+          bundle.telemetryEnabled = telemetry.isEnabled();
+        } catch (_) {}
+      }
+
+      if (includeHealth) {
+        try {
+          bundle.health = healthMonitor.snapshot({ log: false });
+        } catch (_) {}
+      }
+
+      return bundle;
+    };
+
+    const getSummary = () => {
+      const errors = readErrors();
+      const last = errors.length > 0 ? errors[errors.length - 1] : null;
+      return {
+        errorCount: errors.length,
+        lastErrorAt: Number(last?.ts || 0) || 0,
+      };
+    };
+
+    return {
+      captureError,
+      readErrors,
+      clearErrors,
+      buildBundle,
+      getSummary,
+    };
+  })();
+
   // 暴露只读句柄：便于调试/扩展，但避免把内部实现散落在全局
   try {
     window.GKB = window.GKB || {};
     window.GKB.runtime = window.GKB.runtime || {};
     window.GKB.runtime.netStore = netStore;
     window.GKB.runtime.net = netClient;
-    window.GKB.runtime.health = createHealthMonitor({ store: netStore });
+    window.GKB.runtime.health = healthMonitor;
     window.GKB.runtime.telemetry = telemetry;
-    window.GKB.health = () => window.GKB.runtime.health.snapshot();
+    window.GKB.runtime.diagnostics = diagnostics;
+    window.GKB.health = () => healthMonitor.snapshot();
   } catch (_) {
     // ignore
   }
@@ -2244,6 +2430,95 @@
   })();
 
   // -------------------------
+  // Error Boundary（全局错误边界：本地记录 + 轻量提示）
+  // -------------------------
+
+  let errorBoundaryInstalled = false;
+  let lastErrorToastAt = 0;
+
+  const toastRuntimeErrorOnce = () => {
+    const now = Date.now();
+    if (now - lastErrorToastAt < 8000) return;
+    lastErrorToastAt = now;
+
+    toast({
+      id: "gkb-runtime-error",
+      title: "页面发生异常",
+      message: "已记录到本地，可在指挥舱 → 系统诊断导出诊断包。",
+      tone: "warn",
+      timeout: 4200,
+    });
+  };
+
+  const initErrorBoundary = () => {
+    if (errorBoundaryInstalled) return;
+    errorBoundaryInstalled = true;
+
+    // 捕获 JS 运行时异常（以及资源加载错误）
+    window.addEventListener(
+      "error",
+      (event) => {
+        const targetTag = String(event?.target?.tagName || "").toLowerCase();
+        const hasRuntimeError = event?.error instanceof Error || Boolean(event?.message);
+        const isResourceError = Boolean(targetTag) && !hasRuntimeError;
+        const kind = isResourceError ? "resource" : "error";
+
+        const err =
+          event?.error instanceof Error
+            ? event.error
+            : new Error(
+                String(event?.message || (isResourceError ? "Resource error" : "Runtime error"))
+              );
+
+        diagnostics.captureError(err, {
+          kind,
+          source: "window.error",
+          meta: {
+            filename: String(event?.filename || ""),
+            lineno: Number(event?.lineno || 0) || 0,
+            colno: Number(event?.colno || 0) || 0,
+            tag: targetTag,
+          },
+        });
+
+        // 资源错误通常较噪（图标缺失/扩展干扰），默认不弹 toast
+        if (!isResourceError) toastRuntimeErrorOnce();
+      },
+      true
+    );
+
+    // 捕获 Promise 未处理拒绝
+    window.addEventListener("unhandledrejection", (event) => {
+      const reason = event?.reason;
+      const err =
+        reason instanceof Error
+          ? reason
+          : new Error(typeof reason === "string" ? reason : "Unhandled promise rejection");
+
+      diagnostics.captureError(err, {
+        kind: "unhandledrejection",
+        source: "window.unhandledrejection",
+      });
+
+      toastRuntimeErrorOnce();
+    });
+
+    // CSP 违规对排障非常关键（尤其在离线/PWA场景）
+    document.addEventListener("securitypolicyviolation", (event) => {
+      diagnostics.captureError(new Error("CSP violation"), {
+        kind: "securitypolicyviolation",
+        source: "document.securitypolicyviolation",
+        meta: {
+          blockedURI: String(event?.blockedURI || ""),
+          violatedDirective: String(event?.violatedDirective || ""),
+          effectiveDirective: String(event?.effectiveDirective || ""),
+          disposition: String(event?.disposition || ""),
+        },
+      });
+    });
+  };
+
+  // -------------------------
   // Local Data (Export / Import / Reset)
   // -------------------------
 
@@ -2393,6 +2668,306 @@
       timeout: 3000,
     });
     window.setTimeout(() => window.location.reload(), 800);
+  };
+
+  // -------------------------
+  // Diagnostics Panel（本地可观测性：错误 / 埋点 / 健康快照）
+  // -------------------------
+
+  const exportDiagnosticsBundle = () => {
+    const bundle = diagnostics.buildBundle({ includeTelemetry: true, includeHealth: true });
+    const version = String(bundle?.version || "");
+    const exportedAt = String(bundle?.exportedAt || new Date().toISOString());
+    const date = exportedAt.slice(0, 10) || new Date().toISOString().slice(0, 10);
+    const safeVersion = version || "unknown";
+    const fileName = `gkb-diagnostics-${safeVersion}-${date}.json`;
+
+    const ok = downloadTextFile(fileName, JSON.stringify(bundle, null, 2));
+    toast({
+      title: ok ? "已导出诊断包" : "导出失败",
+      message: ok ? "已下载 diagnostics JSON（仅包含本地信息）。" : "浏览器不支持下载或权限受限。",
+      tone: ok ? "success" : "warn",
+      timeout: 3200,
+    });
+    return ok;
+  };
+
+  let diagDialogRoot = null;
+  let diagDialogLastActive = null;
+
+  const formatTs = (ts) => {
+    const n = Number(ts || 0) || 0;
+    if (!n) return "—";
+    try {
+      return new Date(n).toLocaleString("zh-CN");
+    } catch (_) {
+      return new Date(n).toISOString();
+    }
+  };
+
+  const renderDiagList = (host, items, { emptyText = "暂无记录" } = {}) => {
+    if (!host) return;
+    const list = Array.isArray(items) ? items : [];
+    if (list.length === 0) {
+      host.innerHTML = `<div class="diag-item diag-item-empty">${escapeHtml(emptyText)}</div>`;
+      return;
+    }
+
+    host.innerHTML = list
+      .map((x) => {
+        const title = escapeHtml(String(x.title || ""));
+        const sub = escapeHtml(String(x.sub || ""));
+        const meta = escapeHtml(String(x.meta || ""));
+        return `
+          <div class="diag-item">
+            <div class="diag-item-title">${title}</div>
+            ${sub ? `<div class="diag-item-sub">${sub}</div>` : ""}
+            ${meta ? `<div class="diag-item-meta">${meta}</div>` : ""}
+          </div>
+        `;
+      })
+      .join("");
+  };
+
+  const renderDiagnosticsPanel = () => {
+    if (!diagDialogRoot) return;
+
+    const summaryEl = $("#diag-summary", diagDialogRoot);
+    const errorsEl = $("#diag-errors", diagDialogRoot);
+    const telemetryEl = $("#diag-telemetry", diagDialogRoot);
+    const toggleBtn = $('[data-action="diag-toggle-telemetry"]', diagDialogRoot);
+
+    const bundle = diagnostics.buildBundle({ includeTelemetry: true, includeHealth: true });
+    const health = bundle?.health || null;
+    const report = health?.report || {};
+
+    const online = (() => {
+      try {
+        return Boolean(navigator.onLine);
+      } catch (_) {
+        return true;
+      }
+    })();
+
+    const lastErrorAt = Number(diagnostics.getSummary().lastErrorAt || 0) || 0;
+
+    renderMetaList(summaryEl, [
+      { label: "版本", value: String(bundle?.version || "—") },
+      { label: "页面", value: String(bundle?.page || "—") },
+      { label: "网络", value: online ? "在线" : "离线" },
+      { label: "本地埋点", value: bundle?.telemetryEnabled ? "开启" : "关闭" },
+      { label: "错误数", value: `${Number(diagnostics.getSummary().errorCount || 0) || 0}` },
+      { label: "最近错误", value: lastErrorAt ? formatTs(lastErrorAt) : "—" },
+      { label: "CLS", value: String(report["性能/CLS"] ?? "—") },
+      { label: "LCP(ms)", value: String(report["性能/LCP(ms)"] ?? "—") },
+      { label: "FCP(ms)", value: String(report["性能/FCP(ms)"] ?? "—") },
+      { label: "INP(ms)", value: String(report["性能/INP(ms)"] ?? "—") },
+    ]);
+
+    if (toggleBtn) {
+      toggleBtn.textContent = bundle?.telemetryEnabled ? "关闭本地埋点" : "开启本地埋点";
+    }
+
+    const errors = diagnostics
+      .readErrors()
+      .slice(-12)
+      .reverse()
+      .map((e) => ({
+        title: `${formatTs(e.ts)} · ${String(e.kind || "error")}`,
+        sub: String(e.message || ""),
+        meta: e.page ? `page=${String(e.page)}` : "",
+      }));
+    renderDiagList(errorsEl, errors, { emptyText: "暂无错误记录（运行时异常会自动记录）" });
+
+    const telemetryItems = (() => {
+      try {
+        return telemetry
+          .read()
+          .slice(-18)
+          .reverse()
+          .map((e) => {
+            const name = String(e?.name || "");
+            const page = String(e?.page || "");
+            const meta = e?.meta && typeof e.meta === "object" ? e.meta : null;
+            const metaText = meta
+              ? Object.entries(meta)
+                  .slice(0, 5)
+                  .map(([k, v]) => `${k}=${String(v)}`)
+                  .join(" · ")
+              : "";
+            return {
+              title: `${formatTs(e.ts)} · ${name || "event"}`,
+              sub: page ? `page=${page}` : "",
+              meta: metaText,
+            };
+          });
+      } catch (_) {
+        return [];
+      }
+    })();
+    renderDiagList(telemetryEl, telemetryItems, { emptyText: "暂无埋点事件（可在设置中开启）" });
+  };
+
+  const ensureDiagnosticsDialog = () => {
+    if (diagDialogRoot) return diagDialogRoot;
+
+    const root = document.createElement("div");
+    root.className = "diag-root";
+    root.hidden = true;
+    root.dataset.state = "closed";
+    root.innerHTML = `
+      <div class="diag-backdrop" data-action="diag-close" aria-hidden="true"></div>
+      <div class="diag-panel" role="dialog" aria-modal="true" aria-label="系统诊断">
+        <div class="diag-header">
+          <div class="diag-header-title">
+            <div class="diag-title">系统诊断</div>
+            <div class="diag-subtitle">错误边界 · 本地埋点 · 性能快照</div>
+          </div>
+          <div class="diag-header-actions">
+            <button type="button" class="btn btn-small btn-secondary" data-action="diag-export">导出诊断包</button>
+            <button type="button" class="btn btn-small btn-secondary" data-action="diag-clear-errors">清空错误</button>
+            <button type="button" class="btn btn-small btn-secondary" data-action="diag-toggle-telemetry">关闭本地埋点</button>
+            <button type="button" class="diag-close" data-action="diag-close" aria-label="关闭">Esc</button>
+          </div>
+        </div>
+        <div class="diag-body">
+          <div class="diag-section">
+            <div class="diag-section-title">概览</div>
+            <div class="meta-list" id="diag-summary" aria-live="polite"></div>
+          </div>
+          <div class="diag-grid">
+            <div class="diag-section">
+              <div class="diag-section-title">最近错误</div>
+              <div class="diag-list" id="diag-errors"></div>
+            </div>
+            <div class="diag-section">
+              <div class="diag-section-title">最近埋点</div>
+              <div class="diag-list" id="diag-telemetry"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    const close = () => {
+      if (root.hidden) return;
+      document.body.classList.remove("diag-open");
+      const finalize = () => {
+        root.hidden = true;
+        root.dataset.state = "closed";
+        try {
+          diagDialogLastActive?.focus?.();
+        } catch (_) {}
+      };
+
+      const panel = $(".diag-panel", root);
+      const backdrop = $(".diag-backdrop", root);
+
+      const outPanel = motionAnimate(
+        panel,
+        { opacity: [1, 0], y: [0, 12], scale: [1, 0.985], filter: ["blur(0px)", "blur(10px)"] },
+        { duration: MOTION.durFast }
+      );
+      const outBackdrop = motionAnimate(backdrop, { opacity: [1, 0] }, { duration: MOTION.durFast });
+
+      if (outPanel || outBackdrop) {
+        Promise.allSettled([motionFinished(outPanel), motionFinished(outBackdrop)]).finally(finalize);
+        return;
+      }
+
+      root.dataset.state = prefersReducedMotion() ? "closed" : "closing";
+      if (prefersReducedMotion()) finalize();
+      else window.setTimeout(finalize, 170);
+    };
+
+    const open = () => {
+      if (!root.hidden) return;
+      diagDialogLastActive = document.activeElement;
+
+      renderDiagnosticsPanel();
+
+      root.hidden = false;
+      root.dataset.state = "opening";
+      document.body.classList.add("diag-open");
+      window.requestAnimationFrame(() => {
+        root.dataset.state = "open";
+      });
+
+      const panel = $(".diag-panel", root);
+      const backdrop = $(".diag-backdrop", root);
+      motionAnimate(backdrop, { opacity: [0, 1] }, { duration: MOTION.durFast });
+      motionAnimate(
+        panel,
+        { opacity: [0, 1], y: [18, 0], scale: [0.985, 1], filter: ["blur(12px)", "blur(0px)"] },
+        { duration: MOTION.durBase }
+      );
+
+      window.setTimeout(() => {
+        try {
+          $(".diag-close", root)?.focus?.();
+        } catch (_) {}
+      }, 0);
+    };
+
+    root.addEventListener("click", (e) => {
+      const action = e.target?.dataset?.action || "";
+      if (action === "diag-close") close();
+      if (action === "diag-export") exportDiagnosticsBundle();
+      if (action === "diag-clear-errors") {
+        diagnostics.clearErrors();
+        toast({ title: "已清空", message: "错误日志已清空。", tone: "info" });
+        renderDiagnosticsPanel();
+      }
+      if (action === "diag-toggle-telemetry") {
+        const next = !telemetry.isEnabled();
+        telemetry.setEnabled(next);
+        toast({
+          title: "本地埋点已切换",
+          message: next ? "已开启本地埋点（仅保存在本地）。" : "已关闭本地埋点。",
+          tone: "info",
+        });
+        renderDiagnosticsPanel();
+      }
+    });
+
+    window.addEventListener("keydown", (e) => {
+      if (root.hidden) return;
+      if (e.key === "Escape") close();
+    });
+
+    // Focus trap（避免 Tab 跑到弹窗外）
+    root.addEventListener("keydown", (e) => {
+      if (root.hidden) return;
+      if (e.key !== "Tab") return;
+      const focusable = $$(
+        'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        root
+      );
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    });
+
+    document.body.appendChild(root);
+    diagDialogRoot = root;
+
+    // 给外部调用的句柄（例如 Command Palette / Dashboard）
+    root._diagOpen = open;
+    root._diagClose = close;
+
+    return root;
+  };
+
+  const openDiagnosticsDialog = () => {
+    const root = ensureDiagnosticsDialog();
+    root._diagOpen?.();
   };
 
   // -------------------------
@@ -2773,6 +3348,8 @@
       return active ? "退出专注阅读" : "进入专注阅读";
     };
 
+    const getTelemetryLabel = () => (telemetry.isEnabled() ? "关闭本地埋点" : "开启本地埋点");
+
     // 搜索索引缓存：避免每次输入都重复构造全文字符串（性能压榨）
     let searchPool = null;
     let searchPoolVersion = "";
@@ -2952,6 +3529,49 @@
           subtitle: "查看 offline.html（离线兜底）",
           href: "offline.html",
         },
+        {
+          kind: "action",
+          badge: "诊断",
+          title: "打开系统诊断面板",
+          subtitle: "查看错误/本地埋点/性能快照",
+          run: openDiagnosticsDialog,
+        },
+        {
+          kind: "action",
+          badge: "诊断",
+          title: "导出诊断包",
+          subtitle: "下载 diagnostics JSON（便于提交 Issue/PR）",
+          run: exportDiagnosticsBundle,
+        },
+        {
+          kind: "action",
+          badge: "诊断",
+          title: getTelemetryLabel(),
+          subtitle: "仅保存在本地浏览器（不上传）",
+          run: () => {
+            const next = !telemetry.isEnabled();
+            telemetry.setEnabled(next);
+            toast({
+              title: "本地埋点已切换",
+              message: next ? "已开启本地埋点（仅保存在本地）。" : "已关闭本地埋点。",
+              tone: "info",
+            });
+          },
+        },
+        ...(diagnostics.getSummary().errorCount > 0
+          ? [
+              {
+                kind: "action",
+                badge: "诊断",
+                title: `清空错误日志（${diagnostics.getSummary().errorCount}）`,
+                subtitle: "清空本地错误记录（不会影响收藏/进度等）",
+                run: () => {
+                  diagnostics.clearErrors();
+                  toast({ title: "已清空", message: "错误日志已清空。", tone: "info" });
+                },
+              },
+            ]
+          : []),
         {
           kind: "action",
           badge: "本地",
@@ -6447,15 +7067,65 @@
     const dnaEl = $("#dash-dna");
     const dnaTagsEl = $("#dash-dna-tags");
     const momentumEl = $("#dash-momentum");
+    const diagEl = $("#dash-diagnostics");
 
     const exportBtn = $("#dash-export");
     const importBtn = $("#dash-import");
     const resetBtn = $("#dash-reset");
     const markAllBtn = $("#dash-mark-all");
+    const diagOpenBtn = $("#dash-diag-open");
+    const diagExportBtn = $("#dash-diag-export");
+    const diagClearBtn = $("#dash-diag-clear");
+    const telemetryToggleBtn = $("#dash-telemetry-toggle");
 
     exportBtn?.addEventListener("click", exportLocalData);
     importBtn?.addEventListener("click", importLocalData);
     resetBtn?.addEventListener("click", resetLocalData);
+    diagOpenBtn?.addEventListener("click", openDiagnosticsDialog);
+    diagExportBtn?.addEventListener("click", exportDiagnosticsBundle);
+
+    const renderDiagnostics = () => {
+      if (!diagEl) return;
+      const bundle = diagnostics.buildBundle({ includeTelemetry: true, includeHealth: true });
+      const health = bundle?.health || null;
+      const report = health?.report || {};
+
+      const summary = diagnostics.getSummary();
+      const lastAt = Number(summary.lastErrorAt || 0) || 0;
+
+      renderMetaList(diagEl, [
+        { label: "本地埋点", value: bundle?.telemetryEnabled ? "开启" : "关闭" },
+        { label: "错误数", value: `${Number(summary.errorCount || 0) || 0}` },
+        { label: "最近错误", value: lastAt ? formatTs(lastAt) : "—" },
+        { label: "CLS", value: String(report["性能/CLS"] ?? "—") },
+        { label: "LCP(ms)", value: String(report["性能/LCP(ms)"] ?? "—") },
+        { label: "FCP(ms)", value: String(report["性能/FCP(ms)"] ?? "—") },
+        { label: "INP(ms)", value: String(report["性能/INP(ms)"] ?? "—") },
+      ]);
+
+      if (telemetryToggleBtn) {
+        telemetryToggleBtn.textContent = bundle?.telemetryEnabled ? "关闭本地埋点" : "开启本地埋点";
+      }
+
+      if (diagClearBtn) diagClearBtn.disabled = (Number(summary.errorCount || 0) || 0) === 0;
+    };
+
+    diagClearBtn?.addEventListener("click", () => {
+      diagnostics.clearErrors();
+      toast({ title: "已清空", message: "错误日志已清空。", tone: "info" });
+      renderDiagnostics();
+    });
+
+    telemetryToggleBtn?.addEventListener("click", () => {
+      const next = !telemetry.isEnabled();
+      telemetry.setEnabled(next);
+      toast({
+        title: "本地埋点已切换",
+        message: next ? "已开启本地埋点（仅保存在本地）。" : "已关闭本地埋点。",
+        tone: "info",
+      });
+      renderDiagnostics();
+    });
 
     // 1) 概览
     const totalGames = Object.keys(data.games || {}).length;
@@ -6490,6 +7160,8 @@
       { label: "下一步", value: momentum.nextAction },
       { label: "路线条目", value: `${momentum.planCount}` },
     ]);
+
+    renderDiagnostics();
 
     // 2) 最近访问
     const recentCards = [
@@ -8892,6 +9564,7 @@
       try {
         fn();
       } catch (err) {
+        diagnostics.captureError(err, { kind: "handled", source: "boot.run" });
         console.error(err);
       }
     };
@@ -8909,6 +9582,7 @@
     // 关键交互优先：主题 / 导航 / 搜索
     const critical = [
       initNetworkStateLoop,
+      initErrorBoundary,
       initThemeToggle,
       initContrast,
       seedUpdateRadarIfNeeded,
@@ -8955,6 +9629,3 @@
     runIdle(initServiceWorker, { timeout: 1500 });
   });
 })();
-
-
-

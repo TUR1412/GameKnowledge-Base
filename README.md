@@ -38,6 +38,7 @@ GameKnowledge-Base is a data-driven static multi-page site powered by `data.js` 
 | 路线冲刺 | 智能拆分节奏并可复制冲刺计划 | Smart sprint pacing with copyable schedule |
 | 社区热度 | 热度雷达 + 话题画像标签 | Trend radar with topic profiling |
 | 更新影响力 | NEW/UPDATED + 影响力评分 | Update radar with impact scoring |
+| 系统诊断 | 错误边界 + 本地埋点 + 健康快照（可导出诊断包） | Error boundary + local telemetry + health snapshot (exportable bundle) |
 
 ---
 
@@ -77,7 +78,7 @@ npm run build:vite
 
 ```js
 window.GKB.data = {
-  version: "20260111-1",
+  version: "YYYYMMDD-N",
   games: { /* ... */ },
   guides: { /* ... */ },
   topics: { /* ... */ }
@@ -99,6 +100,22 @@ window.GKB.data = {
 所有交互数据仅存储在浏览器 `localStorage`：收藏、进度、路线、笔记、社区回复均不会上传服务器。
 
 All interaction data stays in the browser via `localStorage`—no server, no tracking, no external APIs.
+
+---
+
+## 系统诊断 / Diagnostics
+
+入口 / Entry:
+
+- 指挥舱：`dashboard.html` → “系统诊断”卡片
+- Command Palette：`Ctrl + K` → “打开系统诊断面板”
+
+能力 / What you get:
+
+- **错误边界**：自动捕获运行时异常 / Promise 未处理拒绝 / CSP 违规，并记录到本地
+- **本地埋点**：只在本地保存（默认启用，可随时关闭）
+- **健康快照**：FPS / LongTask / CLS / LCP / FCP / INP 等指标摘要
+- **一键导出**：下载 `gkb-diagnostics-<version>-<date>.json` 诊断包，便于提 Issue/PR（不外发）
 
 ---
 

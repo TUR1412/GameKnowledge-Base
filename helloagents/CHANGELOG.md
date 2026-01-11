@@ -6,6 +6,17 @@
 
 ## [Unreleased]
 
+## [20260112-1] - 2026-01-12
+
+### 新增
+- 运行时错误边界：捕获 `error/unhandledrejection/securitypolicyviolation` 并写入本地诊断日志（`gkb-diagnostics-errors`）
+- 系统诊断面板：指挥舱新增“系统诊断”卡片 + 弹窗面板，可查看错误/埋点/健康快照并一键导出诊断包
+- 健康监控增强：在不改变默认行为的前提下新增 FCP/INP 采样，并支持 `snapshot({ log: false })` 静默模式
+
+### 变更
+- Command Palette：新增诊断入口（打开面板/导出诊断包/开关埋点/清空错误）
+- 版本号 bump 至 `20260112-1`（全站 `?v=` 与 `data.js.version` 同步）
+
 ## [20260111-1] - 2026-01-11
 
 ### 新增
