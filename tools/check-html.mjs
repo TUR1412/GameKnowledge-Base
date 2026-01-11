@@ -51,9 +51,22 @@ const checkSkipLink = (fileName, content, errors) => {
 };
 
 const checkImages = (fileName, content, errors) => {
+  const readAttr = (tag, name) => {
+    const re = new RegExp(`\\b${name}\\s*=\\s*"([^"]*)"`, "i");
+    const m = String(tag || "").match(re);
+    return m ? String(m[1] || "") : "";
+  };
+
+  const isPlaceholderImg = (src) => {
+    const s = String(src || "").replace(/\\/g, "/");
+    return s.startsWith("images/placeholders/");
+  };
+
   const imgRe = /<img\b[^>]*>/gi;
   for (const m of content.matchAll(imgRe)) {
     const tag = m[0] || "";
+    const src = readAttr(tag, "src");
+
     if (!/\balt\s*=\s*"/i.test(tag)) {
       errors.push(`[HTML] ${fileName}: <img> 缺少 alt 属性（可为空字符串）`);
     }
@@ -62,6 +75,15 @@ const checkImages = (fileName, content, errors) => {
     }
     if (!/\bdecoding\s*=\s*"(async|auto|sync)"/i.test(tag)) {
       errors.push(`[HTML] ${fileName}: <img> 缺少 decoding="async|auto|sync"（建议 async）`);
+    }
+
+    // 对占位图强制要求显式 width/height，降低 CLS（布局抖动）
+    if (isPlaceholderImg(src)) {
+      const hasWidth = /\bwidth\s*=\s*"\d+"/i.test(tag);
+      const hasHeight = /\bheight\s*=\s*"\d+"/i.test(tag);
+      if (!hasWidth || !hasHeight) {
+        errors.push(`[HTML] ${fileName}: 占位图 <img> 缺少 width/height（src=${src}）`);
+      }
     }
   }
 };

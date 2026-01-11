@@ -17,6 +17,7 @@
 ### 变更
 - PWA 离线预缓存：`sw.js` 补齐 `docs/SECURITY.md` 与 `docs/CODE_OF_CONDUCT.md`（Docs Portal 离线可读）
 - README：补齐 CI/CodeQL 状态徽章，并更新质量门禁清单（对齐 `npm run check:all`）
+- HTML（CLS）：对 `images/placeholders/*` 的 `<img>` 强制要求 `width/height`，并补齐 `starlight-miracle.html` 占位图尺寸（降低布局抖动）
 
 ## [20260112-3] - 2026-01-12
 

@@ -61,6 +61,35 @@ test("validateHtml：图片缺少 loading/decoding 应失败", () => {
   });
 });
 
+test("validateHtml：占位图缺少 width/height 应失败", () => {
+  withTempDir((root) => {
+    fs.writeFileSync(
+      path.join(root, "index.html"),
+      buildHtml({
+        img: '<img loading="lazy" decoding="async" src="images/placeholders/screenshot-ui.svg" alt="">',
+      }),
+      "utf8"
+    );
+    const r = validateHtml({ workspaceRoot: root });
+    assert.equal(r.ok, false);
+    assert.ok(r.errors.some((e) => e.includes("占位图 <img> 缺少 width/height")));
+  });
+});
+
+test("validateHtml：占位图带 width/height 应通过", () => {
+  withTempDir((root) => {
+    fs.writeFileSync(
+      path.join(root, "index.html"),
+      buildHtml({
+        img: '<img loading="lazy" decoding="async" src="images/placeholders/screenshot-ui.svg" alt="" width="300" height="200">',
+      }),
+      "utf8"
+    );
+    const r = validateHtml({ workspaceRoot: root });
+    assert.equal(r.ok, true);
+  });
+});
+
 test("validateHtml：通过分支", () => {
   withTempDir((root) => {
     fs.writeFileSync(
@@ -113,4 +142,3 @@ test("CLI：check-html.mjs 作为脚本运行应 process.exit(main())", () => {
     assert.equal(r.signal, null);
   });
 });
-
