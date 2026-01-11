@@ -75,6 +75,25 @@ test("validateA11y：检测到 inline style / on* handler 应失败", () => {
   });
 });
 
+test("validateA11y：主导航 active 链接必须带 aria-current", () => {
+  withTempDir((root) => {
+    const bad = buildHtml({
+      body: '<nav id="site-nav" aria-label="主导航"><a href="index.html" class="active">Home</a></nav>',
+    });
+    fs.writeFileSync(path.join(root, "index.html"), bad, "utf8");
+    const r1 = validateA11y({ workspaceRoot: root });
+    assert.equal(r1.ok, false);
+    assert.ok(r1.errors.some((e) => e.includes("aria-current")));
+
+    const ok = buildHtml({
+      body: '<nav id="site-nav" aria-label="主导航"><a href="index.html" class="active" aria-current="page">Home</a></nav>',
+    });
+    fs.writeFileSync(path.join(root, "index.html"), ok, "utf8");
+    const r2 = validateA11y({ workspaceRoot: root });
+    assert.equal(r2.ok, true);
+  });
+});
+
 test("validateA11y：通过分支", () => {
   withTempDir((root) => {
     fs.writeFileSync(path.join(root, "index.html"), buildHtml(), "utf8");

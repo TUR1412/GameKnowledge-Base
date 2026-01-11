@@ -12,6 +12,7 @@
 - 依赖自动更新：新增 `.github/dependabot.yml`，对 npm 依赖与 GitHub Actions 进行每周更新检查
 - 安全扫描：新增 CodeQL 工作流 `.github/workflows/codeql.yml`（push/PR/每周定时）对 JavaScript 做静态分析
 - A11y/SEO 门禁：新增 `tools/check-a11y.mjs` 校验 `lang/title/description` 与 CSP 兼容（禁止 inline style / on* handler），并纳入 `check:all` 与 CI
+- A11y 细化：主导航（`#site-nav`）当前页链接统一补齐 `aria-current="page"`，并由门禁防回退
 
 ## [20260112-3] - 2026-01-12
 

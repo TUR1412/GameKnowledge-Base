@@ -19,6 +19,22 @@ const hasInlineStyle = (content) => /<style\b/i.test(content) || /\sstyle\s*=\s*
 
 const hasInlineHandler = (content) => /\son\w+\s*=\s*["']/i.test(content);
 
+const checkActiveNavAriaCurrent = (fileName, content, errors) => {
+  const m = String(content || "").match(
+    /<nav\b[^>]*\bid=["']site-nav["'][^>]*>([\s\S]*?)<\/nav>/i
+  );
+  if (!m) return;
+
+  const navInner = String(m[1] || "");
+  const activeLinkRe = /<a\b[^>]*\bclass=["'][^"']*\bactive\b[^"']*["'][^>]*>/gi;
+  for (const hit of navInner.matchAll(activeLinkRe)) {
+    const tag = hit[0] || "";
+    if (!/\baria-current\s*=\s*["']page["']/i.test(tag)) {
+      errors.push(`[A11Y] ${fileName}: 主导航当前页链接缺少 aria-current="page"`);
+    }
+  }
+};
+
 export const validateA11y = ({ workspaceRoot = process.cwd() } = {}) => {
   const errors = [];
   let htmlFiles = [];
@@ -69,6 +85,9 @@ export const validateA11y = ({ workspaceRoot = process.cwd() } = {}) => {
     if (hasInlineHandler(content)) {
       errors.push(`[A11Y] ${fileName}: 检测到 on* 事件属性（例如 onclick=""），将违反 CSP`);
     }
+
+    // 主导航语义：当前页应声明 aria-current，增强可访问性与读屏体验
+    checkActiveNavAriaCurrent(fileName, content, errors);
   }
 
   if (errors.length > 0) return { ok: false, errors, htmlFiles };
@@ -96,4 +115,3 @@ const isRunAsScript = () => {
 if (isRunAsScript()) {
   process.exit(main());
 }
-

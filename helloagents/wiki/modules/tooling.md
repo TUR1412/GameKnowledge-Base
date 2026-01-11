@@ -84,3 +84,4 @@
 - [202601120351_image-performance-gate](../../history/2026-01/202601120351_image-performance-gate/) - 图片性能门禁（img loading/decoding）+ Atomic Design 规范补齐
 - [202601120525_bundle-size-budget-gate](../../history/2026-01/202601120525_bundle-size-budget-gate/) - 可选构建产物体积预算门禁（dist gzip）
 - [202601120558_a11y-seo-gate](../../history/2026-01/202601120558_a11y-seo-gate/) - A11y/SEO 基础门禁 + CSP 兼容检查
+- [202601120607_nav-aria-current](../../history/2026-01/202601120607_nav-aria-current/) - 主导航 aria-current 规范化（.active 对齐）
