@@ -17,4 +17,11 @@
 ## 4. 测试与发布
 - [√] 4.1 运行 `npm run check:all`
 - [√] 4.2 执行 `node tools/bump-version.mjs` 并复跑关键校验
-- [ ] 4.3 提交并 push 到 `origin/master`
+- [√] 4.3 提交并 push 到 `origin/master`
+
+---
+
+## 执行总结
+
+- 版本号已 bump：`20260112-2` → `20260112-3`
+- 校验链路：`npm run check:all` 通过（含 HTML 图片门禁 / Runtime 门禁 / 覆盖率阈值 / Vite build / 断链/SW/Feed/数据模型校验）
