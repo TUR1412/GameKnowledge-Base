@@ -29,11 +29,15 @@ jobs:
           node --check tools/check-html.mjs
           node --check tools/check-sitemap.mjs
           node --check tools/check-sw.mjs
+          node --check tools/check-runtime.mjs
           node --check tools/bump-version.mjs
           node --check tools/generate-feed.mjs
           node --check tools/generate-sitemap.mjs
           node --check tools/lib/site.mjs
           node --check tools/validate-data.mjs
+
+      - name: Runtime Check Gate
+        run: node tools/check-runtime.mjs
 
       - name: Unit Tests (Node Test Runner + Coverage)
         run: |

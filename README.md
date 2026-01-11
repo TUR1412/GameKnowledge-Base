@@ -113,9 +113,14 @@ All interaction data stays in the browser via `localStorage`—no server, no tra
 能力 / What you get:
 
 - **错误边界**：自动捕获运行时异常 / Promise 未处理拒绝 / CSP 违规，并记录到本地
+- **本地日志**：统一 `logger`（ring buffer），默认仅持久化 `info/warn/error` 到 `gkb-diagnostics-logs`；诊断面板可查看/清空，导出的诊断包也会包含日志
 - **本地埋点**：只在本地保存（默认启用，可随时关闭）
 - **健康快照**：FPS / LongTask / CLS / LCP / FCP / INP 等指标摘要
 - **一键导出**：下载 `gkb-diagnostics-<version>-<date>.json` 诊断包，便于提 Issue/PR（不外发）
+
+质量门禁 / Gate:
+
+- `node tools/check-runtime.mjs`：校验诊断/日志/面板入口是否被误删（HTML/CSS/JS），已纳入 `npm run check:all` 与 CI
 
 ---
 

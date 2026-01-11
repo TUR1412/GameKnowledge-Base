@@ -18,6 +18,7 @@ const main = () => {
     ["node", ["--check", "tools/check-html.mjs"]],
     ["node", ["--check", "tools/check-sitemap.mjs"]],
     ["node", ["--check", "tools/check-sw.mjs"]],
+    ["node", ["--check", "tools/check-runtime.mjs"]],
     ["node", ["--check", "tools/bump-version.mjs"]],
     ["node", ["--check", "tools/generate-feed.mjs"]],
     ["node", ["--check", "tools/generate-sitemap.mjs"]],
@@ -45,6 +46,7 @@ const main = () => {
     ["node", ["tools/check-html.mjs"]],
     ["node", ["tools/check-sitemap.mjs"]],
     ["node", ["tools/check-sw.mjs"]],
+    ["node", ["tools/check-runtime.mjs"]],
     ["node", ["tools/generate-feed.mjs", "--check"]],
     ["node", ["tools/validate-data.mjs"]],
   ];

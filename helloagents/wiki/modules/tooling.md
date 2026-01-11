@@ -22,6 +22,10 @@
 - `tools/check-sitemap.mjs`
   - robots/sitemap 完整性 + URL 覆盖（静态页 + 数据驱动页）
 
+- `tools/check-runtime.mjs`
+  - 运行时关键能力门禁（诊断/日志/面板入口存在性）
+  - 目标：防止关键模块被误删/改名（例如 `initErrorBoundary` / `openDiagnosticsDialog` / `gkb-diagnostics-logs`）
+
 - `tools/validate-data.mjs`
   - `data.js` 数据模型校验与常见错误提示
 
@@ -62,4 +66,4 @@
 采用 Node Test Runner（`node --test`），对关键工具脚本做单测与覆盖率约束：
 
 - 覆盖率阈值由 `package.json` 与 CI 统一控制
-- 重点覆盖：断链/版本一致性/SW 预缓存解析/数据模型校验等高风险分支
+- 重点覆盖：断链/版本一致性/SW 预缓存解析/数据模型校验/运行时门禁等高风险分支

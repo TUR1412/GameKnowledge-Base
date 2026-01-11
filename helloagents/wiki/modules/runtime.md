@@ -43,6 +43,7 @@
     - 本地埋点：`telemetry` 仅记录本地事件（默认启用可关闭），用于定位交互与性能优化机会；调试句柄暴露在 `GKB.runtime.telemetry`
     - 工程自诊断：提供 `GKB.health()` 与 `GKB.runtime.health.start()` 采样输出（FPS/LongTask/CLS/LCP/内存等）
     - 错误边界与诊断面板：捕获 `error/unhandledrejection/securitypolicyviolation` 并写入 `gkb-diagnostics-errors`；可在指挥舱/Command Palette 打开诊断面板并导出诊断包（调试句柄：`GKB.runtime.diagnostics`）
+    - 本地日志：统一 `logger`（ring buffer），默认持久化 `info/warn/error` 写入 `gkb-diagnostics-logs`；可在诊断面板查看/清空（调试句柄：`GKB.runtime.logger`）
     - 行为画像引擎：基于收藏/进度/路线等本地信号生成 DNA、动量、冲刺、热度与影响力指标，驱动指挥舱/探索/路线/社区/更新中心
   - 动效：
     - 内建 `MotionLite`（WAAPI 轻量层：`animate/stagger`）
@@ -64,6 +65,7 @@
 补充：诊断相关 key（仅本地存储，不外发）
 
 - `gkb-diagnostics-errors`：运行时错误边界记录（ring buffer）
+- `gkb-diagnostics-logs`：运行时本地日志（ring buffer；默认仅持久化 `info/warn/error`）
 - `gkb-telemetry-enabled` / `gkb-telemetry-events`：本地埋点开关与事件列表
 
 ---
@@ -88,5 +90,6 @@
 
 ## 5) 变更历史
 
+- [202601120253_local-logging-and-runtime-checks](../../history/2026-01/202601120253_local-logging-and-runtime-checks/) - 本地日志监控 + 运行时质量门禁（诊断面板扩展 / CI 门禁）
 - [202601120222_observability-runtime-diagnostics](../../history/2026-01/202601120222_observability-runtime-diagnostics/) - 运行时可观测性与诊断闭环（错误边界/诊断面板/指标增强）
 - [202601112050_quantum-runtime-expansion](../../history/2026-01/202601112050_quantum-runtime-expansion/) - 量子运行时扩展与体验重构

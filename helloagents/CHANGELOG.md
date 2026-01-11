@@ -6,6 +6,18 @@
 
 ## [Unreleased]
 
+## [20260112-2] - 2026-01-12
+
+### 新增
+- 本地日志监控：新增 `logger`（ring buffer），默认持久化 `info/warn/error` 到 `gkb-diagnostics-logs`
+- 诊断闭环扩展：诊断面板新增“最近日志”区块，诊断包导出包含 logs
+- 运行时质量门禁：新增 `tools/check-runtime.mjs` 校验关键能力（诊断/日志/面板入口）未被误删
+
+### 变更
+- 工具链：`npm run check:all` 与 CI 纳入 runtime 门禁；新增单测 `tests/check-runtime.test.mjs`
+- Command Palette：新增“清空日志”入口（仅当有日志时出现）
+- 版本号 bump 至 `20260112-2`（全站 `?v=` 与 `data.js.version` 同步）
+
 ## [20260112-1] - 2026-01-12
 
 ### 新增

@@ -41,6 +41,7 @@
     telemetryEnabled: "gkb-telemetry-enabled",
     telemetryEvents: "gkb-telemetry-events",
     diagnosticsErrors: "gkb-diagnostics-errors",
+    diagnosticsLogs: "gkb-diagnostics-logs",
   };
 
   const $ = (selector, root = document) => root.querySelector(selector);
@@ -1353,6 +1354,131 @@
   };
 
   const healthMonitor = createHealthMonitor({ store: netStore });
+  const logger = (() => {
+    const MAX_LOGS = 180;
+    const MAX_STR = 260;
+    const MAX_META_KEYS = 12;
+    const MAX_META_STR = 120;
+
+    const truncate = (value, maxLen) => {
+      const s = String(value ?? "");
+      const m = Math.max(0, Number(maxLen || 0) || 0);
+      if (m === 0) return "";
+      if (s.length <= m) return s;
+      return `${s.slice(0, Math.max(0, m - 1))}…`;
+    };
+
+    const safeToString = (value) => {
+      if (value instanceof Error) {
+        const name = String(value.name || "Error");
+        const msg = String(value.message || "");
+        return msg ? `${name}: ${msg}` : name;
+      }
+      if (typeof value === "string") return value;
+      try {
+        return JSON.stringify(value);
+      } catch (_) {
+        return String(value);
+      }
+    };
+
+    const sanitizeMeta = (meta) => {
+      if (!meta || typeof meta !== "object" || Array.isArray(meta)) return undefined;
+      const out = {};
+      const entries = Object.entries(meta).slice(0, MAX_META_KEYS);
+      entries.forEach(([k, v]) => {
+        const key = truncate(String(k || "").trim(), 48);
+        if (!key) return;
+        if (typeof v === "string") out[key] = truncate(v, MAX_META_STR);
+        else if (typeof v === "number" && Number.isFinite(v)) out[key] = v;
+        else if (typeof v === "boolean") out[key] = v;
+      });
+      return Object.keys(out).length > 0 ? out : undefined;
+    };
+
+    const read = () => {
+      const raw = storage.get(STORAGE_KEYS.diagnosticsLogs);
+      const list = safeJsonParse(raw, []);
+      if (!Array.isArray(list)) return [];
+      return list
+        .filter((x) => x && typeof x === "object" && !Array.isArray(x))
+        .slice(Math.max(0, list.length - MAX_LOGS));
+    };
+
+    const write = (events) => {
+      const list = Array.isArray(events) ? events : [];
+      const trimmed = list.slice(Math.max(0, list.length - MAX_LOGS));
+      return storage.set(STORAGE_KEYS.diagnosticsLogs, JSON.stringify(trimmed));
+    };
+
+    const persistLevel = (level) => level === "info" || level === "warn" || level === "error";
+
+    const log = (level, message, meta) => {
+      const lvl = String(level || "").trim().toLowerCase();
+      const okLevel = lvl === "debug" || lvl === "info" || lvl === "warn" || lvl === "error";
+      const l = okLevel ? lvl : "info";
+
+      const msg = truncate(safeToString(message).trim(), MAX_STR);
+      if (!msg) return false;
+
+      // 控制台输出（不影响主流程）
+      try {
+        const fn =
+          l === "error"
+            ? console.error
+            : l === "warn"
+              ? console.warn
+              : l === "debug"
+                ? console.debug
+                : console.log;
+        fn?.call?.(console, `[GKB] ${msg}`);
+      } catch (_) {}
+
+      if (!persistLevel(l)) return true;
+
+      const entry = {
+        ts: Date.now(),
+        level: l,
+        page: truncate(getPage?.() || "", 32),
+        message: msg,
+      };
+
+      const m = sanitizeMeta(meta);
+      if (m) entry.meta = m;
+
+      try {
+        const list = read();
+        list.push(entry);
+        write(list);
+      } catch (_) {
+        // ignore
+      }
+
+      return true;
+    };
+
+    const clear = () => storage.remove(STORAGE_KEYS.diagnosticsLogs);
+
+    const getSummary = () => {
+      const logs = read();
+      const last = logs.length > 0 ? logs[logs.length - 1] : null;
+      return {
+        logCount: logs.length,
+        lastLogAt: Number(last?.ts || 0) || 0,
+      };
+    };
+
+    return {
+      debug: (message, meta) => log("debug", message, meta),
+      info: (message, meta) => log("info", message, meta),
+      warn: (message, meta) => log("warn", message, meta),
+      error: (message, meta) => log("error", message, meta),
+      log,
+      read,
+      clear,
+      getSummary,
+    };
+  })();
   const diagnostics = (() => {
     const MAX_ERRORS = 80;
     const MAX_STR = 240;
@@ -1469,6 +1595,7 @@
         url: String(window.location?.href || ""),
         userAgent: String(navigator.userAgent || ""),
         errors: readErrors(),
+        logs: logger.read().slice(-240),
       };
 
       if (includeTelemetry) {
@@ -1514,6 +1641,7 @@
     window.GKB.runtime.health = healthMonitor;
     window.GKB.runtime.telemetry = telemetry;
     window.GKB.runtime.diagnostics = diagnostics;
+    window.GKB.runtime.logger = logger;
     window.GKB.health = () => healthMonitor.snapshot();
   } catch (_) {
     // ignore
@@ -2481,6 +2609,14 @@
           },
         });
 
+        logger.log(isResourceError ? "warn" : "error", err, {
+          source: "window.error",
+          kind,
+          tag: targetTag,
+          filename: String(event?.filename || ""),
+          lineno: Number(event?.lineno || 0) || 0,
+        });
+
         // 资源错误通常较噪（图标缺失/扩展干扰），默认不弹 toast
         if (!isResourceError) toastRuntimeErrorOnce();
       },
@@ -2500,6 +2636,8 @@
         source: "window.unhandledrejection",
       });
 
+      logger.error(err, { source: "window.unhandledrejection" });
+
       toastRuntimeErrorOnce();
     });
 
@@ -2514,6 +2652,12 @@
           effectiveDirective: String(event?.effectiveDirective || ""),
           disposition: String(event?.disposition || ""),
         },
+      });
+
+      logger.warn("CSP violation", {
+        source: "document.securitypolicyviolation",
+        blockedURI: String(event?.blockedURI || ""),
+        violatedDirective: String(event?.violatedDirective || ""),
       });
     });
   };
@@ -2735,7 +2879,10 @@
     const summaryEl = $("#diag-summary", diagDialogRoot);
     const errorsEl = $("#diag-errors", diagDialogRoot);
     const telemetryEl = $("#diag-telemetry", diagDialogRoot);
+    const logsEl = $("#diag-logs", diagDialogRoot);
     const toggleBtn = $('[data-action="diag-toggle-telemetry"]', diagDialogRoot);
+    const clearErrorsBtn = $('[data-action="diag-clear-errors"]', diagDialogRoot);
+    const clearLogsBtn = $('[data-action="diag-clear-logs"]', diagDialogRoot);
 
     const bundle = diagnostics.buildBundle({ includeTelemetry: true, includeHealth: true });
     const health = bundle?.health || null;
@@ -2750,6 +2897,8 @@
     })();
 
     const lastErrorAt = Number(diagnostics.getSummary().lastErrorAt || 0) || 0;
+    const logSummary = logger.getSummary();
+    const lastLogAt = Number(logSummary.lastLogAt || 0) || 0;
 
     renderMetaList(summaryEl, [
       { label: "版本", value: String(bundle?.version || "—") },
@@ -2758,6 +2907,8 @@
       { label: "本地埋点", value: bundle?.telemetryEnabled ? "开启" : "关闭" },
       { label: "错误数", value: `${Number(diagnostics.getSummary().errorCount || 0) || 0}` },
       { label: "最近错误", value: lastErrorAt ? formatTs(lastErrorAt) : "—" },
+      { label: "日志数", value: `${Number(logSummary.logCount || 0) || 0}` },
+      { label: "最近日志", value: lastLogAt ? formatTs(lastLogAt) : "—" },
       { label: "CLS", value: String(report["性能/CLS"] ?? "—") },
       { label: "LCP(ms)", value: String(report["性能/LCP(ms)"] ?? "—") },
       { label: "FCP(ms)", value: String(report["性能/FCP(ms)"] ?? "—") },
@@ -2767,6 +2918,8 @@
     if (toggleBtn) {
       toggleBtn.textContent = bundle?.telemetryEnabled ? "关闭本地埋点" : "开启本地埋点";
     }
+    if (clearErrorsBtn) clearErrorsBtn.disabled = (Number(diagnostics.getSummary().errorCount || 0) || 0) === 0;
+    if (clearLogsBtn) clearLogsBtn.disabled = (Number(logSummary.logCount || 0) || 0) === 0;
 
     const errors = diagnostics
       .readErrors()
@@ -2806,6 +2959,28 @@
       }
     })();
     renderDiagList(telemetryEl, telemetryItems, { emptyText: "暂无埋点事件（可在设置中开启）" });
+
+    const logItems = logger
+      .read()
+      .slice(-18)
+      .reverse()
+      .map((e) => {
+        const level = String(e?.level || "info");
+        const page = String(e?.page || "");
+        const meta = e?.meta && typeof e.meta === "object" ? e.meta : null;
+        const metaText = meta
+          ? Object.entries(meta)
+              .slice(0, 5)
+              .map(([k, v]) => `${k}=${String(v)}`)
+              .join(" · ")
+          : "";
+        return {
+          title: `${formatTs(e.ts)} · ${level}`,
+          sub: String(e?.message || ""),
+          meta: [page ? `page=${page}` : "", metaText].filter(Boolean).join(" · "),
+        };
+      });
+    renderDiagList(logsEl, logItems, { emptyText: "暂无日志（仅 info/warn/error 会持久化）" });
   };
 
   const ensureDiagnosticsDialog = () => {
@@ -2821,11 +2996,12 @@
         <div class="diag-header">
           <div class="diag-header-title">
             <div class="diag-title">系统诊断</div>
-            <div class="diag-subtitle">错误边界 · 本地埋点 · 性能快照</div>
+            <div class="diag-subtitle">错误边界 · 本地日志 · 本地埋点 · 性能快照</div>
           </div>
           <div class="diag-header-actions">
             <button type="button" class="btn btn-small btn-secondary" data-action="diag-export">导出诊断包</button>
             <button type="button" class="btn btn-small btn-secondary" data-action="diag-clear-errors">清空错误</button>
+            <button type="button" class="btn btn-small btn-secondary" data-action="diag-clear-logs">清空日志</button>
             <button type="button" class="btn btn-small btn-secondary" data-action="diag-toggle-telemetry">关闭本地埋点</button>
             <button type="button" class="diag-close" data-action="diag-close" aria-label="关闭">Esc</button>
           </div>
@@ -2843,6 +3019,10 @@
             <div class="diag-section">
               <div class="diag-section-title">最近埋点</div>
               <div class="diag-list" id="diag-telemetry"></div>
+            </div>
+            <div class="diag-section">
+              <div class="diag-section-title">最近日志</div>
+              <div class="diag-list" id="diag-logs"></div>
             </div>
           </div>
         </div>
@@ -2916,6 +3096,11 @@
       if (action === "diag-clear-errors") {
         diagnostics.clearErrors();
         toast({ title: "已清空", message: "错误日志已清空。", tone: "info" });
+        renderDiagnosticsPanel();
+      }
+      if (action === "diag-clear-logs") {
+        logger.clear();
+        toast({ title: "已清空", message: "日志已清空。", tone: "info" });
         renderDiagnosticsPanel();
       }
       if (action === "diag-toggle-telemetry") {
@@ -3568,6 +3753,20 @@
                 run: () => {
                   diagnostics.clearErrors();
                   toast({ title: "已清空", message: "错误日志已清空。", tone: "info" });
+                },
+              },
+            ]
+          : []),
+        ...(logger.getSummary().logCount > 0
+          ? [
+              {
+                kind: "action",
+                badge: "诊断",
+                title: `清空日志（${logger.getSummary().logCount}）`,
+                subtitle: "清空本地日志（不会影响收藏/进度等）",
+                run: () => {
+                  logger.clear();
+                  toast({ title: "已清空", message: "日志已清空。", tone: "info" });
                 },
               },
             ]
@@ -7092,11 +7291,15 @@
 
       const summary = diagnostics.getSummary();
       const lastAt = Number(summary.lastErrorAt || 0) || 0;
+      const logSummary = logger.getSummary();
+      const lastLogAt = Number(logSummary.lastLogAt || 0) || 0;
 
       renderMetaList(diagEl, [
         { label: "本地埋点", value: bundle?.telemetryEnabled ? "开启" : "关闭" },
         { label: "错误数", value: `${Number(summary.errorCount || 0) || 0}` },
         { label: "最近错误", value: lastAt ? formatTs(lastAt) : "—" },
+        { label: "日志数", value: `${Number(logSummary.logCount || 0) || 0}` },
+        { label: "最近日志", value: lastLogAt ? formatTs(lastLogAt) : "—" },
         { label: "CLS", value: String(report["性能/CLS"] ?? "—") },
         { label: "LCP(ms)", value: String(report["性能/LCP(ms)"] ?? "—") },
         { label: "FCP(ms)", value: String(report["性能/FCP(ms)"] ?? "—") },
