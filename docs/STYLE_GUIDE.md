@@ -9,11 +9,11 @@
 所有页面必须使用带版本号的静态资源引用：
 
 ```html
-<link rel="stylesheet" href="styles.css?v=20260101-1">
-<link rel="manifest" href="manifest.webmanifest?v=20260101-1">
-<script src="boot.js?v=20260101-1"></script>
-<script src="data.js?v=20260101-1" defer></script>
-<script src="scripts.js?v=20260101-1" defer></script>
+<link rel="stylesheet" href="styles.css?v=20260111-1">
+<link rel="manifest" href="manifest.webmanifest?v=20260111-1">
+<script src="boot.js?v=20260111-1"></script>
+<script src="data.js?v=20260111-1" defer></script>
+<script src="scripts.js?v=20260111-1" defer></script>
 ```
 
 当你修改以下任意文件时，请同步更新所有 HTML 页里的 `?v=`：
@@ -144,3 +144,4 @@ node tools/bump-version.mjs --dry-run
   - 映射策略：源页写入 `vt-card/vt-media/vt-title`，目标页用 `html[data-vt-kind]` 选择器把 Banner/标题映射到同名 `view-transition-name`
 - Root 级过渡：使用 `::view-transition-old(root)` / `::view-transition-new(root)` 做轻量“导演剪辑”淡入淡出（避免抢镜）
   - 必须在 `prefers-reduced-motion: reduce` 下关闭或极大缩短
+

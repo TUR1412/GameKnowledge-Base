@@ -6634,7 +6634,7 @@ textarea::placeholder {
     --text-primary: var(--dark-color);
     --text-secondary: var(--text-light);
 
-    --page-bg: #f6f1ea;
+    --page-bg: #f5f7fb;
     --overlay-bg: rgba(246, 241, 234, 0.78);
 
     --surface: rgba(255, 255, 255, 0.72);
@@ -8268,3 +8268,428 @@ p {
         transform: none;
     }
 }
+
+/* ==========================================================================
+   V20260111 Quantum Rebuild: Futuristic Glass + Insight Modules
+   ========================================================================== */
+
+:root {
+    --primary-color: #0ea5e9;
+    --primary-light: rgba(14, 165, 233, 0.14);
+    --primary-dark: #0284c7;
+    --secondary-color: #f97316;
+    --secondary-light: rgba(249, 115, 22, 0.14);
+    --secondary-dark: #c2410c;
+    --accent-color: #22c55e;
+
+    --page-bg: #f5f7fb;
+    --page-bg-gradient:
+        radial-gradient(1200px circle at 12% -10%, rgba(14, 165, 233, 0.18), transparent 62%),
+        radial-gradient(900px circle at 90% 0%, rgba(249, 115, 22, 0.16), transparent 60%),
+        radial-gradient(800px circle at 50% 100%, rgba(34, 197, 94, 0.14), transparent 58%);
+    --overlay-bg: rgba(246, 248, 252, 0.62);
+
+    --dark-color: #111827;
+    --text-color: #2a2f3c;
+    --text-light: #5c6472;
+    --text-primary: #111827;
+    --text-secondary: #4b5563;
+
+    --surface: rgba(255, 255, 255, 0.86);
+    --surface-strong: rgba(255, 255, 255, 0.96);
+    --surface-card: rgba(255, 255, 255, 0.92);
+    --surface-border: rgba(15, 23, 42, 0.08);
+
+    --header-bg: rgba(255, 255, 255, 0.82);
+    --header-bg-scrolled: rgba(255, 255, 255, 0.92);
+    --header-border: rgba(15, 23, 42, 0.08);
+
+    --box-shadow-sm: 0 6px 18px rgba(15, 23, 42, 0.08);
+    --box-shadow: 0 18px 40px rgba(15, 23, 42, 0.12);
+    --box-shadow-md: 0 24px 60px rgba(15, 23, 42, 0.16);
+    --box-shadow-lg: 0 32px 80px rgba(15, 23, 42, 0.20);
+
+    --focus-ring: 0 0 0 3px rgba(14, 165, 233, 0.35);
+
+    --font-sans: "HarmonyOS Sans SC", "Alibaba PuHuiTi 2.0", "MiSans", "PingFang SC", "Microsoft YaHei", sans-serif;
+    --font-display: "ZCOOL QingKe HuangYou", "ZCOOL XiaoWei", "STKaiti", "KaiTi", serif;
+    --font-mono: "JetBrains Mono", "Cascadia Mono", "Fira Code", Consolas, monospace;
+}
+
+:root[data-theme="dark"] {
+    --page-bg: #0b0f16;
+    --page-bg-gradient:
+        radial-gradient(900px circle at 10% 0%, rgba(14, 165, 233, 0.18), transparent 60%),
+        radial-gradient(900px circle at 90% 20%, rgba(249, 115, 22, 0.14), transparent 58%),
+        radial-gradient(800px circle at 50% 100%, rgba(34, 197, 94, 0.12), transparent 60%);
+    --overlay-bg: rgba(10, 14, 22, 0.66);
+
+    --dark-color: #eef2ff;
+    --text-color: rgba(233, 238, 255, 0.92);
+    --text-light: rgba(233, 238, 255, 0.68);
+    --text-primary: #f8fafc;
+    --text-secondary: rgba(233, 238, 255, 0.72);
+
+    --surface: rgba(12, 18, 30, 0.72);
+    --surface-strong: rgba(15, 23, 42, 0.9);
+    --surface-card: rgba(15, 23, 42, 0.88);
+    --surface-border: rgba(148, 163, 184, 0.16);
+
+    --header-bg: rgba(12, 18, 30, 0.7);
+    --header-bg-scrolled: rgba(12, 18, 30, 0.84);
+    --header-border: rgba(148, 163, 184, 0.2);
+
+    --box-shadow-sm: 0 8px 24px rgba(0, 0, 0, 0.35);
+    --box-shadow: 0 18px 45px rgba(0, 0, 0, 0.4);
+    --box-shadow-md: 0 28px 70px rgba(0, 0, 0, 0.45);
+    --box-shadow-lg: 0 40px 90px rgba(0, 0, 0, 0.5);
+
+    --focus-ring: 0 0 0 3px rgba(56, 189, 248, 0.4);
+}
+
+body {
+    background: var(--page-bg);
+    background-image: var(--page-bg-gradient);
+    color: var(--text-color);
+}
+
+body::before,
+body::after {
+    content: "";
+    position: fixed;
+    inset: -20% -10%;
+    pointer-events: none;
+    z-index: -2;
+    opacity: 0.25;
+}
+
+body::before {
+    background: conic-gradient(from 140deg, rgba(14, 165, 233, 0.18), rgba(249, 115, 22, 0.14), rgba(34, 197, 94, 0.12), transparent 60%);
+    filter: blur(40px);
+}
+
+body::after {
+    background: radial-gradient(circle at 30% 20%, rgba(255, 255, 255, 0.4), transparent 55%);
+    filter: blur(60px);
+}
+
+.overlay {
+    background: var(--overlay-bg);
+}
+
+header {
+    border-bottom: 1px solid var(--header-border);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+}
+
+h1,
+h2,
+h3,
+.logo-container h1,
+.section-title h2,
+.bento-title {
+    font-family: var(--font-display);
+    letter-spacing: 0.4px;
+}
+
+.hero-banner,
+.page-banner,
+.banner {
+    background: linear-gradient(135deg, rgba(14, 165, 233, 0.2), rgba(249, 115, 22, 0.12), rgba(34, 197, 94, 0.1));
+    border: 1px solid var(--surface-border);
+    box-shadow: var(--box-shadow-md);
+}
+
+.bento-card {
+    position: relative;
+    border-radius: 22px;
+    box-shadow: var(--box-shadow);
+}
+
+.bento-card::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    border: 1px solid transparent;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.6), transparent 60%) border-box;
+    -webkit-mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+    opacity: 0.6;
+}
+
+.btn,
+.btn-small {
+    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    color: #fff;
+    border: none;
+    box-shadow: var(--box-shadow-sm);
+}
+
+.btn::before,
+.btn-small::before {
+    content: none;
+}
+
+.btn-secondary {
+    background: var(--surface-strong);
+    color: var(--text-primary);
+    border: 1px solid var(--surface-border);
+}
+
+.btn-outline {
+    background: transparent;
+    color: var(--text-primary);
+    border: 1px solid var(--surface-border);
+}
+
+.badge.heat,
+.impact-badge {
+    padding: 6px 10px;
+    border-radius: 999px;
+    font-weight: 700;
+    font-size: 0.8rem;
+    border: 1px solid transparent;
+}
+
+.badge.heat.hot,
+.impact-badge.high {
+    background: rgba(249, 115, 22, 0.18);
+    color: #b45309;
+}
+
+.badge.heat.warm,
+.impact-badge.mid {
+    background: rgba(14, 165, 233, 0.18);
+    color: #0369a1;
+}
+
+.impact-badge.low {
+    background: rgba(15, 23, 42, 0.08);
+    color: var(--text-secondary);
+}
+
+.subsection-title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    margin: 12px 0 6px;
+    color: var(--text-secondary);
+}
+
+.discover-section {
+    margin-top: 14px;
+}
+
+.intent-chips .chip {
+    padding: 8px 14px;
+    font-weight: 700;
+}
+
+.dna-bars {
+    display: grid;
+    gap: 12px;
+    margin-top: 12px;
+}
+
+.dna-bar {
+    display: grid;
+    grid-template-columns: 90px 1fr 52px;
+    align-items: center;
+    gap: 12px;
+}
+
+.dna-label {
+    font-weight: 700;
+    color: var(--text-secondary);
+}
+
+.dna-track {
+    position: relative;
+    height: 10px;
+    background: var(--surface-strong);
+    border-radius: 999px;
+    overflow: hidden;
+}
+
+.dna-fill {
+    display: block;
+    height: 100%;
+    background: linear-gradient(90deg, var(--dna-color), rgba(255, 255, 255, 0.3));
+}
+
+.dna-value {
+    font-weight: 800;
+    text-align: right;
+}
+
+.dna-empty {
+    padding: 8px 0;
+    color: var(--text-secondary);
+}
+
+.sprint-controls {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+}
+
+.sprint-label {
+    font-weight: 700;
+    color: var(--text-secondary);
+}
+
+.sprint-value {
+    font-weight: 800;
+    color: var(--text-primary);
+}
+
+.sprint-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 12px;
+    margin: 12px 0;
+}
+
+.sprint-card {
+    background: var(--surface-strong);
+    border: 1px solid var(--surface-border);
+    border-radius: 16px;
+    padding: 12px 14px;
+    box-shadow: var(--box-shadow-sm);
+}
+
+.sprint-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+}
+
+.sprint-title {
+    font-weight: 800;
+}
+
+.sprint-time {
+    font-weight: 700;
+    color: var(--text-secondary);
+}
+
+.sprint-items {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.sprint-item {
+    padding: 4px 8px;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    border: 1px solid var(--surface-border);
+    background: var(--surface);
+}
+
+.sprint-item.guide {
+    color: #0f766e;
+}
+
+.sprint-item.game {
+    color: #1d4ed8;
+}
+
+.trend-list {
+    display: grid;
+    gap: 12px;
+}
+
+.community-insights {
+    margin: 18px 0 28px;
+}
+
+.trend-item {
+    background: var(--surface-strong);
+    border: 1px solid var(--surface-border);
+    border-radius: 16px;
+    padding: 12px 14px;
+}
+
+.trend-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
+.trend-title {
+    font-weight: 700;
+}
+
+.trend-score {
+    font-weight: 800;
+    color: var(--primary-color);
+}
+
+.trend-track {
+    height: 8px;
+    border-radius: 999px;
+    background: var(--surface);
+    overflow: hidden;
+}
+
+.trend-fill {
+    display: block;
+    height: 100%;
+    background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+}
+
+.impact-meter {
+    position: relative;
+    margin-top: 10px;
+    height: 8px;
+    border-radius: 999px;
+    background: var(--surface);
+    overflow: hidden;
+}
+
+.impact-fill {
+    display: block;
+    height: 100%;
+    background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+}
+
+.impact-value {
+    position: absolute;
+    right: 6px;
+    top: -18px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--text-secondary);
+}
+
+.impact-meter.high .impact-fill {
+    background: linear-gradient(90deg, #f97316, #fb7185);
+}
+
+.impact-meter.mid .impact-fill {
+    background: linear-gradient(90deg, #0ea5e9, #22c55e);
+}
+
+.impact-meter.low .impact-fill {
+    background: linear-gradient(90deg, #94a3b8, #e2e8f0);
+}
+
+.topic-card,
+.update-card,
+.guide-article,
+.game-card,
+.discussion-card,
+.mini-card,
+.bento-card {
+    content-visibility: auto;
+    contain-intrinsic-size: 300px 240px;
+}
+

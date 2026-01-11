@@ -5,15 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>游戏社区 | 游戏攻略网</title>
     <meta name="description" content="加入玩家社区：分享游戏体验、讨论策略、提问卡关并保存你的回复记录。">
-    <link rel="stylesheet" href="styles.css?v=20260101-1">
+    <link rel="stylesheet" href="styles.css?v=20260111-1">
     <link rel="icon" href="images/icons/favicon.svg" type="image/svg+xml">
-    <link rel="manifest" href="manifest.webmanifest?v=20260101-1">
+    <link rel="manifest" href="manifest.webmanifest?v=20260111-1">
     <link rel="search" type="application/opensearchdescription+xml" title="游戏攻略网" href="opensearch.xml">
-    <meta name="theme-color" content="#f6f1ea">
+    <meta name="theme-color" content="#f5f7fb">
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; form-action 'self'; object-src 'none'; img-src 'self' data:; style-src 'self'; script-src 'self'; connect-src 'self'; manifest-src 'self'; worker-src 'self'; frame-ancestors 'none'">
     <meta name="referrer" content="strict-origin-when-cross-origin">
     <meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=()">
-    <script src="boot.js?v=20260101-1"></script>
+    <script src="boot.js?v=20260111-1"></script>
 </head>
 <body data-page="community">
     <a class="skip-link" href="#main">跳到正文</a>
@@ -73,6 +73,18 @@
                     <h2>社区话题导航</h2>
                     <p>按关键词、标签与热度排序，快速找到你想加入的讨论。</p>
                 </div>
+                <div class="bento-grid community-insights">
+                    <article class="bento-card span-7">
+                        <h2 class="bento-title">热度雷达</h2>
+                        <p class="bento-text">综合回复量与最近更新时间，筛出最值得跟进的话题。</p>
+                        <div class="trend-list" id="community-trends" aria-live="polite"></div>
+                    </article>
+                    <article class="bento-card span-5">
+                        <h2 class="bento-title">社区画像</h2>
+                        <p class="bento-text">基于当前话题库的分类分布。</p>
+                        <div class="meta-list" id="community-profile" aria-live="polite"></div>
+                    </article>
+                </div>
                 <div class="filters-bar">
                     <div class="search-box large">
                         <label class="sr-only" for="community-search">搜索话题</label>
@@ -83,6 +95,7 @@
                     <div class="filters-meta">
                         <label class="sr-only" for="community-sort">排序</label>
                         <select id="community-sort" class="select-pill" aria-label="话题排序">
+                            <option value="heat">热度优先</option>
                             <option value="latest">最新更新</option>
                             <option value="replies-desc">回复最多</option>
                             <option value="replies-asc">回复最少</option>
@@ -333,7 +346,9 @@
 
     <button id="back-to-top" class="back-to-top" aria-label="返回顶部">↑</button>
 
-    <script src="data.js?v=20260101-1" defer></script>
-    <script src="scripts.js?v=20260101-1" defer></script>
+    <script src="data.js?v=20260111-1" defer></script>
+    <script src="scripts.js?v=20260111-1" defer></script>
 </body>
 </html>
+
+

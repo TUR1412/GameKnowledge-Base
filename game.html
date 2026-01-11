@@ -5,15 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>游戏详情 - 游戏攻略网</title>
     <meta name="description" content="查看游戏介绍、平台信息与相关攻略，并加入玩家讨论。">
-    <link rel="stylesheet" href="styles.css?v=20260101-1">
+    <link rel="stylesheet" href="styles.css?v=20260111-1">
     <link rel="icon" href="images/icons/favicon.svg" type="image/svg+xml">
-    <link rel="manifest" href="manifest.webmanifest?v=20260101-1">
+    <link rel="manifest" href="manifest.webmanifest?v=20260111-1">
     <link rel="search" type="application/opensearchdescription+xml" title="游戏攻略网" href="opensearch.xml">
-    <meta name="theme-color" content="#f6f1ea">
+    <meta name="theme-color" content="#f5f7fb">
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; form-action 'self'; object-src 'none'; img-src 'self' data:; style-src 'self'; script-src 'self'; connect-src 'self'; manifest-src 'self'; worker-src 'self'; frame-ancestors 'none'">
     <meta name="referrer" content="strict-origin-when-cross-origin">
     <meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=()">
-    <script src="boot.js?v=20260101-1"></script>
+    <script src="boot.js?v=20260111-1"></script>
 </head>
 <body data-page="game">
     <a class="skip-link" href="#main">跳到正文</a>
@@ -94,6 +94,13 @@
                             <span id="game-rating-meter"></span>
                         </div>
                         <p class="bento-text" id="game-summary">我们会在这里持续补全更完整的攻略体系，包括入门、流派与关键机制。</p>
+                    </article>
+
+                    <article class="bento-card">
+                        <h2 class="bento-title">开局节奏</h2>
+                        <p class="bento-text">根据难度与时长，为你拆出更舒服的推进节奏。</p>
+                        <div class="meta-list" id="game-focus" aria-live="polite"></div>
+                        <div class="chips" id="game-focus-tags" aria-label="重点切入"></div>
                     </article>
 
                     <article class="bento-card">
@@ -198,7 +205,9 @@
 
     <button id="back-to-top" class="back-to-top" aria-label="返回顶部">↑</button>
 
-    <script src="data.js?v=20260101-1" defer></script>
-    <script src="scripts.js?v=20260101-1" defer></script>
+    <script src="data.js?v=20260111-1" defer></script>
+    <script src="scripts.js?v=20260111-1" defer></script>
 </body>
 </html>
+
+

@@ -36,6 +36,7 @@
     forumSortPrefix: "gkb-forum-sort:",
     updateRadar: "gkb-update-radar",
     plans: "gkb-plans",
+    planSettings: "gkb-plan-settings",
     discoverPrefs: "gkb-discover-prefs",
     telemetryEnabled: "gkb-telemetry-enabled",
     telemetryEvents: "gkb-telemetry-events",
@@ -385,6 +386,309 @@
       硬核: 5,
     };
     return map[label] || 3;
+  };
+
+  const clampNumber = (value, min, max) => {
+    const num = Number(value);
+    if (!Number.isFinite(num)) return min;
+    return Math.min(max, Math.max(min, num));
+  };
+
+  const normalizeTagList = (tags) =>
+    (Array.isArray(tags) ? tags : [])
+      .map((t) => String(t || "").trim())
+      .filter(Boolean);
+
+  const addTagWeight = (map, tag, weight) => {
+    const key = String(tag || "").trim();
+    if (!key) return;
+    map[key] = (Number(map[key] || 0) || 0) + weight;
+  };
+
+  const computeGuideProgress = (guideId, guide) => {
+    const gid = String(guideId || "").trim();
+    if (!gid) return { done: 0, total: 0, pct: 0 };
+    const steps = Array.isArray(guide?.steps) ? guide.steps : [];
+    const total = steps.length;
+    if (!total) return { done: 0, total: 0, pct: 0 };
+    const key = `${STORAGE_KEYS.guideChecklistPrefix}${gid}`;
+    const done = Math.min(readStringList(key).length, total);
+    const pct = clampNumber(Math.round((done / total) * 100), 0, 100);
+    return { done, total, pct };
+  };
+
+  const buildInterestWeights = (data) => {
+    const weights = {};
+    const savedGames = readStringList(STORAGE_KEYS.savedGames);
+    const savedGuides = readStringList(STORAGE_KEYS.savedGuides);
+    const savedTopics = readStringList(STORAGE_KEYS.savedTopics);
+    const recentGames = readStringList(STORAGE_KEYS.recentGames);
+    const recentGuides = readStringList(STORAGE_KEYS.recentGuides);
+    const library = readGameLibraryMap();
+
+    savedGames.forEach((id) => normalizeTagList(data?.games?.[id]?.tags).forEach((t) => addTagWeight(weights, t, 5)));
+    savedGuides.forEach((id) => normalizeTagList(data?.guides?.[id]?.tags).forEach((t) => addTagWeight(weights, t, 4)));
+    savedTopics.forEach((id) => normalizeTagList(data?.topics?.[id]?.tags).forEach((t) => addTagWeight(weights, t, 2)));
+
+    recentGames.slice(0, 10).forEach((id) => normalizeTagList(data?.games?.[id]?.tags).forEach((t) => addTagWeight(weights, t, 3)));
+    recentGuides.slice(0, 10).forEach((id) => normalizeTagList(data?.guides?.[id]?.tags).forEach((t) => addTagWeight(weights, t, 2)));
+
+    Object.entries(library).forEach(([id, entry]) => {
+      const status = normalizeGameLibraryStatus(entry?.status);
+      const w = status === "playing" ? 6 : status === "wishlist" ? 3 : status === "done" ? 1 : 0;
+      if (!w) return;
+      normalizeTagList(data?.games?.[id]?.tags).forEach((t) => addTagWeight(weights, t, w));
+    });
+
+    const checklistKeys = listLocalStorageKeys().filter((k) => k.startsWith(STORAGE_KEYS.guideChecklistPrefix));
+    checklistKeys.forEach((key) => {
+      const id = key.slice(String(STORAGE_KEYS.guideChecklistPrefix).length);
+      const guide = data?.guides?.[id];
+      if (!guide) return;
+      const progress = computeGuideProgress(id, guide);
+      if (progress.pct > 0 && progress.pct < 100) {
+        normalizeTagList(guide.tags).forEach((t) => addTagWeight(weights, t, 3));
+      }
+    });
+
+    return weights;
+  };
+
+  const PLAYSTYLE_ARCHETYPES = [
+    {
+      id: "action",
+      label: "动作爆发",
+      tags: ["动作", "连招", "Boss", "Boss战", "魂系", "招架", "硬核", "高难"],
+      tone: "#0ea5e9",
+    },
+    {
+      id: "strategy",
+      label: "策略筹谋",
+      tags: ["策略", "回合制", "科技树", "内政", "外交", "运营", "资源", "扩张"],
+      tone: "#f97316",
+    },
+    {
+      id: "story",
+      label: "叙事沉浸",
+      tags: ["叙事", "剧情", "开放世界", "探索", "东方幻想", "世界观", "任务"],
+      tone: "#22c55e",
+    },
+    {
+      id: "build",
+      label: "构筑掌控",
+      tags: ["Build", "构筑", "装备", "技能", "队伍", "词条", "搭配"],
+      tone: "#14b8a6",
+    },
+    {
+      id: "efficiency",
+      label: "效率路线",
+      tags: ["效率", "刷装", "路线", "收集", "节奏", "规划"],
+      tone: "#eab308",
+    },
+  ];
+
+  const computePlaystyleDna = (weights) => {
+    const entries = PLAYSTYLE_ARCHETYPES.map((arc) => {
+      const score = arc.tags.reduce((sum, tag) => sum + (Number(weights?.[tag] || 0) || 0), 0);
+      return { ...arc, score };
+    });
+    const total = entries.reduce((sum, item) => sum + item.score, 0) || 1;
+    const bars = entries
+      .map((item) => ({
+        id: item.id,
+        label: item.label,
+        tone: item.tone,
+        pct: clampNumber(Math.round((item.score / total) * 100), 0, 100),
+      }))
+      .sort((a, b) => b.pct - a.pct);
+
+    const topTags = Object.entries(weights || {})
+      .sort((a, b) => (b[1] || 0) - (a[1] || 0))
+      .slice(0, 8)
+      .map(([tag]) => tag);
+
+    return { bars, topTags };
+  };
+
+  const computeMomentum = (data) => {
+    const recentGames = readStringList(STORAGE_KEYS.recentGames);
+    const recentGuides = readStringList(STORAGE_KEYS.recentGuides);
+    const savedGames = readStringList(STORAGE_KEYS.savedGames);
+    const savedGuides = readStringList(STORAGE_KEYS.savedGuides);
+    const library = readGameLibraryMap();
+    const planState = readPlansState?.() || { currentId: "", plans: {} };
+    const currentPlan = planState.currentId ? planState.plans?.[planState.currentId] : null;
+    const planCount = Array.isArray(currentPlan?.items) ? currentPlan.items.length : 0;
+
+    const checklistKeys = listLocalStorageKeys().filter((k) => k.startsWith(STORAGE_KEYS.guideChecklistPrefix));
+    const inProgress = checklistKeys
+      .map((key) => {
+        const id = key.slice(String(STORAGE_KEYS.guideChecklistPrefix).length);
+        const guide = data?.guides?.[id];
+        if (!guide) return null;
+        const progress = computeGuideProgress(id, guide);
+        return progress.pct > 0 && progress.pct < 100 ? { id, guide, progress } : null;
+      })
+      .filter(Boolean);
+
+    const scoreRaw =
+      recentGames.length * 6 +
+      recentGuides.length * 4 +
+      inProgress.length * 12 +
+      planCount * 2 +
+      (savedGames.length + savedGuides.length) * 1.5;
+    const score = clampNumber(Math.round(scoreRaw / 2.4), 0, 100);
+
+    const level =
+      score >= 80
+        ? "高能推进"
+        : score >= 60
+          ? "稳定推进"
+          : score >= 35
+            ? "逐步升温"
+            : "蓄力阶段";
+
+    let nextAction = "先收藏 1-2 个游戏，系统会更懂你。";
+    if (inProgress.length > 0) {
+      const top = inProgress.sort((a, b) => b.progress.pct - a.progress.pct)[0];
+      nextAction = `继续推进「${top.guide?.title || top.id}」`;
+    } else {
+      const playing = Object.entries(library)
+        .filter(([, entry]) => normalizeGameLibraryStatus(entry?.status) === "playing")
+        .map(([id]) => data?.games?.[id])
+        .filter(Boolean)[0];
+      if (playing) nextAction = `今天继续玩「${playing.title}」`;
+      else if (planCount > 0) nextAction = "打开路线规划，做一次优先级排序。";
+    }
+
+    return { score, level, nextAction, planCount };
+  };
+
+  const estimateGameSessionMinutes = (game) => {
+    const raw = String(game?.playtime || "");
+    const nums = raw.match(/\d+/g)?.map((n) => Number(n)) || [];
+    const avg = nums.length >= 2 ? (nums[0] + nums[1]) / 2 : nums[0] || 0;
+    if (!avg) return 60;
+    if (avg <= 20) return 45;
+    if (avg <= 50) return 60;
+    return 90;
+  };
+
+  const buildSprintSchedule = (plan, data, focusMinutes) => {
+    const items = Array.isArray(plan?.items) ? plan.items : [];
+    const tasks = items.map((item) => {
+      if (item.type === "guide") {
+        const guide = data?.guides?.[item.id];
+        const minutes = Math.max(10, Math.round(Number(guide?.readingTime || 0) || 20));
+        return { id: item.id, type: "guide", label: guide?.title || item.id, minutes };
+      }
+      const game = data?.games?.[item.id];
+      const minutes = estimateGameSessionMinutes(game);
+      return { id: item.id, type: "game", label: game?.title || item.id, minutes };
+    });
+
+    const focus = clampNumber(focusMinutes, 20, 120);
+    const sessions = [];
+    let current = { minutes: 0, items: [] };
+
+    tasks.forEach((task) => {
+      if (current.items.length > 0 && current.minutes + task.minutes > focus * 1.15) {
+        sessions.push(current);
+        current = { minutes: 0, items: [] };
+      }
+      current.items.push(task);
+      current.minutes += task.minutes;
+    });
+    if (current.items.length > 0) sessions.push(current);
+
+    const totalMinutes = tasks.reduce((sum, t) => sum + t.minutes, 0);
+    return { sessions: sessions.slice(0, 8), totalMinutes };
+  };
+
+  const scorePlanItem = (item, data, library) => {
+    if (!item || !data) return 0;
+    if (item.type === "guide") {
+      const guide = data.guides?.[item.id];
+      const progress = computeGuideProgress(item.id, guide);
+      const diff = difficultyRank(guide?.difficulty);
+      const recency = parseDateKey(guide?.updated) / 100000000;
+      const base = progress.pct > 0 && progress.pct < 100 ? 120 : 60;
+      return base + diff * 6 + recency;
+    }
+    const game = data.games?.[item.id];
+    const status = getGameLibraryStatus(item.id, library);
+    const rating = Number(game?.rating || 0) || 0;
+    const recency = parseDateKey(game?.updated) / 100000000;
+    const base = status === "playing" ? 120 : status === "wishlist" ? 85 : status === "done" ? 30 : 55;
+    return base + rating * 4 + recency;
+  };
+
+  const INTENT_PRESETS = [
+    {
+      id: "relaxed",
+      label: "轻松上手",
+      tags: ["入门", "新手", "通用", "探索", "剧情"],
+    },
+    {
+      id: "challenge",
+      label: "挑战拉满",
+      tags: ["硬核", "高阶", "Boss", "魂系", "高难", "招架"],
+    },
+    {
+      id: "story",
+      label: "剧情沉浸",
+      tags: ["叙事", "剧情", "开放世界", "东方幻想"],
+    },
+    {
+      id: "strategy",
+      label: "策略规划",
+      tags: ["策略", "回合制", "科技树", "运营", "外交"],
+    },
+    {
+      id: "build",
+      label: "构筑刷装",
+      tags: ["Build", "构筑", "装备", "技能", "队伍", "刷装"],
+    },
+  ];
+
+  const computeIntentWeights = (intentId) => {
+    const hit = INTENT_PRESETS.find((p) => p.id === intentId);
+    if (!hit) return {};
+    const weights = {};
+    hit.tags.forEach((t) => addTagWeight(weights, t, 6));
+    return weights;
+  };
+
+  const computeImpact = (type, item) => {
+    const recency = parseDateKey(item?.updated) / 100000000;
+    if (type === "games") {
+      const rating = Number(item?.rating || 0) || 0;
+      const diff = difficultyRank(item?.difficulty);
+      const score = rating * 8 + diff * 6 + recency * 20;
+      return clampNumber(score, 0, 100);
+    }
+    if (type === "guides") {
+      const minutes = Number(item?.readingTime || 0) || 0;
+      const diff = difficultyRank(item?.difficulty);
+      const score = minutes * 1.2 + diff * 10 + recency * 18;
+      return clampNumber(score, 0, 100);
+    }
+    const replies = Number(item?.replies || 0) || 0;
+    const score = Math.log10(replies + 1) * 30 + recency * 15;
+    return clampNumber(score, 0, 100);
+  };
+
+  const impactLevel = (score) => {
+    if (score >= 75) return { label: "高影响", tone: "high" };
+    if (score >= 45) return { label: "中影响", tone: "mid" };
+    return { label: "轻影响", tone: "low" };
+  };
+
+  const computeTopicHeat = (topic) => {
+    const replies = Number(topic?.replies || 0) || 0;
+    const recency = parseDateKey(topic?.updated) / 100000000;
+    const score = Math.log10(replies + 1) * 24 + recency * 16;
+    return clampNumber(score, 0, 100);
   };
 
   const pushRecent = (key, id, limit = 10) => {
@@ -1749,7 +2053,7 @@
         const href = item.href || "#";
         return `
           <a class="mini-card" href="${href}">
-            <img src="${icon}" alt="${escapeHtml(title)}">
+            <img src="${icon}" alt="${escapeHtml(title)}" loading="lazy">
             <div class="mini-card-body">
               <div class="mini-card-title" title="${escapeHtml(title)}">${escapeHtml(title)}</div>
               <div class="mini-card-desc">${escapeHtml(desc)}</div>
@@ -1757,6 +2061,38 @@
           </a>
         `;
       })
+      .join("");
+  };
+
+  const renderChipList = (root, list, emptyText) => {
+    if (!root) return;
+    const items = normalizeTagList(list);
+    if (items.length === 0) {
+      root.innerHTML = emptyText ? `<span class="chip">${escapeHtml(emptyText)}</span>` : "";
+      return;
+    }
+    root.innerHTML = items.map((item) => `<span class="chip">${escapeHtml(item)}</span>`).join("");
+  };
+
+  const renderDnaBars = (root, bars) => {
+    if (!root) return;
+    const list = Array.isArray(bars) ? bars : [];
+    if (list.length === 0) {
+      root.innerHTML = '<div class="dna-empty">还没有足够的数据生成风格画像。</div>';
+      return;
+    }
+    root.innerHTML = list
+      .map(
+        (bar) => `
+          <div class="dna-bar">
+            <span class="dna-label">${escapeHtml(bar.label)}</span>
+            <div class="dna-track">
+              <span class="dna-fill" style="width:${bar.pct}%; --dna-color:${escapeHtml(bar.tone)}"></span>
+            </div>
+            <span class="dna-value">${bar.pct}%</span>
+          </div>
+        `
+      )
       .join("");
   };
 
@@ -2246,7 +2582,7 @@
     try {
       const meta = document.querySelector('meta[name="theme-color"]');
       if (!meta) return;
-      meta.setAttribute("content", theme === "dark" ? "#0b0f14" : "#f6f1ea");
+      meta.setAttribute("content", theme === "dark" ? "#0b0f16" : "#f5f7fb");
     } catch (_) {}
   };
 
@@ -5460,6 +5796,8 @@
     const checklistEl = $("#guide-checklist");
     const progressBar = $("#guide-progress-bar");
     const progressMeta = $("#guide-progress-meta");
+    const focusEl = $("#guide-focus");
+    const focusTagsEl = $("#guide-focus-tags");
     const notesTextarea = $("#guide-notes");
     const notesSaveBtn = $("#guide-notes-save");
     const notesClearBtn = $("#guide-notes-clear");
@@ -5519,15 +5857,32 @@
       `;
     }
 
-    if (readingTimeEl && contentEl) {
+    let readingMinutes = 0;
+    if (contentEl) {
       const fallbackText = contentEl.textContent || "";
       const words = fallbackText.replace(/\s+/g, "").length;
       const fallbackMinutes = Math.max(1, Math.round(words / 320));
-      const minutes =
+      const override =
         typeof guide?.readingTime === "number" && Number.isFinite(guide.readingTime)
           ? Math.max(1, Math.round(guide.readingTime))
           : fallbackMinutes;
-      readingTimeEl.textContent = `阅读时长：约 ${minutes} 分钟`;
+      readingMinutes = override;
+      if (readingTimeEl) readingTimeEl.textContent = `阅读时长：约 ${override} 分钟`;
+    }
+
+    if (focusEl) {
+      const sessions = readingMinutes <= 12 ? 1 : readingMinutes <= 25 ? 2 : 3;
+      const perSession = readingMinutes ? Math.max(6, Math.round(readingMinutes / sessions)) : 10;
+      const diff = difficultyRank(guide?.difficulty);
+      const pace = diff >= 4 ? "高强度专注" : diff >= 3 ? "稳定推进" : "轻松浏览";
+      renderMetaList(focusEl, [
+        { label: "建议分段", value: `${sessions} 次` },
+        { label: "单次时长", value: `${perSession} 分钟` },
+        { label: "阅读节奏", value: pace },
+      ]);
+    }
+    if (focusTagsEl) {
+      renderChipList(focusTagsEl, guide?.tags, "可从目标/机制/节奏切入");
     }
 
     if (tocEl && contentEl) {
@@ -5871,6 +6226,8 @@
     const highlightsEl = $("#game-highlights");
     const libraryPills = $("#game-library-pills");
     const libraryMeta = $("#game-library-meta");
+    const focusEl = $("#game-focus");
+    const focusTagsEl = $("#game-focus-tags");
 
     const title = game?.title || (id ? `游戏：${id}` : "游戏详情");
     const subtitle = game?.subtitle || "该游戏详情正在建设中，我们会逐步补全攻略体系。";
@@ -5927,7 +6284,7 @@
           const s = guide.summary || "点击查看详情。";
           return `
             <a class="mini-card" href="guide-detail.html?id=${encodeURIComponent(gid)}">
-              <img src="${icon2}" alt="${escapeHtml(t)}">
+              <img src="${icon2}" alt="${escapeHtml(t)}" loading="lazy">
               <div class="mini-card-body">
                 <div class="mini-card-title" title="${escapeHtml(t)}">${escapeHtml(t)}</div>
                 <div class="mini-card-desc">${escapeHtml(s)}</div>
@@ -5938,17 +6295,24 @@
         .join("");
     }
 
-    const renderChips = (root, list, emptyText) => {
-      if (!root) return;
-      if (!Array.isArray(list) || list.length === 0) {
-        root.innerHTML = `<span class="chip">${escapeHtml(emptyText)}</span>`;
-        return;
-      }
-      root.innerHTML = list.map((item) => `<span class="chip">${escapeHtml(item)}</span>`).join("");
-    };
+    renderChipList(tagsEl, game?.tags, "暂无标签");
+    renderChipList(highlightsEl, game?.highlights, "重点待补");
 
-    renderChips(tagsEl, game?.tags, "暂无标签");
-    renderChips(highlightsEl, game?.highlights, "重点待补");
+    if (focusEl) {
+      const diff = difficultyRank(difficulty);
+      const session = estimateGameSessionMinutes(game);
+      const rhythm = diff >= 4 ? "硬核专注" : diff >= 3 ? "稳步推进" : "轻松体验";
+      const tags = normalizeTagList(game?.tags);
+      const focusTag = tags.find((t) => ["开放世界", "策略", "动作", "魂系", "叙事"].includes(t));
+      renderMetaList(focusEl, [
+        { label: "推荐节奏", value: rhythm },
+        { label: "单次游玩", value: `${session} 分钟` },
+        { label: "入门切点", value: focusTag || "机制/资源/节奏" },
+      ]);
+    }
+    if (focusTagsEl) {
+      renderChipList(focusTagsEl, game?.highlights || game?.tags, "先从核心玩法开始");
+    }
 
     const topicMap = {
       "starlight-miracle": "starlight-leveling",
@@ -6080,6 +6444,9 @@
     const savedEl = $("#dash-saved");
     const progressEl = $("#dash-progress");
     const updatesEl = $("#dash-updates");
+    const dnaEl = $("#dash-dna");
+    const dnaTagsEl = $("#dash-dna-tags");
+    const momentumEl = $("#dash-momentum");
 
     const exportBtn = $("#dash-export");
     const importBtn = $("#dash-import");
@@ -6108,6 +6475,20 @@
       { label: "已收藏游戏", value: `${savedGames.length} 个` },
       { label: "已收藏攻略", value: `${savedGuides.length} 篇` },
       { label: "已收藏话题", value: `${savedTopics.length} 个` },
+    ]);
+
+    // 1.5) 风格 DNA & 动量
+    const weights = buildInterestWeights(data);
+    const dna = computePlaystyleDna(weights);
+    renderDnaBars(dnaEl, dna.bars);
+    renderChipList(dnaTagsEl, dna.topTags, "先收藏或访问一些内容以生成画像");
+
+    const momentum = computeMomentum(data);
+    renderMetaList(momentumEl, [
+      { label: "动量指数", value: `${momentum.score}` },
+      { label: "节奏状态", value: momentum.level },
+      { label: "下一步", value: momentum.nextAction },
+      { label: "路线条目", value: `${momentum.planCount}` },
     ]);
 
     // 2) 最近访问
@@ -6367,6 +6748,16 @@
         guides: countUpdate("guides", data.guides),
         topics: countUpdate("topics", data.topics),
       };
+      let highImpact = 0;
+      Object.values(data.games || {}).forEach((g) => {
+        if (computeImpact("games", g) >= 75) highImpact += 1;
+      });
+      Object.values(data.guides || {}).forEach((g) => {
+        if (computeImpact("guides", g) >= 75) highImpact += 1;
+      });
+      Object.values(data.topics || {}).forEach((t) => {
+        if (computeImpact("topics", t) >= 75) highImpact += 1;
+      });
       const totalNew = counts.games.nNew + counts.guides.nNew + counts.topics.nNew;
       const totalUpdated = counts.games.nUpdated + counts.guides.nUpdated + counts.topics.nUpdated;
       const radar = readUpdateRadar();
@@ -6375,6 +6766,7 @@
       renderMetaList(summaryEl, [
         { label: "NEW", value: `${totalNew}` },
         { label: "UPDATED", value: `${totalUpdated}` },
+        { label: "高影响", value: `${highImpact}` },
         { label: "已读基线", value: seededAt },
         { label: "当前版本", value: String(data.version || "—") },
       ]);
@@ -6383,6 +6775,9 @@
     const renderCard = (x) => {
       const status = getUpdateStatus(x.type, x.id, x.updated);
       const badge = renderUpdateBadge(status);
+      const impactScore = Math.round(computeImpact(x.type, x.item));
+      const impactInfo = impactLevel(impactScore);
+      const impactBadge = `<span class="impact-badge ${impactInfo.tone}">${escapeHtml(impactInfo.label)}</span>`;
       const href = hrefOf(x.type, x.id);
       const icon = x.item?.icon || typeIcon(x.type);
       const updatedText = x.updated ? `更新 ${formatDate(x.updated)}` : "更新待补";
@@ -6395,16 +6790,21 @@
           <div class="update-card-head">
             <div class="update-card-badges">
               ${badge}
+              ${impactBadge}
               <span class="chip chip-muted">${escapeHtml(typeLabel(x.type))}</span>
             </div>
             <div class="update-card-meta">${escapeHtml(updatedText)}</div>
           </div>
           <a class="update-card-main" href="${href}">
-            <img class="update-card-icon" src="${icon}" alt="${escapeHtml(x.title)}">
+            <img class="update-card-icon" src="${icon}" alt="${escapeHtml(x.title)}" loading="lazy">
             <div class="update-card-body">
               <div class="update-card-title" title="${escapeHtml(x.title)}">${escapeHtml(x.title)}</div>
               <div class="update-card-sub">${escapeHtml(x.item?.summary || x.item?.genre || x.item?.category || "打开查看详情")}</div>
               <div class="chips update-card-tags">${tags}</div>
+              <div class="impact-meter ${impactInfo.tone}">
+                <span class="impact-fill" style="width:${clampNumber(impactScore, 0, 100)}%"></span>
+                <span class="impact-value">${impactScore}</span>
+              </div>
             </div>
           </a>
           <div class="update-card-actions">
@@ -6655,6 +7055,12 @@
     const deleteBtn = $("#planner-delete");
     const shareBtn = $("#planner-share");
     const importBtn = $("#planner-import");
+    const focusRange = $("#planner-focus-range");
+    const focusValue = $("#planner-focus-value");
+    const sprintEl = $("#planner-sprint");
+    const sprintSummary = $("#planner-sprint-summary");
+    const smartSortBtn = $("#planner-smart-sort");
+    const sprintCopyBtn = $("#planner-sprint-copy");
 
     const addInput = $("#planner-add-input");
     const addBtn = $("#planner-add-btn");
@@ -6774,6 +7180,21 @@
     };
     maybeImportFromHash();
 
+    const readPlanSettings = () => {
+      const parsed = safeJsonParse(storage.get(STORAGE_KEYS.planSettings), null);
+      const focusMinutes = clampNumber(parsed?.focusMinutes || 45, 20, 120);
+      return { focusMinutes };
+    };
+
+    const writePlanSettings = (settings) => storage.set(STORAGE_KEYS.planSettings, JSON.stringify(settings));
+
+    let planSettings = readPlanSettings();
+
+    const syncFocusLabel = () => {
+      if (focusRange) focusRange.value = String(planSettings.focusMinutes);
+      if (focusValue) focusValue.textContent = `${planSettings.focusMinutes} 分钟`;
+    };
+
     const getPlan = () => state.plans?.[state.currentId] || null;
 
     const persist = () => writePlansState(state);
@@ -6786,17 +7207,6 @@
       if (state.currentId && state.plans[state.currentId]) selectEl.value = state.currentId;
     };
 
-    const computeGuideProgress = (guideId) => {
-      const guide = data.guides?.[guideId] || null;
-      const steps = Array.isArray(guide?.steps) ? guide.steps : [];
-      const total = steps.length;
-      if (!total) return { done: 0, total: 0, pct: 0 };
-      const key = `${STORAGE_KEYS.guideChecklistPrefix}${guideId}`;
-      const done = Math.min(readStringList(key).length, total);
-      const pct = Math.max(0, Math.min(100, Math.round((done / total) * 100)));
-      return { done, total, pct };
-    };
-
     const computePlanMeta = (plan) => {
       const items = Array.isArray(plan?.items) ? plan.items : [];
       const games = items.filter((x) => x.type === "game").length;
@@ -6807,7 +7217,7 @@
         .reduce((a, b) => a + b, 0);
       const inProgress = items
         .filter((x) => x.type === "guide")
-        .map((x) => computeGuideProgress(x.id))
+        .map((x) => computeGuideProgress(x.id, data.guides?.[x.id]))
         .filter((p) => p.pct > 0 && p.pct < 100).length;
       const library = readGameLibraryMap();
       const playing = items.filter((x) => x.type === "game" && getGameLibraryStatus(x.id, library) === "playing").length;
@@ -6843,7 +7253,7 @@
           let meta = updated;
           let chips = "";
           if (isGuide) {
-            const p = computeGuideProgress(x.id);
+            const p = computeGuideProgress(x.id, entity);
             if (p.total) meta = `${updated} · 进度 ${p.done}/${p.total}（${p.pct}%）`;
             chips = `<span class="chip chip-muted">攻略</span><span class="chip">${escapeHtml(entity?.difficulty || "通用")}</span>${p.total ? `<span class="chip">${p.pct}%</span>` : ""}`;
           } else {
@@ -6857,7 +7267,7 @@
             <div class="plan-item" draggable="true" data-idx="${idx}">
               <div class="plan-handle" aria-hidden="true">⋮⋮</div>
               <a class="plan-main" href="${href}">
-                <img class="plan-icon" src="${icon}" alt="${escapeHtml(title)}">
+                <img class="plan-icon" src="${icon}" alt="${escapeHtml(title)}" loading="lazy">
                 <div class="plan-body">
                   <div class="plan-title">${escapeHtml(title)}</div>
                   <div class="plan-sub">${escapeHtml(meta)}</div>
@@ -6873,11 +7283,45 @@
         .join("");
     };
 
+    const renderSprint = (plan) => {
+      if (!sprintEl) return;
+      const items = Array.isArray(plan?.items) ? plan.items : [];
+      if (items.length === 0) {
+        sprintEl.innerHTML = '<div class="empty-state small"><p class="empty-title">还没有路线内容</p><p class="empty-desc">添加游戏或攻略后，系统会自动生成冲刺节奏。</p></div>';
+        renderMetaList(sprintSummary, [], "");
+        return;
+      }
+      const schedule = buildSprintSchedule(plan, data, planSettings.focusMinutes);
+      sprintEl.innerHTML = schedule.sessions
+        .map((session, idx) => {
+          const list = session.items
+            .map((item) => `<span class="sprint-item ${escapeHtml(item.type)}">${escapeHtml(item.label)}</span>`)
+            .join("");
+          return `
+            <div class="sprint-card">
+              <div class="sprint-head">
+                <span class="sprint-title">冲刺 ${idx + 1}</span>
+                <span class="sprint-time">${Math.round(session.minutes)} 分钟</span>
+              </div>
+              <div class="sprint-items">${list}</div>
+            </div>
+          `;
+        })
+        .join("");
+
+      renderMetaList(sprintSummary, [
+        { label: "总时长", value: `${Math.round(schedule.totalMinutes)} 分钟` },
+        { label: "冲刺段数", value: `${schedule.sessions.length}` },
+        { label: "单次目标", value: `${planSettings.focusMinutes} 分钟` },
+      ]);
+    };
+
     const render = () => {
       const plan = getPlan();
       syncSelect();
       renderMetaList(metaEl, computePlanMeta(plan));
       renderList(plan);
+      renderSprint(plan);
     };
 
     const setCurrent = (id) => {
@@ -7153,6 +7597,51 @@
       window.requestAnimationFrame(() => animatePlanItemDropped(to));
     });
 
+    syncFocusLabel();
+    focusRange?.addEventListener("input", () => {
+      const next = clampNumber(Number(focusRange.value || 0), 20, 120);
+      planSettings = { ...planSettings, focusMinutes: next };
+      writePlanSettings(planSettings);
+      syncFocusLabel();
+      renderSprint(getPlan());
+    });
+
+    smartSortBtn?.addEventListener("click", () => {
+      const plan = getPlan();
+      if (!plan) return;
+      const library = readGameLibraryMap();
+      const ranked = plan.items
+        .map((item, idx) => ({ item, idx, score: scorePlanItem(item, data, library) }))
+        .sort((a, b) => (b.score || 0) - (a.score || 0) || a.idx - b.idx)
+        .map((row) => row.item);
+      state = { ...state, plans: { ...state.plans, [plan.id]: { ...plan, updatedAt: Date.now(), items: ranked } } };
+      persist();
+      render();
+      toast({ title: "已完成智能排序", message: "优先推进进行中攻略与在玩游戏。", tone: "success" });
+    });
+
+    sprintCopyBtn?.addEventListener("click", () => {
+      const plan = getPlan();
+      if (!plan) return;
+      const schedule = buildSprintSchedule(plan, data, planSettings.focusMinutes);
+      if (schedule.sessions.length === 0) return;
+      const lines = [
+        `路线冲刺计划 · ${plan.name || "未命名路线"}`,
+        `单次目标：${planSettings.focusMinutes} 分钟 | 共 ${schedule.sessions.length} 段`,
+        ...schedule.sessions.map((session, idx) => {
+          const list = session.items.map((item) => `- ${item.label}`).join(" / ");
+          return `${idx + 1}. ${Math.round(session.minutes)} 分钟：${list}`;
+        }),
+      ];
+      copyTextToClipboard(lines.join("\n")).then((ok) => {
+        toast({
+          title: ok ? "冲刺计划已复制" : "复制失败",
+          message: ok ? "已写入剪贴板，可直接发给队友或备忘。" : "当前环境不支持剪贴板。",
+          tone: ok ? "success" : "warn",
+        });
+      });
+    });
+
     render();
   };
 
@@ -7167,6 +7656,9 @@
     if (!data) return;
 
     const tagsEl = $("#discover-tags");
+    const intentsEl = $("#discover-intents");
+    const dnaEl = $("#discover-dna");
+    const dnaTagsEl = $("#discover-dna-tags");
     const guidesEl = $("#discover-guides");
     const gamesEl = $("#discover-games");
     const emptyEl = $("#discover-empty");
@@ -7176,56 +7668,35 @@
 
     const readPrefs = () => {
       const parsed = safeJsonParse(storage.get(STORAGE_KEYS.discoverPrefs), null);
-      if (!parsed || typeof parsed !== "object") return { onlyUnsaved: true };
-      return { onlyUnsaved: parsed.onlyUnsaved !== false };
+      if (!parsed || typeof parsed !== "object") return { onlyUnsaved: true, intent: "" };
+      return {
+        onlyUnsaved: parsed.onlyUnsaved !== false,
+        intent: String(parsed.intent || ""),
+      };
     };
     const writePrefs = (prefs) => storage.set(STORAGE_KEYS.discoverPrefs, JSON.stringify(prefs));
 
     let prefs = readPrefs();
     if (onlyUnsavedEl) onlyUnsavedEl.checked = Boolean(prefs.onlyUnsaved);
 
-    const addWeight = (map, tag, w) => {
-      const key = String(tag || "").trim();
-      if (!key) return;
-      map[key] = (Number(map[key] || 0) || 0) + w;
-    };
-
-    const buildWeights = () => {
-      const weights = {};
-      const savedGames = readStringList(STORAGE_KEYS.savedGames);
-      const savedGuides = readStringList(STORAGE_KEYS.savedGuides);
-      const savedTopics = readStringList(STORAGE_KEYS.savedTopics);
-      const recentGames = readStringList(STORAGE_KEYS.recentGames);
-      const recentGuides = readStringList(STORAGE_KEYS.recentGuides);
-      const library = readGameLibraryMap();
-
-      savedGames.forEach((id) => (data.games?.[id]?.tags || []).forEach((t) => addWeight(weights, t, 5)));
-      savedGuides.forEach((id) => (data.guides?.[id]?.tags || []).forEach((t) => addWeight(weights, t, 4)));
-      savedTopics.forEach((id) => (data.topics?.[id]?.tags || []).forEach((t) => addWeight(weights, t, 2)));
-
-      recentGames.slice(0, 8).forEach((id) => (data.games?.[id]?.tags || []).forEach((t) => addWeight(weights, t, 3)));
-      recentGuides.slice(0, 8).forEach((id) => (data.guides?.[id]?.tags || []).forEach((t) => addWeight(weights, t, 2)));
-
-      Object.entries(library).forEach(([id, entry]) => {
-        const status = normalizeGameLibraryStatus(entry?.status);
-        const w = status === "playing" ? 6 : status === "wishlist" ? 3 : status === "done" ? 1 : 0;
-        if (!w) return;
-        (data.games?.[id]?.tags || []).forEach((t) => addWeight(weights, t, w));
+    const mergeWeights = (base, extra) => {
+      const next = { ...(base || {}) };
+      Object.entries(extra || {}).forEach(([k, v]) => {
+        next[k] = (Number(next[k] || 0) || 0) + (Number(v) || 0);
       });
-
-      return weights;
+      return next;
     };
 
     const topTags = (weights) =>
-      Object.entries(weights)
+      Object.entries(weights || {})
         .sort((a, b) => (b[1] || 0) - (a[1] || 0))
         .slice(0, 14)
         .map(([t]) => t);
 
     const scoreByTags = (weights, tags) => {
       let score = 0;
-      (Array.isArray(tags) ? tags : []).forEach((t) => {
-        score += Number(weights[String(t)] || 0) || 0;
+      normalizeTagList(tags).forEach((t) => {
+        score += Number(weights?.[String(t)] || 0) || 0;
       });
       return score;
     };
@@ -7269,6 +7740,24 @@
       tagsEl.innerHTML = (tags || []).map((t) => `<span class="chip">${escapeHtml(t)}</span>`).join("");
     };
 
+    const renderIntentChips = () => {
+      if (!intentsEl) return;
+      const current = String(prefs.intent || "");
+      const base = `
+        <button type="button" class="chip chip-btn ${current ? "" : "active"}" data-intent="">
+          不限
+        </button>
+      `;
+      intentsEl.innerHTML =
+        base +
+        INTENT_PRESETS.map((preset) => {
+          const active = current === preset.id ? "active" : "";
+          return `<button type="button" class="chip chip-btn ${active}" data-intent="${escapeHtml(preset.id)}">${escapeHtml(
+            preset.label
+          )}</button>`;
+        }).join("");
+    };
+
     const renderRecs = (recs) => {
       const savedGuides = new Set(readStringList(STORAGE_KEYS.savedGuides));
       const savedGames = new Set(readStringList(STORAGE_KEYS.savedGames));
@@ -7285,7 +7774,7 @@
             return `
               <div class="mini-card mini-card-action" data-type="guide" data-id="${escapeHtml(id)}">
                 <a class="mini-card-main" href="${href}">
-                  <img src="${icon}" alt="${escapeHtml(title)}">
+                  <img src="${icon}" alt="${escapeHtml(title)}" loading="lazy">
                   <div class="mini-card-body">
                     <div class="mini-card-title" title="${escapeHtml(title)}">${escapeHtml(title)}</div>
                     <div class="mini-card-desc">${escapeHtml(`${updated} · ${guide?.difficulty || "通用"}${rt ? ` · ${rt} 分钟` : ""}`)}</div>
@@ -7313,7 +7802,7 @@
             return `
               <div class="mini-card mini-card-action" data-type="game" data-id="${escapeHtml(id)}">
                 <a class="mini-card-main" href="${href}">
-                  <img src="${icon}" alt="${escapeHtml(title)}">
+                  <img src="${icon}" alt="${escapeHtml(title)}" loading="lazy">
                   <div class="mini-card-body">
                     <div class="mini-card-title" title="${escapeHtml(title)}">${escapeHtml(title)}</div>
                     <div class="mini-card-desc">${escapeHtml(`${updated} · ${game?.genre || "类型待补"} · 评分 ${rating || "—"}`)}</div>
@@ -7333,11 +7822,16 @@
     let lastRecs = { guides: [], games: [] };
 
     const render = () => {
-      const weights = buildWeights();
+      const baseWeights = buildInterestWeights(data);
+      const intentWeights = computeIntentWeights(prefs.intent);
+      const weights = mergeWeights(baseWeights, intentWeights);
       const tags = topTags(weights);
+      renderIntentChips();
       if (tags.length === 0) {
         if (emptyEl) emptyEl.hidden = false;
         if (tagsEl) tagsEl.innerHTML = "";
+        if (dnaEl) dnaEl.innerHTML = "";
+        if (dnaTagsEl) dnaTagsEl.innerHTML = "";
         if (guidesEl) guidesEl.innerHTML = "";
         if (gamesEl) gamesEl.innerHTML = "";
         lastRecs = { guides: [], games: [] };
@@ -7346,6 +7840,9 @@
       if (emptyEl) emptyEl.hidden = true;
 
       renderTagChips(tags);
+      const dna = computePlaystyleDna(weights);
+      renderDnaBars(dnaEl, dna.bars);
+      renderChipList(dnaTagsEl, dna.topTags, "暂无画像数据");
       lastRecs = computeRecommendations(weights, { onlyUnsaved: Boolean(prefs.onlyUnsaved) });
       renderRecs(lastRecs);
     };
@@ -7406,6 +7903,14 @@
     });
 
     refreshBtn?.addEventListener("click", render);
+    intentsEl?.addEventListener("click", (e) => {
+      const btn = e.target?.closest?.("button[data-intent]");
+      if (!btn || !intentsEl.contains(btn)) return;
+      const intent = String(btn.dataset.intent || "");
+      prefs = { ...prefs, intent };
+      writePrefs(prefs);
+      render();
+    });
     onlyUnsavedEl?.addEventListener("change", () => {
       prefs = { ...prefs, onlyUnsaved: Boolean(onlyUnsavedEl.checked) };
       writePrefs(prefs);
@@ -7442,6 +7947,8 @@
     const data = getData();
     const topics = data?.topics;
     const grid = $("#community-topics");
+    const trendsEl = $("#community-trends");
+    const profileEl = $("#community-profile");
     if (!topics || !grid) return;
 
     const searchInput = $("#community-search");
@@ -7464,6 +7971,50 @@
     const allTags = Array.from(new Set(items.flatMap((x) => x.tagList)))
       .slice(0, 18)
       .sort((a, b) => a.localeCompare(b, "zh-Hans-CN"));
+
+    const heatScores = new Map(items.map(({ id, topic }) => [id, computeTopicHeat(topic)]));
+
+    const renderTrends = () => {
+      if (!trendsEl) return;
+      const ranked = [...items]
+        .sort((a, b) => (heatScores.get(b.id) || 0) - (heatScores.get(a.id) || 0))
+        .slice(0, 3);
+      if (ranked.length === 0) {
+        trendsEl.innerHTML = '<div class="empty-state small"><p class="empty-title">暂无热度数据</p></div>';
+        return;
+      }
+      trendsEl.innerHTML = ranked
+        .map(({ id, topic }) => {
+          const heat = Math.round(heatScores.get(id) || 0);
+          const title = topic?.title || id;
+          return `
+            <div class="trend-item">
+              <div class="trend-head">
+                <span class="trend-title">${escapeHtml(title)}</span>
+                <span class="trend-score">${heat}</span>
+              </div>
+              <div class="trend-track">
+                <span class="trend-fill" style="width:${clampNumber(heat, 0, 100)}%"></span>
+              </div>
+            </div>
+          `;
+        })
+        .join("");
+    };
+
+    const renderProfile = () => {
+      if (!profileEl) return;
+      const categoryMap = {};
+      items.forEach(({ topic }) => {
+        const cat = String(topic?.category || "综合");
+        categoryMap[cat] = (Number(categoryMap[cat] || 0) || 0) + 1;
+      });
+      const topCats = Object.entries(categoryMap)
+        .sort((a, b) => (b[1] || 0) - (a[1] || 0))
+        .slice(0, 4)
+        .map(([label, count]) => ({ label, value: `${count} 个` }));
+      renderMetaList(profileEl, topCats, "暂无分类统计");
+    };
 
     const readState = () => {
       const raw = storage.get(STORAGE_KEYS.communityTopicsState);
@@ -7570,6 +8121,9 @@
       const saveLabel = isSaved ? "取消收藏" : "收藏";
       const saveStar = isSaved ? "★" : "☆";
       const hotBadge = replies >= 150 ? '<span class="badge popular">热门</span>' : "";
+      const heat = Math.round(heatScores.get(id) || 0);
+      const heatBadge =
+        heat >= 75 ? '<span class="badge heat hot">高热</span>' : heat >= 45 ? '<span class="badge heat warm">热度</span>' : "";
       const categoryBadge = topic.category ? `<span class="badge subtle">${escapeHtml(topic.category)}</span>` : "";
       const updateBadge = renderUpdateBadge(status);
       const tagList = [...category, ...tags]
@@ -7581,7 +8135,7 @@
       return `
         <article class="topic-card ${isSaved ? "is-saved" : ""}">
           <div class="topic-header">
-            <div class="topic-badges">${updateBadge}${hotBadge}${categoryBadge}</div>
+          <div class="topic-badges">${updateBadge}${hotBadge}${heatBadge}${categoryBadge}</div>
           </div>
           <h3 class="topic-title" title="${escapeHtml(title)}">${escapeHtml(title)}</h3>
           <p class="topic-summary">${escapeHtml(summary)}</p>
@@ -7589,6 +8143,7 @@
           <div class="topic-stats">
             <span>发起人：${escapeHtml(starter)}</span>
             <span>回复：${Number.isFinite(replies) ? replies : 0}</span>
+            <span>热度：${heat}</span>
             <span>更新：${escapeHtml(updated)}</span>
           </div>
           <div class="topic-actions">
@@ -7681,6 +8236,7 @@
       sorted.sort((a, b) => {
         if (sortKey === "replies-desc") return Number(b.topic?.replies || 0) - Number(a.topic?.replies || 0);
         if (sortKey === "replies-asc") return Number(a.topic?.replies || 0) - Number(b.topic?.replies || 0);
+        if (sortKey === "heat") return (heatScores.get(b.id) || 0) - (heatScores.get(a.id) || 0);
         if (sortKey === "title") {
           return String(a.topic?.title || a.id).localeCompare(String(b.topic?.title || b.id), "zh-Hans-CN");
         }
@@ -7718,6 +8274,9 @@
           const saveLabel = isSaved ? "取消收藏" : "收藏";
           const saveStar = isSaved ? "★" : "☆";
           const hotBadge = replies >= 150 ? '<span class="badge popular">热门</span>' : "";
+          const heat = Math.round(heatScores.get(id) || 0);
+          const heatBadge =
+            heat >= 75 ? '<span class="badge heat hot">高热</span>' : heat >= 45 ? '<span class="badge heat warm">热度</span>' : "";
           const categoryBadge = topic.category ? `<span class="badge subtle">${escapeHtml(topic.category)}</span>` : "";
           const updateBadge = renderUpdateBadge(status);
           const tagList = [...category, ...tags]
@@ -7732,13 +8291,14 @@
               <div class="vlist-main">
                 <div class="vlist-title">
                   <span class="vlist-title-text">${escapeHtml(title)}</span>
-                  <span class="vlist-badges">${updateBadge}${hotBadge}${categoryBadge}</span>
+                  <span class="vlist-badges">${updateBadge}${hotBadge}${heatBadge}${categoryBadge}</span>
                 </div>
                 <div class="vlist-desc">${escapeHtml(summary)}</div>
                 ${tagList ? `<div class="vlist-tags">${tagList}</div>` : ""}
                 <div class="vlist-meta">
                   <span class="meta-pill small">发起人 ${escapeHtml(starter)}</span>
                   <span class="meta-pill small">回复 ${Number.isFinite(replies) ? replies : 0}</span>
+                  <span class="meta-pill small">热度 ${heat}</span>
                   <span class="meta-pill small">更新 ${escapeHtml(updated)}</span>
                 </div>
               </div>
@@ -7794,6 +8354,8 @@
     }
 
     renderTags();
+    renderTrends();
+    renderProfile();
     apply();
 
     const syncFromInput = () => {
@@ -8393,3 +8955,6 @@
     runIdle(initServiceWorker, { timeout: 1500 });
   });
 })();
+
+
+

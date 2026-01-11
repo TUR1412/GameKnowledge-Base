@@ -64,7 +64,7 @@
       const meta = document.querySelector('meta[name="theme-color"]');
       if (!meta) return;
       // 尽量贴近页面背景，避免浏览器 UI（地址栏/状态栏）在深色主题下刺眼
-      meta.setAttribute("content", next === "dark" ? "#0b0f14" : "#f6f1ea");
+      meta.setAttribute("content", next === "dark" ? "#0b0f16" : "#f5f7fb");
     } catch (_) {}
   };
 
