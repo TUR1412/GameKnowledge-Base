@@ -16,6 +16,10 @@
   - HTML 结构约束（例如必需 meta、关键节点等）
   - 图片性能门禁：要求 `<img>` 显式声明 `loading/decoding`（降低 CLS 与首屏资源竞争）
 
+- `tools/check-a11y.mjs`
+  - A11y/SEO 基础门禁：要求 `<html>` 具有 `lang`、必须有 `<title>` 与 meta description
+  - CSP 兼容门禁：禁止 inline style（`<style>`/`style=""`）与 on* 事件属性（例如 `onclick=""`）
+
 - `tools/check-bundlesize.mjs`
   - 可选构建（Vite）产物体积预算门禁：校验 `dist/gkb.min.{css,js}` gzip 体积
   - 默认预算：CSS ≤ 30kB、JS ≤ 80kB（可用 env 覆盖：`GKB_BUDGET_CSS_GZIP_KB` / `GKB_BUDGET_JS_GZIP_KB`）
@@ -79,3 +83,4 @@
 
 - [202601120351_image-performance-gate](../../history/2026-01/202601120351_image-performance-gate/) - 图片性能门禁（img loading/decoding）+ Atomic Design 规范补齐
 - [202601120525_bundle-size-budget-gate](../../history/2026-01/202601120525_bundle-size-budget-gate/) - 可选构建产物体积预算门禁（dist gzip）
+- [202601120558_a11y-seo-gate](../../history/2026-01/202601120558_a11y-seo-gate/) - A11y/SEO 基础门禁 + CSP 兼容检查

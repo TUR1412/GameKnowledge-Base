@@ -28,6 +28,7 @@ jobs:
           node --check tools/check-links.mjs
           node --check tools/check-html.mjs
           node --check tools/check-bundlesize.mjs
+          node --check tools/check-a11y.mjs
           node --check tools/check-sitemap.mjs
           node --check tools/check-sw.mjs
           node --check tools/check-runtime.mjs
@@ -55,6 +56,9 @@ jobs:
 
       - name: HTML Structure Check
         run: node tools/check-html.mjs
+
+      - name: A11y / SEO Basic Check
+        run: node tools/check-a11y.mjs
 
       - name: Sitemap / Robots Check
         run: node tools/check-sitemap.mjs

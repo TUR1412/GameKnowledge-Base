@@ -8,6 +8,7 @@
 
 | 时间戳 | 功能名称 | 类型 | 状态 | 方案包路径 |
 |--------|----------|------|------|------------|
+| 202601120558 | a11y-seo-gate | 工具链/质量 | ✅已完成 | [2026-01/202601120558_a11y-seo-gate](2026-01/202601120558_a11y-seo-gate/) |
 | 202601120553 | codeql-security-scan | 安全/工具链 | ✅已完成 | [2026-01/202601120553_codeql-security-scan](2026-01/202601120553_codeql-security-scan/) |
 | 202601120551 | dependabot-standardization | 工具链/协作 | ✅已完成 | [2026-01/202601120551_dependabot-standardization](2026-01/202601120551_dependabot-standardization/) |
 | 202601120540 | community-standards | 文档/协作 | ✅已完成 | [2026-01/202601120540_community-standards](2026-01/202601120540_community-standards/) |
@@ -28,6 +29,7 @@
 
 ### 2026-01
 
+- [202601120558_a11y-seo-gate](2026-01/202601120558_a11y-seo-gate/) - A11y/SEO 基础门禁（lang/title/description）+ CSP 兼容检查
 - [202601120553_codeql-security-scan](2026-01/202601120553_codeql-security-scan/) - CodeQL 静态分析（JavaScript 安全扫描）
 - [202601120551_dependabot-standardization](2026-01/202601120551_dependabot-standardization/) - Dependabot 标准化（npm / GitHub Actions 每周更新）
 - [202601120540_community-standards](2026-01/202601120540_community-standards/) - 安全策略/行为准则 + GitHub 协作模板（Issue/PR）
