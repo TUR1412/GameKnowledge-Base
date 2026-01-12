@@ -2382,13 +2382,28 @@
       );
     }
 
-    const INTERACT_SELECTOR = ".btn, .btn-small, .icon-button, .chip, .tag";
+    const INTERACT_SELECTOR =
+      ".btn, .btn-small, .icon-button, .chip, .tag, .save-pill, .filter-chip, .view-btn, .cmdk-item";    
+    const MAGNETIC_SELECTOR =
+      ".btn, .btn-small, .icon-button, .chip, .tag, .save-pill, .filter-chip, .view-btn";    
 
     const isPrimaryPointer = (e) => {
       if (!e) return false;
       // touch/pen：button 可能为 undefined
       if (e.button == null) return true;
       return e.button === 0;
+    };
+
+    const isDisabledHost = (el) => {
+      if (!el) return false;
+      try {
+        if (el.matches?.(":disabled")) return true;
+      } catch (_) {}
+      try {
+        return el.getAttribute?.("aria-disabled") === "true";
+      } catch (_) {
+        return false;
+      }
     };
 
     // Magnetic + Press + Ripple：点击/悬停的“物理感”
@@ -2436,6 +2451,7 @@
           if (!isPrimaryPointer(e)) return;
           const host = e.target?.closest?.(INTERACT_SELECTOR);
           if (!host) return;
+          if (isDisabledHost(host)) return;
 
           try {
             host.classList.add("is-pressed");
@@ -2660,8 +2676,13 @@
         document.addEventListener(
           "pointermove",
           (e) => {
-            const host = e.target?.closest?.(INTERACT_SELECTOR) || null;
+            const host = e.target?.closest?.(MAGNETIC_SELECTOR) || null;        
             if (!host) {
+              if (active) physics.release(active);
+              active = null;
+              return;
+            }
+            if (isDisabledHost(host)) {
               if (active) physics.release(active);
               active = null;
               return;

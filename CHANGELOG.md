@@ -2,6 +2,14 @@
 
 本项目以“静态站点稳定交付”为目标：每次大改都会同步更新资源版本号（`?v=`），并通过 CI 做断链/资源/语法校验。
 
+## 2026-01-13 (20260113-4)
+
+### Changed
+- Pixel UI v4.1：修复标题字距漂移（letter-spacing），确保排版观感一致
+- 视觉一致性：Banner / Card surface 全面改为 token 驱动，避免暗色主题出现硬编码“白底卡片”
+- 微交互覆盖：Micro-interactions 扩展到 `save-pill / filter-chip / view-btn / cmdk-item`，并对禁用控件自动跳过反馈（更符合直觉）
+- 版本号 bump 至 `20260113-4`（同步更新全站 `?v=` 与 `data.js.version`）
+
 ## 2026-01-13 (20260113-3)
 
 ### Changed

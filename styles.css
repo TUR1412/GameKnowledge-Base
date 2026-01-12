@@ -9190,3 +9190,218 @@ header nav a[aria-current="page"] {
         transform: scale(1);
     }
 }
+
+/* ==========================================================================   
+   V20260113 “Pixel UI” · EVO-VIS v4.1（Precision polish）
+   目标：继续聚焦像素级视觉一致性与微交互覆盖面（不触碰业务逻辑）
+   - 修复：排版 letter-spacing 被历史段落覆盖导致的“字距漂移”
+   - 统一：Banner 与 Card surface 全部改为 token 驱动（支持暗色主题）
+   - 扩展：Micro-interactions 覆盖 save-pill / filter-chip / view-btn / cmdk-item
+   ========================================================================== */
+
+/* Typography：确保最终 tracking 不被历史覆盖 */
+h1,
+h2,
+h3,
+.logo-container h1,
+.section-title h2,
+.bento-title {
+    letter-spacing: -0.01em;
+}
+
+/* Banner：收敛为更“克制”的中性底 + 极轻 aurora（Apple/Vercel 风格） */
+.hero-banner,
+.page-banner,
+.banner {
+    background:
+        linear-gradient(
+            135deg,
+            rgba(109, 40, 217, 0.10),
+            rgba(6, 182, 212, 0.08),
+            rgba(236, 72, 153, 0.06)
+        ),
+        var(--surface);
+    border: 1px solid var(--surface-border);
+    box-shadow: var(--elev-4);
+}
+
+:root[data-theme="dark"] .hero-banner,
+:root[data-theme="dark"] .page-banner,
+:root[data-theme="dark"] .banner {
+    background:
+        linear-gradient(
+            135deg,
+            rgba(124, 58, 237, 0.16),
+            rgba(6, 182, 212, 0.10),
+            rgba(236, 72, 153, 0.08)
+        ),
+        var(--surface);
+}
+
+/* Card surfaces：避免硬编码 #fff 导致暗色主题“白卡片”，统一 token 驱动 */
+.game-card,
+.discussion-card,
+.article-card,
+.bento-card,
+.mini-card,
+.topic-card,
+.update-card,
+.reply-card,
+.recent-card {
+    background: var(--surface);
+    border: 1px solid var(--surface-border);
+    box-shadow: var(--elev-3);
+}
+
+/* Saved badges：去掉历史品牌色残留，统一主色/副色 token */
+.game-card[data-saved="true"]::after {
+    background: var(--primary-light);
+    border-color: rgba(109, 40, 217, 0.34);
+    color: var(--primary-color);
+}
+
+.guide-card.is-saved::after {
+    background: var(--secondary-light);
+    border-color: rgba(6, 182, 212, 0.34);
+    color: var(--secondary-color);
+}
+
+/* Ripple 容器：让 click feedback 可被圆角裁切 */
+.save-pill,
+.filter-chip,
+.view-btn,
+.cmdk-item {
+    position: relative;
+    overflow: hidden;
+}
+
+/* FX Transform System 扩展：让 Magnetic/Press 覆盖更多真实可点击控件 */
+.save-pill,
+.filter-chip,
+.view-btn {
+    --fx-tx: 0px;
+    --fx-ty: 0px;
+    --fx-lift: 0px;
+    --fx-scale: 1;
+    transform:
+        translate3d(
+            calc(var(--fx-tx) + 0px),
+            calc(var(--fx-ty) + var(--fx-lift)),
+            0
+        )
+        scale(var(--fx-scale));
+    will-change: transform;
+    transition:
+        transform var(--dur-2) var(--ease-out),
+        background-color var(--dur-2) var(--ease-out),
+        border-color var(--dur-2) var(--ease-out),
+        box-shadow var(--dur-3) var(--ease-out),
+        color var(--dur-2) var(--ease-out);
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .save-pill:hover,
+    .filter-chip:hover {
+        --fx-lift: -1px;
+    }
+
+    .view-btn:hover {
+        --fx-lift: -2px;
+    }
+
+    .save-pill:hover,
+    .filter-chip:hover,
+    .view-btn:hover {
+        transform:
+            translate3d(
+                calc(var(--fx-tx) + 0px),
+                calc(var(--fx-ty) + var(--fx-lift)),
+                0
+            )
+            scale(var(--fx-scale));
+    }
+}
+
+.save-pill:active,
+.save-pill.is-pressed,
+.filter-chip:active,
+.filter-chip.is-pressed,
+.view-btn:active,
+.view-btn.is-pressed {
+    --fx-lift: 0px;
+    --fx-scale: 0.985;
+    transform:
+        translate3d(
+            calc(var(--fx-tx) + 0px),
+            calc(var(--fx-ty) + var(--fx-lift)),
+            0
+        )
+        scale(var(--fx-scale));
+}
+
+/* Save pill：升级为更“像按钮”的层级与 active 态 */
+.save-pill {
+    background: var(--surface-strong);
+    border-color: var(--surface-border);
+    box-shadow: var(--elev-2);
+}
+
+.save-pill.active {
+    border-color: rgba(236, 72, 153, 0.40);
+    background: linear-gradient(
+        135deg,
+        rgba(236, 72, 153, 0.16),
+        rgba(109, 40, 217, 0.12)
+    );
+    box-shadow: 0 18px 42px rgba(236, 72, 153, 0.10);
+}
+
+.save-pill.active .save-star {
+    color: var(--accent-color);
+}
+
+/* Filter chip：hover 边框改为主色 token（避免旧品牌色残留） */
+@media (hover: hover) and (pointer: fine) {
+    .filter-chip:hover {
+        color: var(--primary-color);
+        border-color: rgba(109, 40, 217, 0.34);
+    }
+}
+
+/* View buttons：统一成 Pixel UI icon-button 手感（但保持现有结构/逻辑不变） */
+.view-btn {
+    border: 1px solid var(--surface-border);
+    background: var(--surface);
+    color: var(--text-secondary);
+    box-shadow: var(--elev-1);
+}
+
+.view-btn.active {
+    background: linear-gradient(
+        180deg,
+        rgba(109, 40, 217, 0.98),
+        rgba(91, 33, 182, 0.98)
+    );
+    border-color: rgba(109, 40, 217, 0.34);
+    color: #fff;
+    box-shadow: 0 18px 45px rgba(109, 40, 217, 0.14);
+}
+
+/* Cmdk items：Press 态更稳定（触摸设备也能反馈），并统一 token 色系 */
+.cmdk-item:hover {
+    background: var(--surface);
+    border-color: var(--surface-border);
+}
+
+.cmdk-item.is-pressed {
+    transform: translateY(0) scale(0.99);
+}
+
+.cmdk-item[aria-selected="true"] {
+    background: linear-gradient(
+        135deg,
+        rgba(109, 40, 217, 0.18),
+        rgba(6, 182, 212, 0.12)
+    );
+    border-color: rgba(109, 40, 217, 0.32);
+}

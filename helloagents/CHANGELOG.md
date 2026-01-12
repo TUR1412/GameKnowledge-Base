@@ -20,6 +20,13 @@
 - README：补齐 CI/CodeQL 状态徽章，并更新质量门禁清单（对齐 `npm run check:all`）
 - HTML（CLS）：对 `images/placeholders/*` 的 `<img>` 强制要求 `width/height`，并补齐 `starlight-miracle.html` 占位图尺寸（降低布局抖动）
 
+## [20260113-4] - 2026-01-13
+
+### 变更
+- Pixel UI v4.1：修复排版字距漂移（letter-spacing），并收敛 Banner/Card surface 为 token 驱动（暗色主题一致）
+- 微交互覆盖：Micro-interactions 扩展到 `save-pill/filter-chip/view-btn/cmdk-item`，并对禁用控件自动跳过反馈（保持 UI/逻辑分离）
+- 版本号 bump 至 `20260113-4`（全站 `?v=` 与 `data.js.version` 同步）
+
 ## [20260113-3] - 2026-01-13
 
 ### 变更
