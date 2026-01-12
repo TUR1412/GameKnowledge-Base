@@ -8988,15 +8988,36 @@ header nav a[aria-current="page"] {
     .btn:hover,
     .btn-small:hover {
         --fx-lift: -2px;
+        transform:
+            translate3d(
+                calc(var(--fx-tx) + 0px),
+                calc(var(--fx-ty) + var(--fx-lift)),
+                0
+            )
+            scale(var(--fx-scale));
     }
 
     .icon-button:hover {
         --fx-lift: -2px;
+        transform:
+            translate3d(
+                calc(var(--fx-tx) + 0px),
+                calc(var(--fx-ty) + var(--fx-lift)),
+                0
+            )
+            scale(var(--fx-scale));
     }
 
     .chip:hover,
     .tag:hover {
         --fx-lift: -1px;
+        transform:
+            translate3d(
+                calc(var(--fx-tx) + 0px),
+                calc(var(--fx-ty) + var(--fx-lift)),
+                0
+            )
+            scale(var(--fx-scale));
     }
 }
 
@@ -9006,12 +9027,26 @@ header nav a[aria-current="page"] {
 .btn-small.is-pressed {
     --fx-lift: -1px;
     --fx-scale: 0.985;
+    transform:
+        translate3d(
+            calc(var(--fx-tx) + 0px),
+            calc(var(--fx-ty) + var(--fx-lift)),
+            0
+        )
+        scale(var(--fx-scale));
 }
 
 .icon-button:active,
 .icon-button.is-pressed {
     --fx-lift: 0px;
     --fx-scale: 0.98;
+    transform:
+        translate3d(
+            calc(var(--fx-tx) + 0px),
+            calc(var(--fx-ty) + var(--fx-lift)),
+            0
+        )
+        scale(var(--fx-scale));
 }
 
 .chip:active,
@@ -9020,6 +9055,13 @@ header nav a[aria-current="page"] {
 .tag.is-pressed {
     --fx-lift: 0px;
     --fx-scale: 0.985;
+    transform:
+        translate3d(
+            calc(var(--fx-tx) + 0px),
+            calc(var(--fx-ty) + var(--fx-lift)),
+            0
+        )
+        scale(var(--fx-scale));
 }
 
 @media (prefers-reduced-motion: reduce) {
