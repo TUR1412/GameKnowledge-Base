@@ -9,11 +9,11 @@
 所有页面必须使用带版本号的静态资源引用：
 
 ```html
-<link rel="stylesheet" href="styles.css?v=20260113-1">
-<link rel="manifest" href="manifest.webmanifest?v=20260113-1">
-<script src="boot.js?v=20260113-1"></script>
-<script src="data.js?v=20260113-1" defer></script>
-<script src="scripts.js?v=20260113-1" defer></script>
+<link rel="stylesheet" href="styles.css?v=20260113-2">
+<link rel="manifest" href="manifest.webmanifest?v=20260113-2">
+<script src="boot.js?v=20260113-2"></script>
+<script src="data.js?v=20260113-2" defer></script>
+<script src="scripts.js?v=20260113-2" defer></script>
 ```
 
 当你修改以下任意文件时，请同步更新所有 HTML 页里的 `?v=`：
@@ -102,6 +102,7 @@ node tools/bump-version.mjs --dry-run
 - `MOTION.durFast / durBase / durSlow`：统一时长档位
 - `motionAnimate(el, keyframes, options)`：统一入口（自动处理 `prefers-reduced-motion` + try/catch）
 - 常用微交互：`motionPulse` / `motionSpark` / `motionFlash`
+- Micro-interactions（EVO-VIS v4）：`initMicroInteractions` 写入 `--fx-x/--fx-y`（Spotlight）与 `--fx-tx/--fx-ty`（Magnetic），并注入 `.fx-ripple` 与 `.is-pressed`（按压态）；CSS 负责渲染与降级（保持 UI/逻辑分离）
 
 约定：新增动效时 **优先复用上述 helper**，避免散落的 magic number 导致“风格漂移”。
 

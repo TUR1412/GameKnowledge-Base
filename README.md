@@ -53,7 +53,7 @@ GameKnowledge-Base is a data-driven static multi-page site powered by `data.js` 
 | Command Palette | `Ctrl + K` / `/`：全站搜索 + 快速动作 | Global search + quick actions |
 | 本地状态闭环 | 收藏/筛选/笔记/进度/回复均写入 `localStorage` | Local-first state via `localStorage` |
 | View Transitions | 跨页共享元素映射 + Root 过渡 | Cross-page shared element transitions |
-| 微交互体系 | Hover 抬升/追光、Click Ripple、统一 focus ring | Hover lift/spotlight, click ripple, consistent focus ring |
+| 微交互体系 | Hover 抬升/追光、Magnetic 磁吸、Press 按压、Click Ripple | Hover lift/spotlight, magnetic follow, press feedback, click ripple |
 | Planner | 路线生成、冲刺拆分、可复制计划 | Plan builder, sprint pacing, copyable schedule |
 | 运行时诊断 | 错误边界 + 本地埋点 + 健康快照（可导出 bundle） | Error boundary + local telemetry + health snapshot (exportable) |
 | 离线体验 | SW 预缓存 + 导航超时回退缓存 + 资源 SWR | Precache + nav fallback + asset SWR |
@@ -71,6 +71,7 @@ GameKnowledge-Base is a data-driven static multi-page site powered by `data.js` 
 
 - `scripts.js` 内建 WAAPI 轻量动效层（MotionLite），并统一尊重 `prefers-reduced-motion`。
 - 卡片追光（spotlight）：JS 写入 `--fx-x/--fx-y`，CSS 负责渲染（UI 与逻辑解耦、易回归）。
+- Magnetic：JS 写入 `--fx-tx/--fx-ty`（spring + rAF），CSS 负责合成 transform（默认 60FPS 优先）。
 - 点击 Ripple：注入 `span.fx-ripple`，用 CSS keyframes 驱动（无第三方依赖）。
 
 ---
@@ -128,4 +129,3 @@ node tools/bump-version.mjs
 - `docs/DEPLOYMENT.md`
 
 See the same docs above for workflow, design/motion rules, data model constraints, and deployment notes.
-

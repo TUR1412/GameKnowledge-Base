@@ -20,6 +20,14 @@
 - README：补齐 CI/CodeQL 状态徽章，并更新质量门禁清单（对齐 `npm run check:all`）
 - HTML（CLS）：对 `images/placeholders/*` 的 `<img>` 强制要求 `width/height`，并补齐 `starlight-miracle.html` 占位图尺寸（降低布局抖动）
 
+## [20260113-2] - 2026-01-13
+
+### 变更
+- 微交互：`initMicroInteractions` 新增 Magnetic 磁吸跟随（spring + rAF）与 Press 按压态（`.is-pressed`），并用 CSS variables（`--fx-tx/--fx-ty`）保持 UI/逻辑分离
+- 视觉系统：新增 FX Transform System（magnetic + hover lift + press 合成 transform），统一 `.btn/.icon-button/.chip/.tag` 的交互手感
+- 文档：`docs/STYLE_GUIDE.md` 补齐 EVO-VIS v4 微交互 token/约定说明
+- 版本号 bump 至 `20260113-2`（全站 `?v=` 与 `data.js.version` 同步）
+
 ## [20260113-1] - 2026-01-13
 
 ### 变更

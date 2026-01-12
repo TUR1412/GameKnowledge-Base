@@ -8963,6 +8963,79 @@ header nav a[aria-current="page"] {
     overflow: hidden;
 }
 
+/* FX Transform System（物理级手感：magnetic + press + hover lift）
+   - JS 仅写入 --fx-tx/--fx-ty；CSS 负责合成 transform（UI/逻辑分离） */
+.btn,
+.btn-small,
+.icon-button,
+.chip,
+.tag {
+    --fx-tx: 0px;
+    --fx-ty: 0px;
+    --fx-lift: 0px;
+    --fx-scale: 1;
+    transform:
+        translate3d(
+            calc(var(--fx-tx) + 0px),
+            calc(var(--fx-ty) + var(--fx-lift)),
+            0
+        )
+        scale(var(--fx-scale));
+    will-change: transform;
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .btn:hover,
+    .btn-small:hover {
+        --fx-lift: -2px;
+    }
+
+    .icon-button:hover {
+        --fx-lift: -2px;
+    }
+
+    .chip:hover,
+    .tag:hover {
+        --fx-lift: -1px;
+    }
+}
+
+.btn:active,
+.btn-small:active,
+.btn.is-pressed,
+.btn-small.is-pressed {
+    --fx-lift: -1px;
+    --fx-scale: 0.985;
+}
+
+.icon-button:active,
+.icon-button.is-pressed {
+    --fx-lift: 0px;
+    --fx-scale: 0.98;
+}
+
+.chip:active,
+.chip.is-pressed,
+.tag:active,
+.tag.is-pressed {
+    --fx-lift: 0px;
+    --fx-scale: 0.985;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .btn,
+    .btn-small,
+    .icon-button,
+    .chip,
+    .tag {
+        --fx-tx: 0px;
+        --fx-ty: 0px;
+        --fx-lift: 0px;
+        --fx-scale: 1;
+        transform: none;
+    }
+}
+
 /* Card surfaces：统一 hover lift + spotlight */
 .game-card,
 .discussion-card,

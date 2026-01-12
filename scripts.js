@@ -2382,19 +2382,44 @@
       );
     }
 
-    // Ripple：点击即时反馈（可在 CSS 中统一手感；JS 只负责注入与定位）
-    if (!prefersReducedMotion()) {
-      const RIPPLE_SELECTOR = ".btn, .btn-small, .icon-button, .chip, .tag";
-      const MAX_RIPPLES = 2;
+    const INTERACT_SELECTOR = ".btn, .btn-small, .icon-button, .chip, .tag";
 
-      const isPrimaryPointer = (e) => {
-        if (!e) return false;
-        // touch/pen：button 可能为 undefined
-        if (e.button == null) return true;
-        return e.button === 0;
+    const isPrimaryPointer = (e) => {
+      if (!e) return false;
+      // touch/pen：button 可能为 undefined
+      if (e.button == null) return true;
+      return e.button === 0;
+    };
+
+    // Magnetic + Press + Ripple：点击/悬停的“物理感”
+    // - 约束：Reduced Motion 下不启用（避免强制动画）；高对比度模式下不启用磁吸
+    if (!prefersReducedMotion()) {
+      // Press：让触摸设备也获得稳定的按压反馈（不依赖 :active 的浏览器差异）
+      const pressed = new Set();
+      const clearPressed = () => {
+        pressed.forEach((el) => {
+          try {
+            el.classList.remove("is-pressed");
+          } catch (_) {}
+        });
+        pressed.clear();
       };
 
-      const cleanup = (host) => {
+      window.addEventListener("blur", clearPressed);
+      document.addEventListener(
+        "visibilitychange",
+        () => {
+          if (document.hidden) clearPressed();
+        },
+        { passive: true }
+      );
+      document.addEventListener("pointerup", clearPressed, { capture: true, passive: true });
+      document.addEventListener("pointercancel", clearPressed, { capture: true, passive: true });
+
+      // Ripple：点击即时反馈（可在 CSS 中统一手感；JS 只负责注入与定位）
+      const MAX_RIPPLES = 2;
+
+      const cleanupRipples = (host) => {
         if (!host) return;
         try {
           const list = Array.from(host.querySelectorAll(".fx-ripple"));
@@ -2409,8 +2434,13 @@
         "pointerdown",
         (e) => {
           if (!isPrimaryPointer(e)) return;
-          const host = e.target?.closest?.(RIPPLE_SELECTOR);
+          const host = e.target?.closest?.(INTERACT_SELECTOR);
           if (!host) return;
+
+          try {
+            host.classList.add("is-pressed");
+            pressed.add(host);
+          } catch (_) {}
 
           let rect = null;
           try {
@@ -2439,7 +2469,7 @@
           ripple.style.left = `${Math.round(x)}px`;
           ripple.style.top = `${Math.round(y)}px`;
 
-          cleanup(host);
+          cleanupRipples(host);
 
           try {
             host.appendChild(ripple);
@@ -2460,6 +2490,206 @@
         },
         { capture: true, passive: true }
       );
+
+      // Magnetic：轻微“磁吸”跟随（rAF + spring），只改 CSS variables（UI/逻辑分离）
+      const canMagnetic = () => {
+        try {
+          if (document.documentElement.dataset.contrast === "high") return false;
+        } catch (_) {}
+
+        try {
+          if (
+            window.matchMedia &&
+            window.matchMedia("(prefers-reduced-transparency: reduce)").matches
+          ) {
+            return false;
+          }
+        } catch (_) {}
+
+        try {
+          return Boolean(
+            window.matchMedia &&
+              window.matchMedia("(hover: hover) and (pointer: fine)").matches
+          );
+        } catch (_) {
+          return false;
+        }
+      };
+
+      if (canMagnetic()) {
+        const clamp = (v, min, max) => Math.min(max, Math.max(min, v));
+
+        const physics = (() => {
+          const items = new Map();
+          let raf = 0;
+
+          const getItem = (el) => {
+            const existing = items.get(el);
+            if (existing) return existing;
+            const next = {
+              el,
+              x: 0,
+              y: 0,
+              vx: 0,
+              vy: 0,
+              tx: 0,
+              ty: 0,
+              lastT: 0,
+            };
+            items.set(el, next);
+            return next;
+          };
+
+          const setTarget = (el, tx, ty) => {
+            const item = getItem(el);
+            item.tx = tx;
+            item.ty = ty;
+            if (!raf) raf = window.requestAnimationFrame(tick);
+          };
+
+          const release = (el) => {
+            if (!el) return;
+            const item = items.get(el);
+            if (!item) return;
+            item.tx = 0;
+            item.ty = 0;
+            if (!raf) raf = window.requestAnimationFrame(tick);
+          };
+
+          const tick = (t) => {
+            raf = 0;
+            const now = Number(t) || 0;
+
+            items.forEach((item, el) => {
+              if (!el || !(el instanceof Element)) {
+                items.delete(el);
+                return;
+              }
+
+              const dt = (() => {
+                const prev = Number(item.lastT || 0) || 0;
+                item.lastT = now;
+                if (!prev) return 1 / 60;
+                return clamp((now - prev) / 1000, 0.001, 0.033);
+              })();
+
+              // 经验参数：更像“Apple 的跟手”，不弹过头
+              const stiffness = 240;
+              const damping = 26;
+
+              const ax = (item.tx - item.x) * stiffness - item.vx * damping;
+              const ay = (item.ty - item.y) * stiffness - item.vy * damping;
+
+              item.vx += ax * dt;
+              item.vy += ay * dt;
+              item.x += item.vx * dt;
+              item.y += item.vy * dt;
+
+              const done =
+                Math.abs(item.tx - item.x) < 0.08 &&
+                Math.abs(item.ty - item.y) < 0.08 &&
+                Math.abs(item.vx) < 0.12 &&
+                Math.abs(item.vy) < 0.12;
+
+              try {
+                el.style.setProperty("--fx-tx", `${item.x.toFixed(2)}px`);
+                el.style.setProperty("--fx-ty", `${item.y.toFixed(2)}px`);
+              } catch (_) {}
+
+              if (done) {
+                item.x = item.tx;
+                item.y = item.ty;
+                item.vx = 0;
+                item.vy = 0;
+                if (item.tx === 0 && item.ty === 0) {
+                  try {
+                    el.style.removeProperty("--fx-tx");
+                    el.style.removeProperty("--fx-ty");
+                  } catch (_) {}
+                  items.delete(el);
+                }
+              }
+            });
+
+            if (items.size > 0) raf = window.requestAnimationFrame(tick);
+          };
+
+          return { setTarget, release };
+        })();
+
+        let active = null;
+        let rafMove = 0;
+        let lastX = 0;
+        let lastY = 0;
+
+        const updateTarget = () => {
+          rafMove = 0;
+
+          try {
+            if (document.documentElement.dataset.contrast === "high") {
+              if (active) physics.release(active);
+              active = null;
+              return;
+            }
+          } catch (_) {}
+
+          if (!active) return;
+
+          let rect = null;
+          try {
+            rect = active.getBoundingClientRect();
+          } catch (_) {
+            rect = null;
+          }
+          if (!rect) return;
+
+          const cx = rect.left + rect.width / 2;
+          const cy = rect.top + rect.height / 2;
+          const nx = rect.width > 0 ? clamp((lastX - cx) / (rect.width / 2), -1, 1) : 0;
+          const ny = rect.height > 0 ? clamp((lastY - cy) / (rect.height / 2), -1, 1) : 0;
+
+          const max = clamp(Math.min(rect.width, rect.height) * 0.06, 2.5, 8);
+          physics.setTarget(active, nx * max, ny * max);
+        };
+
+        const scheduleMove = () => {
+          if (rafMove) return;
+          rafMove = window.requestAnimationFrame(updateTarget);
+        };
+
+        document.addEventListener(
+          "pointermove",
+          (e) => {
+            const host = e.target?.closest?.(INTERACT_SELECTOR) || null;
+            if (!host) {
+              if (active) physics.release(active);
+              active = null;
+              return;
+            }
+
+            if (active && host !== active) physics.release(active);
+            active = host;
+            lastX = e.clientX;
+            lastY = e.clientY;
+            scheduleMove();
+          },
+          { passive: true }
+        );
+
+        document.addEventListener(
+          "pointerleave",
+          () => {
+            if (active) physics.release(active);
+            active = null;
+          },
+          { passive: true }
+        );
+
+        window.addEventListener("blur", () => {
+          if (active) physics.release(active);
+          active = null;
+        });
+      }
     }
   };
 

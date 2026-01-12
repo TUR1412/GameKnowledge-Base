@@ -2,6 +2,13 @@
 
 本项目以“静态站点稳定交付”为目标：每次大改都会同步更新资源版本号（`?v=`），并通过 CI 做断链/资源/语法校验。
 
+## 2026-01-13 (20260113-2)
+
+### Changed
+- 微交互：新增 Magnetic 磁吸跟随（spring + rAF）与 Press 按压态（`.is-pressed`），并以 CSS variables（`--fx-tx/--fx-ty`）保持 UI/逻辑分离
+- 动效一致性：按钮/Chip/Icon Button 统一走 FX Transform System（hover/press/magnetic 合成 transform）
+- 版本号 bump 至 `20260113-2`（同步更新全站 `?v=` 与 `data.js.version`）
+
 ## 2026-01-13 (20260113-1)
 
 ### Changed
