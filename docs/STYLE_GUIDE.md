@@ -9,11 +9,11 @@
 所有页面必须使用带版本号的静态资源引用：
 
 ```html
-<link rel="stylesheet" href="styles.css?v=20260113-4">
-<link rel="manifest" href="manifest.webmanifest?v=20260113-4">
-<script src="boot.js?v=20260113-4"></script>
-<script src="data.js?v=20260113-4" defer></script>
-<script src="scripts.js?v=20260113-4" defer></script>
+<link rel="stylesheet" href="styles.css?v=20260113-5">
+<link rel="manifest" href="manifest.webmanifest?v=20260113-5">
+<script src="boot.js?v=20260113-5"></script>
+<script src="data.js?v=20260113-5" defer></script>
+<script src="scripts.js?v=20260113-5" defer></script>
 ```
 
 当你修改以下任意文件时，请同步更新所有 HTML 页里的 `?v=`：
@@ -102,7 +102,8 @@ node tools/bump-version.mjs --dry-run
 - `MOTION.durFast / durBase / durSlow`：统一时长档位
 - `motionAnimate(el, keyframes, options)`：统一入口（自动处理 `prefers-reduced-motion` + try/catch）
 - 常用微交互：`motionPulse` / `motionSpark` / `motionFlash`
-- Micro-interactions（EVO-VIS v4）：`initMicroInteractions` 写入 `--fx-x/--fx-y`（Spotlight）与 `--fx-tx/--fx-ty`（Magnetic），并注入 `.fx-ripple` 与 `.is-pressed`；默认覆盖 `.btn/.btn-small/.icon-button/.chip/.tag` 以及 `.save-pill/.filter-chip/.view-btn/.cmdk-item`（禁用控件自动跳过反馈）；CSS 负责渲染与降级（保持 UI/逻辑分离）
+- Micro-interactions（EVO-VIS v4）：`initMicroInteractions` 写入 `--fx-x/--fx-y`（Spotlight）与 `--fx-tx/--fx-ty`（Magnetic），并注入 `.fx-ripple` 与 `.is-pressed`；默认覆盖 `.btn/.btn-small/.icon-button/.chip/.tag` 以及 `.save-pill/.filter-chip/.view-btn/.cmdk-item/.search-btn`（禁用控件自动跳过反馈）；CSS 负责渲染与降级（保持 UI/逻辑分离）
+- Range UI（Planner）：仅在 `#planner-focus-range` 写入 `--range-pct` 用于轨道填充表现；数值逻辑仍以 input.value 为准（保持 UI/逻辑分离）
 
 约定：新增动效时 **优先复用上述 helper**，避免散落的 magic number 导致“风格漂移”。
 

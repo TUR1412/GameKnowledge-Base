@@ -2,6 +2,14 @@
 
 本项目以“静态站点稳定交付”为目标：每次大改都会同步更新资源版本号（`?v=`），并通过 CI 做断链/资源/语法校验。
 
+## 2026-01-13 (20260113-5)
+
+### Changed
+- Pixel UI v4.2：搜索/筛选/调节控件纳入 Pixel UI 体系（Search box / Filter options / Input & Select pills）
+- Planner：专注时长滑杆升级为“可视化填充轨道”（JS 仅写入 `--range-pct`，保持 UI/逻辑分离）
+- 微交互覆盖：Micro-interactions 扩展到 `search-btn`（ripple/press/magnetic），并保持 Reduced Motion/Disabled 控件降级安全
+- 版本号 bump 至 `20260113-5`（同步更新全站 `?v=` 与 `data.js.version`）
+
 ## 2026-01-13 (20260113-4)
 
 ### Changed

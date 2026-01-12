@@ -2383,9 +2383,9 @@
     }
 
     const INTERACT_SELECTOR =
-      ".btn, .btn-small, .icon-button, .chip, .tag, .save-pill, .filter-chip, .view-btn, .cmdk-item";    
+      ".btn, .btn-small, .icon-button, .chip, .tag, .save-pill, .filter-chip, .view-btn, .cmdk-item, .search-btn";    
     const MAGNETIC_SELECTOR =
-      ".btn, .btn-small, .icon-button, .chip, .tag, .save-pill, .filter-chip, .view-btn";    
+      ".btn, .btn-small, .icon-button, .chip, .tag, .save-pill, .filter-chip, .view-btn, .search-btn";    
 
     const isPrimaryPointer = (e) => {
       if (!e) return false;
@@ -8485,7 +8485,20 @@
     let planSettings = readPlanSettings();
 
     const syncFocusLabel = () => {
-      if (focusRange) focusRange.value = String(planSettings.focusMinutes);
+      if (focusRange) {
+        focusRange.value = String(planSettings.focusMinutes);
+        try {
+          const min = Number(focusRange.min || 0) || 0;
+          const max = Number(focusRange.max || 0) || 0;
+          const v = Number(planSettings.focusMinutes || 0) || 0;
+          const denom = max - min;
+          const pct = denom > 0 ? ((v - min) / denom) * 100 : 0;
+          focusRange.style.setProperty(
+            "--range-pct",
+            `${clampNumber(pct, 0, 100).toFixed(2)}%`
+          );
+        } catch (_) {}
+      }
       if (focusValue) focusValue.textContent = `${planSettings.focusMinutes} 分钟`;
     };
 
