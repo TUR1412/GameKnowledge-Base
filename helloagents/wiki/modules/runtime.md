@@ -19,7 +19,8 @@
 - `styles.css`
   - Aurora/Glass/Bento 视觉系统
   - EVO-VIS v2：黄金比例排版/间距 tokens（`--phi/--text-*/--space-*`）+ 12 级阴影阶梯（`--elev-1..12`）
-  - UI Evolution v3：收敛 Aurora Glass SSOT（`--grad-* / --border-grad`），并将 Banner 升级为主题自适配玻璃面板；高对比度模式关闭 hover 边框流动
+  - UI Evolution v3：收敛 Aurora Glass SSOT（`--grad-* / --border-grad`）， 并将 Banner 升级为主题自适配玻璃面板；高对比度模式关闭 hover 边框流动
+  - EVO-VIS v4（Pixel UI）：更克制的中性色与“hairline border + 精准阴影”层级；卡片追光（`--fx-x/--fx-y`）与点击 Ripple（`.fx-ripple`）统一微交互手感（尊重 Reduced Motion/Transparency）
   - 通用栅格：12 列 grid helper（`.grid-12` / `.span-*` / `*-span-*`）为页面布局提供统一语义
   - 统一容器质感：主要卡片/面板采用毛玻璃（`backdrop-filter`）+ 内高光 + 动态渐变边框（mask ring；尊重 `prefers-reduced-motion`）
   - 加载态能力：Skeleton（`.skeleton*` / `.is-skeleton-card`）与 SVG Path Loader（`.ink-loader`）

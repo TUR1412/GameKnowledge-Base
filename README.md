@@ -3,8 +3,10 @@
 </p>
 
 <h1 align="center">GameKnowledge-Base</h1>
+
 <p align="center"><strong>游戏攻略网 · Data-driven Game Knowledge Base</strong></p>
-<p align="center">纯静态 · 无框架 · Local-first · PWA 离线 · Quantum Glass</p>
+<p align="center">Static · No framework · Local-first · PWA Offline · View Transitions · Pixel UI (EVO-VIS v4)</p>
+
 <p align="center">
   <a href="https://github.com/TUR1412/GameKnowledge-Base/actions/workflows/ci.yml">
     <img alt="CI" src="https://github.com/TUR1412/GameKnowledge-Base/actions/workflows/ci.yml/badge.svg?branch=master">
@@ -13,8 +15,15 @@
     <img alt="CodeQL" src="https://github.com/TUR1412/GameKnowledge-Base/actions/workflows/codeql.yml/badge.svg?branch=master">
   </a>
 </p>
+
 <p align="center">
-  <a href="#概览--overview">概览</a> · <a href="#体验亮点--highlights">亮点</a> · <a href="#快速开始--quick-start">快速开始</a> · <a href="#结构--structure">结构</a> · <a href="#design-language--design-language">设计语言</a> · <a href="#contributing--贡献">贡献</a>
+  <a href="#概览--overview">概览</a>
+  · <a href="#体验亮点--highlights">亮点</a>
+  · <a href="#视觉与动效--design--motion">视觉与动效</a>
+  · <a href="#快速开始--quick-start">快速开始</a>
+  · <a href="#结构--structure">结构</a>
+  · <a href="#版本与缓存穿透--versioning">版本与缓存穿透</a>
+  · <a href="#contributing--贡献">贡献</a>
 </p>
 
 <p align="center">
@@ -31,9 +40,9 @@
 
 ## 概览 / Overview
 
-游戏攻略网是一个“数据驱动的纯静态多页站点”，以 `data.js` 作为唯一数据源，融合 PWA 与本地状态，提供可离线、可收藏、可追踪进度的游戏知识库体验。
+游戏攻略网是一个“数据驱动的纯静态多页站点”，以 `data.js` 作为唯一数据源（SSOT），将内容与交互完全交付在浏览器本地：PWA 离线、收藏/进度/笔记/路线规划、本地诊断与可观测性、跨页转场与微交互体系。
 
-GameKnowledge-Base is a data-driven static multi-page site powered by `data.js` as the single source of truth. It blends PWA offline support with local-first state to deliver a fast, trackable, and privacy-respecting knowledge experience.
+GameKnowledge-Base is a data-driven static multi-page site powered by `data.js` as the single source of truth. It runs fully client-side with local-first state (no backend required): PWA offline, favorites/progress/notes/plans, runtime diagnostics/telemetry, cross-page transitions, and a cohesive micro-interaction system.
 
 ---
 
@@ -41,12 +50,28 @@ GameKnowledge-Base is a data-driven static multi-page site powered by `data.js` 
 
 | 模块 | 说明（中文） | Description (EN) |
 | --- | --- | --- |
-| 指挥舱 DNA | 收藏/进度/路线生成画像与动量节奏 | Behavior DNA + momentum from local signals |
-| 探索引擎 | 意图标签加权推荐与一键生成路线 | Intent-weighted discovery & plan builder |
-| 路线冲刺 | 智能拆分节奏并可复制冲刺计划 | Smart sprint pacing with copyable schedule |
-| 社区热度 | 热度雷达 + 话题画像标签 | Trend radar with topic profiling |
-| 更新影响力 | NEW/UPDATED + 影响力评分 | Update radar with impact scoring |
-| 系统诊断 | 错误边界 + 本地埋点 + 健康快照（可导出诊断包） | Error boundary + local telemetry + health snapshot (exportable bundle) |
+| Command Palette | `Ctrl + K` / `/`：全站搜索 + 快速动作 | Global search + quick actions |
+| 本地状态闭环 | 收藏/筛选/笔记/进度/回复均写入 `localStorage` | Local-first state via `localStorage` |
+| View Transitions | 跨页共享元素映射 + Root 过渡 | Cross-page shared element transitions |
+| 微交互体系 | Hover 抬升/追光、Click Ripple、统一 focus ring | Hover lift/spotlight, click ripple, consistent focus ring |
+| Planner | 路线生成、冲刺拆分、可复制计划 | Plan builder, sprint pacing, copyable schedule |
+| 运行时诊断 | 错误边界 + 本地埋点 + 健康快照（可导出 bundle） | Error boundary + local telemetry + health snapshot (exportable) |
+| 离线体验 | SW 预缓存 + 导航超时回退缓存 + 资源 SWR | Precache + nav fallback + asset SWR |
+
+---
+
+## 视觉与动效 / Design & Motion
+
+### Pixel UI (EVO-VIS v4)
+
+- 视觉：更克制的中性色系统，明确的“hairline border + 精准阴影阶梯”，对标 Apple / Vercel 的信息层级与留白节奏。
+- 交互：统一 hover/press/focus 手感；默认 60FPS 友好（优先 transform/opacity）。
+
+### Motion & Micro-interactions
+
+- `scripts.js` 内建 WAAPI 轻量动效层（MotionLite），并统一尊重 `prefers-reduced-motion`。
+- 卡片追光（spotlight）：JS 写入 `--fx-x/--fx-y`，CSS 负责渲染（UI 与逻辑解耦、易回归）。
+- 点击 Ripple：注入 `span.fx-ripple`，用 CSS keyframes 驱动（无第三方依赖）。
 
 ---
 
@@ -54,7 +79,7 @@ GameKnowledge-Base is a data-driven static multi-page site powered by `data.js` 
 
 1. 克隆仓库 / Clone the repo
 2. 直接打开 `index.html` 体验站点 / Open `index.html` for local preview
-3. 如需校验或构建：
+3. 如需校验或构建 / For validation & build:
 
 ```bash
 npm ci
@@ -67,77 +92,40 @@ npm run build:vite
 ## 结构 / Structure
 
 ```text
-├─ *.html                 # 静态入口页
+├─ *.html                 # 静态入口页（多页）
 ├─ data.js                # 唯一数据源（window.GKB.data）
-├─ scripts.js             # 前端交互（无框架）
-├─ styles.css             # 视觉系统（Quantum Glass + Bento）
+├─ scripts.js             # 运行时交互（无框架）
+├─ styles.css             # 视觉系统（Aurora Glass + Bento + Pixel UI）
 ├─ sw.js                  # Service Worker（离线缓存）
 ├─ manifest.webmanifest   # PWA 配置
 ├─ docs/                  # 文档中心（docs.html 动态加载）
-└─ tools/                 # 校验 / 生成脚本
+└─ tools/                 # 校验 / 生成脚本（CI 门禁）
 ```
 
 ---
 
-## 数据模型 / Data Model
+## 版本与缓存穿透 / Versioning
 
-- `window.GKB.data.version`: `YYYYMMDD-N`（缓存穿透 SSOT）
-- `games / guides / topics`: 以 id 为 key 的字典结构
+项目以“静态站点稳定交付”为目标：修改 `styles.css / scripts.js / data.js / sw.js / manifest` 等核心资源时，必须同步更新所有 HTML 的 `?v=`，以确保离线缓存与浏览器缓存一致刷新。
 
-```js
-window.GKB.data = {
-  version: "YYYYMMDD-N",
-  games: { /* ... */ },
-  guides: { /* ... */ },
-  topics: { /* ... */ }
-};
+This project uses cache-busting query params (`?v=`) as a release contract. When core assets change, update the version across all HTML pages to avoid stale caches (especially for PWA offline).
+
+推荐做法 / Recommended:
+
+```bash
+node tools/bump-version.mjs
 ```
-
----
-
-## Design Language / 设计语言
-
-- **Quantum Glass**：多层玻璃质感 + 渐变光晕背景
-- **Bento Grid**：可组合的卡片化布局
-- **DNA / Sprint / Heat**：将行为数据转译为可行动的信息层
-
----
-
-## Local-first / 本地优先
-
-所有交互数据仅存储在浏览器 `localStorage`：收藏、进度、路线、笔记、社区回复均不会上传服务器。
-
-All interaction data stays in the browser via `localStorage`—no server, no tracking, no external APIs.
-
----
-
-## 系统诊断 / Diagnostics
-
-入口 / Entry:
-
-- 指挥舱：`dashboard.html` → “系统诊断”卡片
-- Command Palette：`Ctrl + K` → “打开系统诊断面板”
-
-能力 / What you get:
-
-- **错误边界**：自动捕获运行时异常 / Promise 未处理拒绝 / CSP 违规，并记录到本地
-- **本地日志**：统一 `logger`（ring buffer），默认仅持久化 `info/warn/error` 到 `gkb-diagnostics-logs`；诊断面板可查看/清空，导出的诊断包也会包含日志
-- **本地埋点**：只在本地保存（默认启用，可随时关闭）
-- **健康快照**：FPS / LongTask / CLS / LCP / FCP / INP 等指标摘要
-- **一键导出**：下载 `gkb-diagnostics-<version>-<date>.json` 诊断包，便于提 Issue/PR（不外发）
-
-质量门禁 / Gate:
-
-- `npm run check:all`：一键跑完 CI 同款门禁（Syntax / Unit Tests + Coverage / Build + Bundle Budget / Links / HTML / A11y / Sitemap / SW / Runtime / Feed / Data Model）
-- 常用单项：`node tools/check-runtime.mjs` / `node tools/check-links.mjs` / `node tools/check-html.mjs` / `node tools/check-a11y.mjs` / `node tools/check-sw.mjs` / `node tools/check-bundlesize.mjs`
-- 安全扫描（CI）：CodeQL（见 `.github/workflows/codeql.yml`）
 
 ---
 
 ## Contributing / 贡献
 
-请查看 `docs/CONTRIBUTING.md` 与 `docs/STYLE_GUIDE.md`，确保版本号与缓存穿透一致。
-安全问题请参考 `docs/SECURITY.md`；参与协作请遵守 `docs/CODE_OF_CONDUCT.md`。
+请查看：
 
-See `docs/CONTRIBUTING.md` and `docs/STYLE_GUIDE.md` for workflow, style, and versioning rules.
-For security matters, see `docs/SECURITY.md`. For community expectations, see `docs/CODE_OF_CONDUCT.md`.
+- `docs/CONTRIBUTING.md`
+- `docs/STYLE_GUIDE.md`
+- `docs/DATA_MODEL.md`
+- `docs/DEPLOYMENT.md`
+
+See the same docs above for workflow, design/motion rules, data model constraints, and deployment notes.
+

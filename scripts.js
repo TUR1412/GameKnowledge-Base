@@ -2295,6 +2295,174 @@
     }
   };
 
+  // -------------------------
+  // Micro Interactions（Spotlight / Ripple）
+  // - Spotlight：卡片 hover 追光（CSS ::after + JS 写入 --fx-x/--fx-y）
+  // - Ripple：点击波纹（注入 span.fx-ripple；纯 UI，无业务语义）
+  // 约束：尊重 prefers-reduced-motion / prefers-reduced-transparency / 高对比度
+  // -------------------------
+
+  const initMicroInteractions = () => {
+    // Spotlight：仅在“hover + fine pointer”环境启用（移动端/触摸屏默认跳过）
+    const canSpotlight = () => {
+      if (prefersReducedMotion()) return false;
+      try {
+        if (document.documentElement.dataset.contrast === "high") return false;
+      } catch (_) {}
+
+      try {
+        if (
+          window.matchMedia &&
+          window.matchMedia("(prefers-reduced-transparency: reduce)").matches
+        ) {
+          return false;
+        }
+      } catch (_) {}
+
+      try {
+        return Boolean(
+          window.matchMedia &&
+            window.matchMedia("(hover: hover) and (pointer: fine)").matches
+        );
+      } catch (_) {
+        return false;
+      }
+    };
+
+    const SPOTLIGHT_SELECTOR =
+      ".game-card, .discussion-card, .article-card, .bento-card, .mini-card, .topic-card, .update-card, .reply-card, .recent-card";
+
+    if (canSpotlight()) {
+      let active = null;
+      let raf = 0;
+      let lastX = 0;
+      let lastY = 0;
+
+      const apply = () => {
+        raf = 0;
+        if (!active) return;
+
+        let rect = null;
+        try {
+          rect = active.getBoundingClientRect();
+        } catch (_) {
+          rect = null;
+        }
+        if (!rect) return;
+
+        const x = Math.min(Math.max(0, lastX - rect.left), rect.width);
+        const y = Math.min(Math.max(0, lastY - rect.top), rect.height);
+
+        try {
+          active.style.setProperty("--fx-x", `${x}px`);
+          active.style.setProperty("--fx-y", `${y}px`);
+        } catch (_) {}
+      };
+
+      const schedule = () => {
+        if (raf) return;
+        raf = window.requestAnimationFrame(apply);
+      };
+
+      document.addEventListener(
+        "pointermove",
+        (e) => {
+          try {
+            if (document.documentElement.dataset.contrast === "high") return;
+          } catch (_) {}
+
+          const el = e.target?.closest?.(SPOTLIGHT_SELECTOR) || null;
+          active = el;
+          if (!active) return;
+          lastX = e.clientX;
+          lastY = e.clientY;
+          schedule();
+        },
+        { passive: true }
+      );
+    }
+
+    // Ripple：点击即时反馈（可在 CSS 中统一手感；JS 只负责注入与定位）
+    if (!prefersReducedMotion()) {
+      const RIPPLE_SELECTOR = ".btn, .btn-small, .icon-button, .chip, .tag";
+      const MAX_RIPPLES = 2;
+
+      const isPrimaryPointer = (e) => {
+        if (!e) return false;
+        // touch/pen：button 可能为 undefined
+        if (e.button == null) return true;
+        return e.button === 0;
+      };
+
+      const cleanup = (host) => {
+        if (!host) return;
+        try {
+          const list = Array.from(host.querySelectorAll(".fx-ripple"));
+          if (list.length <= MAX_RIPPLES) return;
+          list
+            .slice(0, Math.max(0, list.length - MAX_RIPPLES))
+            .forEach((el) => el.remove());
+        } catch (_) {}
+      };
+
+      document.addEventListener(
+        "pointerdown",
+        (e) => {
+          if (!isPrimaryPointer(e)) return;
+          const host = e.target?.closest?.(RIPPLE_SELECTOR);
+          if (!host) return;
+
+          let rect = null;
+          try {
+            rect = host.getBoundingClientRect();
+          } catch (_) {
+            rect = null;
+          }
+          if (!rect) return;
+
+          const size = Math.max(rect.width, rect.height) * 1.35;
+          const cx =
+            (typeof e.clientX === "number" ? e.clientX : rect.left + rect.width / 2) -
+            rect.left;
+          const cy =
+            (typeof e.clientY === "number" ? e.clientY : rect.top + rect.height / 2) -
+            rect.top;
+
+          const x = cx - size / 2;
+          const y = cy - size / 2;
+
+          const ripple = document.createElement("span");
+          ripple.className = "fx-ripple";
+          ripple.setAttribute("aria-hidden", "true");
+          ripple.style.width = `${size}px`;
+          ripple.style.height = `${size}px`;
+          ripple.style.left = `${Math.round(x)}px`;
+          ripple.style.top = `${Math.round(y)}px`;
+
+          cleanup(host);
+
+          try {
+            host.appendChild(ripple);
+          } catch (_) {
+            return;
+          }
+
+          const remove = () => {
+            try {
+              ripple.remove();
+            } catch (_) {}
+          };
+
+          try {
+            ripple.addEventListener("animationend", remove, { once: true });
+          } catch (_) {}
+          window.setTimeout(remove, 900);
+        },
+        { capture: true, passive: true }
+      );
+    }
+  };
+
   const setGuideReadingMode = (on) => {
     document.body.classList.toggle("reading-mode", on);
     storage.set(STORAGE_KEYS.guideReadingMode, on ? "1" : "0");
@@ -9795,6 +9963,7 @@
       initHeaderQuickLinks,
       initNavigation,
       initSoftNavigation,
+      initMicroInteractions,
       initLinkPrefetch,
       initBackToTop,
       initCopyLinkButtons,

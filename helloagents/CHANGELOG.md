@@ -20,6 +20,14 @@
 - README：补齐 CI/CodeQL 状态徽章，并更新质量门禁清单（对齐 `npm run check:all`）
 - HTML（CLS）：对 `images/placeholders/*` 的 `<img>` 强制要求 `width/height`，并补齐 `starlight-miracle.html` 占位图尺寸（降低布局抖动）
 
+## [20260113-1] - 2026-01-13
+
+### 变更
+- 视觉系统：EVO-VIS v4 “Pixel UI” 末尾覆盖（中性色收敛、阴影/边界层级更精准）
+- 微交互：新增 `initMicroInteractions`（Spotlight hover 追光 + Click Ripple），并接入全站启动流程（尊重 Reduced Motion/Transparency）
+- 文档：重制双语 `README.md`，同步“视觉与动效”与版本/缓存穿透约定
+- 版本号 bump 至 `20260113-1`（全站 `?v=` 与 `data.js.version` 同步）
+
 ## [20260112-3] - 2026-01-12
 
 ### 新增

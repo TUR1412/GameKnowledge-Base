@@ -8782,3 +8782,296 @@ h3,
     content-visibility: auto;
     contain-intrinsic-size: 300px 240px;
 }
+
+/* ==========================================================================
+   V20260113 “Pixel UI” · EVO-VIS v4（Apple / Vercel inspired）
+   目标：在不改动业务逻辑的前提下，收敛视觉系统、提升层级感与微交互手感：
+   - 更克制的中性色 + 更精准的阴影/边界（Vercel-like）
+   - 统一交互面（按钮/卡片/导航）悬停/按下/聚焦反馈
+   - 物理直觉：hover 轻抬升、active 轻压、点击 ripple（与 scripts.js 配合）
+   - 60FPS 优先：只动画 transform/opacity，避免大面积 layout 抖动
+   ========================================================================== */
+
+:root {
+    /* 兼容旧变量：用 token 驱动整体风格，而非散落 rgba(...) */
+    --primary-color: #6d28d9;
+    --primary-dark: #5b21b6;
+    --primary-light: rgba(109, 40, 217, 0.14);
+
+    --secondary-color: #06b6d4;
+    --secondary-dark: #0891b2;
+    --secondary-light: rgba(6, 182, 212, 0.14);
+
+    --accent-color: #ec4899;
+
+    /* 版式与圆角：更接近 Apple / Vercel 的“干净利落” */
+    --border-radius-sm: 10px;
+    --border-radius: 14px;
+    --border-radius-lg: 18px;
+    --border-radius-xl: 22px;
+
+    /* 页面背景：中性基底 + 极轻 aurora（避免“彩色污染内容”） */
+    --page-bg:
+        radial-gradient(900px 520px at 12% 10%, rgba(109, 40, 217, 0.10), transparent 55%),
+        radial-gradient(760px 520px at 88% 12%, rgba(6, 182, 212, 0.08), transparent 60%),
+        radial-gradient(820px 640px at 36% 92%, rgba(236, 72, 153, 0.06), transparent 62%),
+        #f6f7fb;
+
+    --overlay-bg: rgba(255, 255, 255, 0.62);
+
+    /* Surface：更明确的“实体边界”，让玻璃更像玻璃 */
+    --surface: rgba(255, 255, 255, 0.70);
+    --surface-strong: rgba(255, 255, 255, 0.88);
+    --surface-border: rgba(15, 23, 42, 0.10);
+
+    --header-bg: rgba(255, 255, 255, 0.68);
+    --header-bg-scrolled: rgba(255, 255, 255, 0.82);
+    --header-border: rgba(15, 23, 42, 0.10);
+
+    /* Glass：更顺滑、更接近真实材质 */
+    --glass-blur: 22px;
+    --glass-saturation: 1.22;
+    --glass-brightness: 1.06;
+
+    /* Focus：更清晰、可回归的交互焦点 */
+    --focus-ring:
+        0 0 0 4px rgba(109, 40, 217, 0.22),
+        0 0 0 1px rgba(109, 40, 217, 0.34);
+
+    /* Aurora 边框：收敛饱和度，保持“高级但不吵” */
+    --grad-a: rgba(109, 40, 217, 0.58);
+    --grad-b: rgba(6, 182, 212, 0.46);
+    --grad-c: rgba(236, 72, 153, 0.38);
+    --border-grad: linear-gradient(135deg, var(--grad-a), var(--grad-b), var(--grad-c));
+
+    /* Micro-interaction tokens */
+    --fx-spot-1: rgba(109, 40, 217, 0.16);
+    --fx-spot-2: rgba(6, 182, 212, 0.12);
+    --fx-ripple: rgba(255, 255, 255, 0.45);
+}
+
+:root[data-theme="dark"] {
+    --primary-light: rgba(109, 40, 217, 0.20);
+    --secondary-light: rgba(6, 182, 212, 0.18);
+
+    --page-bg:
+        radial-gradient(920px 560px at 12% 8%, rgba(124, 58, 237, 0.18), transparent 56%),
+        radial-gradient(780px 520px at 88% 10%, rgba(6, 182, 212, 0.12), transparent 62%),
+        radial-gradient(920px 720px at 36% 92%, rgba(236, 72, 153, 0.10), transparent 66%),
+        #05060a;
+
+    --overlay-bg: rgba(5, 6, 10, 0.64);
+
+    --surface: rgba(17, 20, 34, 0.64);
+    --surface-strong: rgba(17, 20, 34, 0.84);
+    --surface-border: rgba(255, 255, 255, 0.12);
+
+    --header-bg: rgba(17, 20, 34, 0.52);
+    --header-bg-scrolled: rgba(17, 20, 34, 0.72);
+    --header-border: rgba(255, 255, 255, 0.12);
+
+    --glass-brightness: 1.02;
+
+    --focus-ring:
+        0 0 0 4px rgba(6, 182, 212, 0.22),
+        0 0 0 1px rgba(6, 182, 212, 0.30);
+
+    --grad-a: rgba(124, 58, 237, 0.58);
+    --grad-b: rgba(6, 182, 212, 0.46);
+    --grad-c: rgba(236, 72, 153, 0.38);
+
+    --fx-spot-1: rgba(124, 58, 237, 0.20);
+    --fx-spot-2: rgba(6, 182, 212, 0.14);
+    --fx-ripple: rgba(255, 255, 255, 0.28);
+}
+
+:root[data-contrast="high"] {
+    --fx-spot-1: transparent;
+    --fx-spot-2: transparent;
+}
+
+/* 更克制的容器宽度（提升“信息密度”与阅读节奏） */
+.container {
+    max-width: 1180px;
+}
+
+/* Header：细边界 + 轻阴影，让层级更明确 */
+header {
+    box-shadow: none;
+}
+
+header.scrolled {
+    box-shadow: var(--elev-3);
+}
+
+header nav a {
+    border-radius: 999px;
+    padding: 10px 12px;
+    transition:
+        background-color var(--dur-2) var(--ease-out),
+        color var(--dur-2) var(--ease-out),
+        transform var(--dur-2) var(--ease-out);
+}
+
+@media (hover: hover) {
+    header nav a:hover {
+        background: var(--surface);
+        transform: translateY(-1px);
+    }
+}
+
+header nav a.active,
+header nav a[aria-current="page"] {
+    background: var(--surface-strong);
+    border: 1px solid var(--surface-border);
+}
+
+/* Buttons：去掉过重的“彩色阴影”，改为更精致的层级 */
+.btn,
+.btn-small {
+    border-radius: var(--border-radius);
+    border: 1px solid rgba(109, 40, 217, 0.34);
+    background: linear-gradient(180deg, rgba(109, 40, 217, 0.98), rgba(91, 33, 182, 0.98));
+    box-shadow: 0 18px 45px rgba(109, 40, 217, 0.14);
+}
+
+[data-theme="dark"] .btn,
+[data-theme="dark"] .btn-small {
+    border-color: rgba(124, 58, 237, 0.34);
+    box-shadow: 0 22px 56px rgba(0, 0, 0, 0.55);
+}
+
+.btn-secondary {
+    border-color: rgba(6, 182, 212, 0.34);
+    background: linear-gradient(180deg, rgba(6, 182, 212, 0.96), rgba(8, 145, 178, 0.96));
+    box-shadow: 0 18px 45px rgba(6, 182, 212, 0.12);
+}
+
+.btn-secondary::before {
+    opacity: 0;
+}
+
+.btn-outline {
+    border-color: rgba(109, 40, 217, 0.38);
+}
+
+/* Icon Button：为 ripple 提供容器（脚本注入 .fx-ripple） */
+.icon-button,
+.chip,
+.tag {
+    position: relative;
+    overflow: hidden;
+}
+
+/* Card surfaces：统一 hover lift + spotlight */
+.game-card,
+.discussion-card,
+.article-card,
+.bento-card,
+.mini-card,
+.topic-card,
+.update-card,
+.reply-card,
+.recent-card {
+    position: relative;
+    overflow: hidden;
+    border-radius: var(--border-radius-lg);
+    transform: translateZ(0);
+    transition:
+        transform var(--dur-2) var(--ease-out),
+        box-shadow var(--dur-3) var(--ease-out),
+        border-color var(--dur-2) var(--ease-out);
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .game-card:hover,
+    .discussion-card:hover,
+    .article-card:hover,
+    .bento-card:hover,
+    .mini-card:hover,
+    .topic-card:hover,
+    .update-card:hover,
+    .reply-card:hover,
+    .recent-card:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--elev-7);
+    }
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .game-card::after,
+    .discussion-card::after,
+    .article-card::after,
+    .bento-card::after,
+    .mini-card::after,
+    .topic-card::after,
+    .update-card::after,
+    .reply-card::after,
+    .recent-card::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        opacity: 0;
+        background:
+            radial-gradient(520px 320px at var(--fx-x, 50%) var(--fx-y, 12%), var(--fx-spot-1), transparent 62%),
+            radial-gradient(520px 360px at var(--fx-x, 50%) var(--fx-y, 12%), var(--fx-spot-2), transparent 70%);
+        transition: opacity var(--dur-2) var(--ease-out);
+    }
+
+    .game-card:hover::after,
+    .discussion-card:hover::after,
+    .article-card:hover::after,
+    .bento-card:hover::after,
+    .mini-card:hover::after,
+    .topic-card:hover::after,
+    .update-card:hover::after,
+    .reply-card:hover::after,
+    .recent-card:hover::after {
+        opacity: 1;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .game-card,
+    .discussion-card,
+    .article-card,
+    .bento-card,
+    .mini-card,
+    .topic-card,
+    .update-card,
+    .reply-card,
+    .recent-card {
+        transition: none;
+    }
+
+    .game-card::after,
+    .discussion-card::after,
+    .article-card::after,
+    .bento-card::after,
+    .mini-card::after,
+    .topic-card::after,
+    .update-card::after,
+    .reply-card::after,
+    .recent-card::after {
+        display: none;
+    }
+}
+
+/* Click ripple：由 scripts.js 注入 span.fx-ripple */
+.fx-ripple {
+    position: absolute;
+    border-radius: 999px;
+    pointer-events: none;
+    background: radial-gradient(circle, var(--fx-ripple) 0%, transparent 70%);
+    opacity: 0.9;
+    transform: scale(0);
+    animation: fx-ripple 560ms var(--ease-out) forwards;
+}
+
+@keyframes fx-ripple {
+    to {
+        opacity: 0;
+        transform: scale(1);
+    }
+}
