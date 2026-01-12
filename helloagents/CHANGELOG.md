@@ -20,6 +20,14 @@
 - README：补齐 CI/CodeQL 状态徽章，并更新质量门禁清单（对齐 `npm run check:all`）
 - HTML（CLS）：对 `images/placeholders/*` 的 `<img>` 强制要求 `width/height`，并补齐 `starlight-miracle.html` 占位图尺寸（降低布局抖动）
 
+## [20260113-6] - 2026-01-13
+
+### 变更
+- Pixel UI v4.3：筛选/开关/清单等“选择型控件”精修（filter-option / toggle-pill / checklist-item），交互层级更清晰
+- Checkbox 视觉：筛选/开关/清单复用自绘 checkbox（`forced-colors` 自动退回原生控件，保证可访问性）
+- 微交互覆盖：Micro-interactions 扩展到 `filter-option/toggle-pill/checklist-item`（ripple/press；保持 UI/逻辑分离）
+- 版本号 bump 至 `20260113-6`（全站 `?v=` 与 `data.js.version` 同步）
+
 ## [20260113-5] - 2026-01-13
 
 ### 变更

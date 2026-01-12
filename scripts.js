@@ -2383,7 +2383,7 @@
     }
 
     const INTERACT_SELECTOR =
-      ".btn, .btn-small, .icon-button, .chip, .tag, .save-pill, .filter-chip, .view-btn, .cmdk-item, .search-btn";    
+      ".btn, .btn-small, .icon-button, .chip, .tag, .save-pill, .filter-chip, .view-btn, .cmdk-item, .search-btn, .filter-option, .toggle-pill, .checklist-item";    
     const MAGNETIC_SELECTOR =
       ".btn, .btn-small, .icon-button, .chip, .tag, .save-pill, .filter-chip, .view-btn, .search-btn";    
 

@@ -2,6 +2,14 @@
 
 本项目以“静态站点稳定交付”为目标：每次大改都会同步更新资源版本号（`?v=`），并通过 CI 做断链/资源/语法校验。
 
+## 2026-01-13 (20260113-6)
+
+### Changed
+- Pixel UI v4.3：筛选/开关/清单等“选择型控件”精修（filter-option / toggle-pill / checklist-item），交互层级更清晰
+- Checkbox 视觉：筛选/开关/清单复用自绘 checkbox（强制高对比 `forced-colors` 自动退回原生控件，保证可访问性）
+- 微交互覆盖：Micro-interactions 扩展到 `filter-option / toggle-pill / checklist-item`（ripple/press，保持 UI/逻辑分离）
+- 版本号 bump 至 `20260113-6`（同步更新全站 `?v=` 与 `data.js.version`）
+
 ## 2026-01-13 (20260113-5)
 
 ### Changed
