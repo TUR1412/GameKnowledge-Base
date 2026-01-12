@@ -2383,7 +2383,7 @@
     }
 
     const INTERACT_SELECTOR =
-      ".btn, .btn-small, .icon-button, .chip, .tag, .save-pill, .filter-chip, .view-btn, .cmdk-item, .search-btn, .filter-option, .toggle-pill, .checklist-item";    
+      ".btn, .btn-small, .icon-button, .chip, .tag, .save-pill, .filter-chip, .view-btn, .cmdk-item, .search-btn, .select-pill, .filter-option, .toggle-pill, .checklist-item";    
     const MAGNETIC_SELECTOR =
       ".btn, .btn-small, .icon-button, .chip, .tag, .save-pill, .filter-chip, .view-btn, .search-btn";    
 
@@ -2456,6 +2456,12 @@
           try {
             host.classList.add("is-pressed");
             pressed.add(host);
+          } catch (_) {}
+
+          // <select> 不能安全注入子元素（option/optgroup 语义约束），但仍保留 press 反馈
+          // 视觉由 CSS 接管（UI 与逻辑分离）
+          try {
+            if (String(host.tagName || "").toUpperCase() === "SELECT") return;
           } catch (_) {}
 
           let rect = null;

@@ -5638,7 +5638,6 @@ body.diag-open {
     to {
         opacity: 0;
         transform: translateY(-4px) scale(0.995);
-        filter: blur(6px) saturate(0.96);
     }
 }
 
@@ -5646,12 +5645,10 @@ body.diag-open {
     from {
         opacity: 0;
         transform: translateY(8px) scale(1.01);
-        filter: blur(10px) saturate(1.04);
     }
     to {
         opacity: 1;
         transform: translateY(0) scale(1);
-        filter: blur(0) saturate(1);
     }
 }
 
@@ -5705,7 +5702,6 @@ html[data-vt-kind="topic"] #topic-title {
     to {
         opacity: 0;
         transform: translateY(-10px) scale(0.985);
-        filter: blur(9px) saturate(0.92);
     }
 }
 
@@ -5713,12 +5709,10 @@ html[data-vt-kind="topic"] #topic-title {
     from {
         opacity: 0;
         transform: translateY(12px) scale(1.02);
-        filter: blur(14px) saturate(1.06);
     }
     to {
         opacity: 1;
         transform: translateY(0) scale(1);
-        filter: blur(0) saturate(1);
     }
 }
 
@@ -5741,7 +5735,6 @@ html[data-vt-kind="topic"] #topic-title {
     to {
         opacity: 0;
         transform: translateY(-6px) scale(0.92);
-        filter: blur(11px) brightness(0.92);
     }
 }
 
@@ -5749,12 +5742,10 @@ html[data-vt-kind="topic"] #topic-title {
     from {
         opacity: 0;
         transform: translateY(10px) scale(1.06);
-        filter: blur(16px) brightness(1.08);
     }
     to {
         opacity: 1;
         transform: translateY(0) scale(1);
-        filter: blur(0) brightness(1);
     }
 }
 
@@ -5772,7 +5763,6 @@ html[data-vt-kind="topic"] #topic-title {
     to {
         opacity: 0;
         transform: translateY(-6px);
-        filter: blur(6px);
     }
 }
 
@@ -5780,12 +5770,10 @@ html[data-vt-kind="topic"] #topic-title {
     from {
         opacity: 0;
         transform: translateY(10px);
-        filter: blur(10px);
     }
     to {
         opacity: 1;
         transform: translateY(0);
-        filter: blur(0);
     }
 }
 
@@ -5822,7 +5810,6 @@ body::after {
 
 body.is-navigating::after {
     opacity: 1;
-    backdrop-filter: blur(10px);
 }
 
 body.is-navigating {
@@ -8969,6 +8956,7 @@ header nav a[aria-current="page"] {
 .btn-small,
 .icon-button,
 .chip,
+.select-pill,
 .tag {
     --fx-tx: 0px;
     --fx-ty: 0px;
@@ -9010,6 +8998,17 @@ header nav a[aria-current="page"] {
 
     .chip:hover,
     .tag:hover {
+        --fx-lift: -1px;
+        transform:
+            translate3d(
+                calc(var(--fx-tx) + 0px),
+                calc(var(--fx-ty) + var(--fx-lift)),
+                0
+            )
+            scale(var(--fx-scale));
+    }
+
+    .select-pill:hover {
         --fx-lift: -1px;
         transform:
             translate3d(
@@ -9064,11 +9063,25 @@ header nav a[aria-current="page"] {
         scale(var(--fx-scale));
 }
 
+.select-pill:active,
+.select-pill.is-pressed {
+    --fx-lift: 0px;
+    --fx-scale: 0.99;
+    transform:
+        translate3d(
+            calc(var(--fx-tx) + 0px),
+            calc(var(--fx-ty) + var(--fx-lift)),
+            0
+        )
+        scale(var(--fx-scale));
+}
+
 @media (prefers-reduced-motion: reduce) {
     .btn,
     .btn-small,
     .icon-button,
     .chip,
+    .select-pill,
     .tag {
         --fx-tx: 0px;
         --fx-ty: 0px;
@@ -9478,13 +9491,21 @@ h3,
 }
 
 /* Input/Select pills：focus 手感对齐全站 focus-ring token */
-.input-pill,
-.select-pill {
+.input-pill {
     box-shadow: var(--elev-1);
     transition:
         box-shadow var(--dur-2) var(--ease-out),
         border-color var(--dur-2) var(--ease-out),
         background-color var(--dur-2) var(--ease-out);
+}
+
+.select-pill {
+    box-shadow: var(--elev-1);
+    transition:
+        box-shadow var(--dur-2) var(--ease-out),
+        border-color var(--dur-2) var(--ease-out),
+        background-color var(--dur-2) var(--ease-out),
+        transform var(--dur-2) var(--ease-out);
 }
 
 .input-pill:focus-visible,
