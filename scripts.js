@@ -5947,32 +5947,51 @@
         return;
       }
 
-      const targets = cards.filter((c) => c && !c.hidden);
-      if (targets.length === 0) {
-        mutate?.();
-        return;
-      }
+      const beforeTargets = cards.filter((c) => c && !c.hidden);
 
       const first = new Map();
-      targets.forEach((el) => {
+      beforeTargets.forEach((el) => {
         const r = rectOf(el);
-        if (r) first.set(el, r);
+        if (!r) return;
+        if (r.width === 0 && r.height === 0) return;
+        first.set(el, r);
       });
 
       mutate?.();
 
+      const afterTargets = cards.filter((c) => c && !c.hidden);
+      if (afterTargets.length === 0) return;
+
       const stagger = motionStagger(0.008, { from: "center" });
-      targets.forEach((el, i) => {
-        const a = first.get(el);
+      afterTargets.forEach((el, i) => {
         const b = rectOf(el);
-        if (!a || !b) return;
+        if (!b) return;
+        if (b.width === 0 && b.height === 0) return;
+
+        cancelAnim(flipAnimations.get(el));
+        const delay = stagger ? stagger(i, afterTargets.length) : 0;
+
+        const a = first.get(el);
+        if (!a) {
+          // 新出现的元素：仅做轻量入场（避免“筛选结果瞬显”的机械感）
+          const anim = motionAnimate(
+            el,
+            {
+              opacity: [0, 1],
+              y: [10, 0],
+              scale: [0.98, 1],
+              filter: ["blur(10px)", "blur(0px)"],
+            },
+            { duration: Math.min(0.24, duration), easing, delay }
+          );
+          if (anim) flipAnimations.set(el, anim);
+          return;
+        }
 
         const dx = a.left - b.left;
         const dy = a.top - b.top;
         if (Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5) return;
 
-        cancelAnim(flipAnimations.get(el));
-        const delay = stagger ? stagger(i, targets.length) : 0;
         const anim = motionAnimate(
           el,
           {
@@ -6409,44 +6428,50 @@
         return "<6";
       };
 
-      cards.forEach((card) => {
-        const title = ($("h3", card)?.textContent || "").toLowerCase();
-        const desc = ($("p", card)?.textContent || "").toLowerCase();
-        const blob = `${title} ${desc}`;
+      const apply = () => {
+        shown = 0;
+        cards.forEach((card) => {
+          const title = ($("h3", card)?.textContent || "").toLowerCase();
+          const desc = ($("p", card)?.textContent || "").toLowerCase();
+          const blob = `${title} ${desc}`;
 
-        const genre = card.dataset.genre || "";
-        const gid = card.dataset.id || "";
-        const platformTokens = (card.dataset.platform || "").split(/\s+/).filter(Boolean);
-        const year = card.dataset.year || "";
-        const rating = card.dataset.rating || "0";
+          const genre = card.dataset.genre || "";
+          const gid = card.dataset.id || "";
+          const platformTokens = (card.dataset.platform || "").split(/\s+/).filter(Boolean);
+          const year = card.dataset.year || "";
+          const rating = card.dataset.rating || "0";
 
-        const okQuery = !q || blob.includes(q);
-        const okGenre = s.genres.length === 0 || s.genres.includes(genre);
-        const okPlatform =
-          s.platforms.length === 0 || platformTokens.some((p) => s.platforms.includes(p));
-        const okYear = matchesYear(year, s.years);
-        const okRating = matchesRating(rating, s.ratings);
+          const okQuery = !q || blob.includes(q);
+          const okGenre = s.genres.length === 0 || s.genres.includes(genre);
+          const okPlatform =
+            s.platforms.length === 0 || platformTokens.some((p) => s.platforms.includes(p));
+          const okYear = matchesYear(year, s.years);
+          const okRating = matchesRating(rating, s.ratings);
 
-        const okSaved = !s.savedOnly || (gid && savedSet.has(gid));
-        card.dataset.saved = gid && savedSet.has(gid) ? "true" : "false";
+          const okSaved = !s.savedOnly || (gid && savedSet.has(gid));
+          card.dataset.saved = gid && savedSet.has(gid) ? "true" : "false";
 
-        const libraryStatus = gid ? getGameLibraryStatus(gid, libraryMap) : "none";
-        card.dataset.library = libraryStatus;
-        const okLibrary = s.library.length === 0 || s.library.includes(libraryStatus);
+          const libraryStatus = gid ? getGameLibraryStatus(gid, libraryMap) : "none";
+          card.dataset.library = libraryStatus;
+          const okLibrary = s.library.length === 0 || s.library.includes(libraryStatus);
 
-        const visible = okQuery && okGenre && okPlatform && okYear && okRating && okLibrary && okSaved;
-        card.hidden = !visible;
-        if (!visible) return;
-        shown += 1;
+          const visible = okQuery && okGenre && okPlatform && okYear && okRating && okLibrary && okSaved;
+          card.hidden = !visible;
+          if (!visible) return;
+          shown += 1;
 
-        bump(counts.genre, genre);
-        platformTokens.forEach((p) => bump(counts.platform, p));
-        const y = Number(year);
-        bump(counts.year, Number.isFinite(y) && y <= 2019 ? "older" : String(year || ""));
-        bump(counts.rating, ratingBucket(rating));
-        bump(counts.library, libraryStatus);
-        if (gid && savedSet.has(gid)) counts.saved += 1;
-      });
+          bump(counts.genre, genre);
+          platformTokens.forEach((p) => bump(counts.platform, p));
+          const y = Number(year);
+          bump(counts.year, Number.isFinite(y) && y <= 2019 ? "older" : String(year || ""));
+          bump(counts.rating, ratingBucket(rating));
+          bump(counts.library, libraryStatus);
+          if (gid && savedSet.has(gid)) counts.saved += 1;
+        });
+      };
+
+      if (didInit && !prefersReducedMotion()) flipLayout(apply, { duration: 0.28 });
+      else apply();
 
       if (emptyEl) emptyEl.hidden = shown !== 0;
       if (countEl) countEl.textContent = `共 ${shown} 个结果`;
