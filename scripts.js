@@ -2381,7 +2381,9 @@
 
   const initSmallGameCardLinks = () => {
     const cards = Array.from(
-      document.querySelectorAll(".small-game-card, .guide-article, .topic")
+      document.querySelectorAll(
+        ".small-game-card, .guide-article, .topic, .game-card"
+      )
     );
     if (cards.length === 0) return;
 
@@ -2394,7 +2396,8 @@
       const tag = String(card.tagName || "").toUpperCase();
       if (tag === "A") return;
 
-      const link = card.querySelector?.("a[href]") || null;
+      const link =
+        card.querySelector?.("a.btn[href], a.btn-small[href], a[href]") || null;
       if (!link) return;
 
       const href = (() => {
@@ -2410,11 +2413,15 @@
         card.classList.add("is-link-card");
         card.setAttribute("role", "link");
         card.setAttribute("tabindex", "0");
-        const title = card.querySelector?.("h4, h3")?.textContent?.trim?.() || "";
+        const title =
+          card
+            .querySelector?.("h4, h3, .game-card-title")
+            ?.textContent?.trim?.() || "";
         const action = (() => {
           try {
             if (card.matches?.(".topic")) return "加入讨论";
             if (card.matches?.(".guide-article")) return "阅读全文";
+            if (card.matches?.(".game-card")) return "查看攻略";
             return "打开攻略";
           } catch (_) {
             return "打开";
@@ -2533,7 +2540,7 @@
     }
 
     const INTERACT_SELECTOR =
-      ".btn, .btn-small, .icon-button, .chip, .tag, .mobile-nav-toggle, header nav a, .skip-link, .docs-nav-link, .back-to-top, .compare-close, .diag-close, .save-pill, .filter-chip, .view-btn, .cmdk-item, .search-btn, .select-pill, .filter-option, .toggle-pill, .checklist-item, .toast, .small-game-card, .guide-article, .topic, .social-icon";
+      ".btn, .btn-small, .icon-button, .chip, .tag, .mobile-nav-toggle, header nav a, .skip-link, .docs-nav-link, .back-to-top, .compare-close, .diag-close, .save-pill, .filter-chip, .view-btn, .cmdk-item, .search-btn, .select-pill, .filter-option, .toggle-pill, .checklist-item, .toast, .small-game-card, .guide-article, .topic, .game-card.is-link-card, .social-icon";
     const MAGNETIC_SELECTOR =
       ".btn, .btn-small, .icon-button, .chip, .tag, .mobile-nav-toggle, .back-to-top, .save-pill, .filter-chip, .view-btn, .search-btn";
 

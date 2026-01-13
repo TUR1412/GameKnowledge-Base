@@ -10145,12 +10145,14 @@ h3,
 }
 
 .guide-article.is-link-card,
-.topic.is-link-card {
+.topic.is-link-card,
+.game-card.is-link-card {
     cursor: pointer;
 }
 
 .guide-article.is-pressed,
-.topic.is-pressed {
+.topic.is-pressed,
+.game-card.is-link-card.is-pressed {
     transform: translateY(-1px) scale(0.985);
     box-shadow: var(--elev-2);
 }
