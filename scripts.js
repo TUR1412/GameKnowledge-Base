@@ -5924,6 +5924,9 @@
     // - 目标：网格/列表切换与排序时更“物理直觉”，并保持 60FPS 合成优先
     // - 约束：尊重 prefers-reduced-motion；避免干扰卡片 hover/press 的基础 transform
     const flipAnimations = new WeakMap();
+    const exitAnimations = new WeakMap();
+    const exitInline = new WeakMap();
+    const isExiting = (el) => el?.classList?.contains("is-filter-exiting");
     const cancelAnim = (anim) => {
       if (!anim) return;
       try {
@@ -5941,25 +5944,79 @@
         return null;
       }
     };
+    const stashExitInline = (el) => {
+      if (!el || exitInline.has(el)) return;
+      try {
+        exitInline.set(el, {
+          left: el.style.left || "",
+          top: el.style.top || "",
+          width: el.style.width || "",
+          height: el.style.height || "",
+          margin: el.style.margin || "",
+          transformOrigin: el.style.transformOrigin || "",
+        });
+      } catch (_) {}
+    };
+    const restoreExitInline = (el) => {
+      if (!el) return;
+      const stash = exitInline.get(el) || null;
+      if (stash) {
+        try {
+          el.style.left = stash.left;
+          el.style.top = stash.top;
+          el.style.width = stash.width;
+          el.style.height = stash.height;
+          el.style.margin = stash.margin;
+          el.style.transformOrigin = stash.transformOrigin;
+        } catch (_) {}
+        exitInline.delete(el);
+        return;
+      }
+      try {
+        el.style.left = "";
+        el.style.top = "";
+        el.style.width = "";
+        el.style.height = "";
+        el.style.margin = "";
+        el.style.transformOrigin = "";
+      } catch (_) {}
+    };
+    const finalizeExits = () => {
+      cards.forEach((el) => {
+        if (!isExiting(el)) return;
+        cancelAnim(exitAnimations.get(el));
+        exitAnimations.delete(el);
+        try {
+          el.hidden = true;
+          el.classList.remove("is-filter-exiting");
+          el.removeAttribute("aria-hidden");
+          try {
+            el.inert = false;
+          } catch (_) {}
+        } catch (_) {}
+        restoreExitInline(el);
+      });
+    };
     const flipLayout = (mutate, { duration = 0.28, easing = MOTION.easeOut } = {}) => {
       if (prefersReducedMotion()) {
         mutate?.();
         return;
       }
 
-      const beforeTargets = cards.filter((c) => c && !c.hidden);
+      const inFlow = (c) => c && !c.hidden && !isExiting(c);
+      const beforeTargets = cards.filter(inFlow);
 
-      const first = new Map();
+      const firstRects = new Map();
       beforeTargets.forEach((el) => {
         const r = rectOf(el);
         if (!r) return;
         if (r.width === 0 && r.height === 0) return;
-        first.set(el, r);
+        firstRects.set(el, r);
       });
 
-      mutate?.();
+      mutate?.({ firstRects });
 
-      const afterTargets = cards.filter((c) => c && !c.hidden);
+      const afterTargets = cards.filter(inFlow);
       if (afterTargets.length === 0) return;
 
       const stagger = motionStagger(0.008, { from: "center" });
@@ -5971,7 +6028,7 @@
         cancelAnim(flipAnimations.get(el));
         const delay = stagger ? stagger(i, afterTargets.length) : 0;
 
-        const a = first.get(el);
+        const a = firstRects.get(el);
         if (!a) {
           // 新出现的元素：仅做轻量入场（避免“筛选结果瞬显”的机械感）
           const anim = motionAnimate(
@@ -6398,10 +6455,12 @@
     };
 
     const filter = (s) => {
+      finalizeExits();
       const q = (s.query || "").toLowerCase();
       const savedSet = new Set(readStringList(STORAGE_KEYS.savedGames));
       const libraryMap = readGameLibraryMap();
       let shown = 0;
+      const nextVisible = new Map();
 
       const counts = {
         genre: new Map(),
@@ -6428,8 +6487,9 @@
         return "<6";
       };
 
-      const apply = () => {
+      const compute = () => {
         shown = 0;
+        nextVisible.clear();
         cards.forEach((card) => {
           const title = ($("h3", card)?.textContent || "").toLowerCase();
           const desc = ($("p", card)?.textContent || "").toLowerCase();
@@ -6456,7 +6516,7 @@
           const okLibrary = s.library.length === 0 || s.library.includes(libraryStatus);
 
           const visible = okQuery && okGenre && okPlatform && okYear && okRating && okLibrary && okSaved;
-          card.hidden = !visible;
+          nextVisible.set(card, visible);
           if (!visible) return;
           shown += 1;
 
@@ -6470,8 +6530,112 @@
         });
       };
 
-      if (didInit && !prefersReducedMotion()) flipLayout(apply, { duration: 0.28 });
-      else apply();
+      compute();
+
+      const applyVisibility = ({ firstRects } = {}) => {
+        const applyImmediate = () => {
+          cards.forEach((card) => {
+            cancelAnim(exitAnimations.get(card));
+            exitAnimations.delete(card);
+            try {
+              card.classList.remove("is-filter-exiting");
+              card.removeAttribute("aria-hidden");
+              try {
+                card.inert = false;
+              } catch (_) {}
+            } catch (_) {}
+            restoreExitInline(card);
+            card.hidden = !nextVisible.get(card);
+          });
+        };
+
+        if (!firstRects) {
+          applyImmediate();
+          return;
+        }
+
+        const listRect = rectOf(listEl);
+        if (!listRect) {
+          applyImmediate();
+          return;
+        }
+
+        // Pass 1: exiting cards become absolute overlays (removed from grid flow) + animate out
+        cards.forEach((card) => {
+          const shouldShow = nextVisible.get(card);
+          if (shouldShow) return;
+          if (card.hidden) return;
+
+          const r = firstRects.get(card) || rectOf(card);
+          if (!r) {
+            card.hidden = true;
+            return;
+          }
+
+          stashExitInline(card);
+          try {
+            card.classList.add("is-filter-exiting");
+            card.setAttribute("aria-hidden", "true");
+            try {
+              card.inert = true;
+            } catch (_) {}
+          } catch (_) {}
+
+          card.style.left = `${Math.round(r.left - listRect.left)}px`;
+          card.style.top = `${Math.round(r.top - listRect.top)}px`;
+          card.style.width = `${Math.round(r.width)}px`;
+          card.style.height = `${Math.round(r.height)}px`;
+          card.style.margin = "0";
+          card.style.transformOrigin = "center";
+
+          cancelAnim(exitAnimations.get(card));
+          const anim = motionAnimate(
+            card,
+            {
+              opacity: [1, 0],
+              y: [0, -8],
+              scale: [1, 0.985],
+              filter: ["blur(0px)", "blur(10px)"],
+            },
+            { duration: MOTION.durFast, easing: MOTION.easeIn }
+          );
+          if (anim) exitAnimations.set(card, anim);
+          motionFinished(anim).then(() => {
+            if (!isExiting(card)) return;
+            try {
+              card.hidden = true;
+              card.classList.remove("is-filter-exiting");
+              card.removeAttribute("aria-hidden");
+              try {
+                card.inert = false;
+              } catch (_) {}
+            } catch (_) {}
+            restoreExitInline(card);
+            exitAnimations.delete(card);
+          });
+        });
+
+        // Pass 2: show entering cards (so they participate in final layout) and clear any stale exit flags
+        cards.forEach((card) => {
+          const shouldShow = nextVisible.get(card);
+          if (!shouldShow) return;
+
+          cancelAnim(exitAnimations.get(card));
+          exitAnimations.delete(card);
+          try {
+            card.classList.remove("is-filter-exiting");
+            card.removeAttribute("aria-hidden");
+            try {
+              card.inert = false;
+            } catch (_) {}
+          } catch (_) {}
+          restoreExitInline(card);
+          card.hidden = false;
+        });
+      };
+
+      if (didInit && !prefersReducedMotion()) flipLayout(applyVisibility, { duration: 0.28 });
+      else applyVisibility();
 
       if (emptyEl) emptyEl.hidden = shown !== 0;
       if (countEl) countEl.textContent = `共 ${shown} 个结果`;

@@ -2185,8 +2185,9 @@ nav {
 }
 
 .games-list {
+    position: relative;
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));        
     gap: 20px;
 }
 
@@ -2205,6 +2206,15 @@ nav {
 .game-card:hover {
     transform: translateY(-5px);
     box-shadow: 0 15px 30px rgba(0, 0, 0, 0.15);
+}
+
+/* All Games: filter exit overlay (removed from grid flow, animated via WAAPI) */
+.game-card.is-filter-exiting {
+    position: absolute;
+    z-index: 5;
+    pointer-events: none;
+    transition: none;
+    will-change: transform, opacity, filter;
 }
 
 .game-card.filtered-out,
