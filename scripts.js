@@ -2379,6 +2379,68 @@
   // 约束：尊重 prefers-reduced-motion / prefers-reduced-transparency / 高对比度
   // -------------------------
 
+  const initSmallGameCardLinks = () => {
+    const cards = Array.from(document.querySelectorAll(".small-game-card"));
+    if (cards.length === 0) return;
+
+    cards.forEach((card) => {
+      if (!card || !(card instanceof Element)) return;
+      try {
+        if (card.dataset.cardLinkified === "true") return;
+      } catch (_) {}
+
+      const tag = String(card.tagName || "").toUpperCase();
+      if (tag === "A") return;
+
+      const link = card.querySelector?.("a[href]") || null;
+      if (!link) return;
+
+      const href = (() => {
+        try {
+          return String(link.getAttribute("href") || "").trim();
+        } catch (_) {
+          return "";
+        }
+      })();
+      if (!href || href.startsWith("#")) return;
+
+      try {
+        card.classList.add("is-link-card");
+        card.setAttribute("role", "link");
+        card.setAttribute("tabindex", "0");
+        const title = card.querySelector?.("h4")?.textContent?.trim?.() || "";
+        if (title) card.setAttribute("aria-label", `${title} · 打开攻略`);
+      } catch (_) {}
+
+      try {
+        card.dataset.cardLinkified = "true";
+      } catch (_) {}
+
+      const navigate = () => {
+        try {
+          window.location.href = href;
+        } catch (_) {}
+      };
+
+      card.addEventListener("click", (e) => {
+        if (!e || e.defaultPrevented) return;
+        const target = e.target;
+        if (target?.closest?.("a, button, input, textarea, select")) return;
+        navigate();
+      });
+
+      card.addEventListener("keydown", (e) => {
+        if (!e || e.defaultPrevented) return;
+        if (e.target !== card) return;
+        if (e.key !== "Enter" && e.key !== " ") return;
+        try {
+          e.preventDefault();
+        } catch (_) {}
+        navigate();
+      });
+    });
+  };
+
   const initMicroInteractions = () => {
     // Spotlight：仅在“hover + fine pointer”环境启用（移动端/触摸屏默认跳过）
     const canSpotlight = () => {
@@ -2460,7 +2522,7 @@
     }
 
     const INTERACT_SELECTOR =
-      ".btn, .btn-small, .icon-button, .chip, .tag, .mobile-nav-toggle, header nav a, .skip-link, .docs-nav-link, .back-to-top, .compare-close, .diag-close, .save-pill, .filter-chip, .view-btn, .cmdk-item, .search-btn, .select-pill, .filter-option, .toggle-pill, .checklist-item, .toast";
+      ".btn, .btn-small, .icon-button, .chip, .tag, .mobile-nav-toggle, header nav a, .skip-link, .docs-nav-link, .back-to-top, .compare-close, .diag-close, .save-pill, .filter-chip, .view-btn, .cmdk-item, .search-btn, .select-pill, .filter-option, .toggle-pill, .checklist-item, .toast, .small-game-card, .social-icon";
     const MAGNETIC_SELECTOR =
       ".btn, .btn-small, .icon-button, .chip, .tag, .mobile-nav-toggle, .back-to-top, .save-pill, .filter-chip, .view-btn, .search-btn";
 
@@ -10301,6 +10363,7 @@
       initNavigation,
       initSoftNavigation,
       initMicroInteractions,
+      initSmallGameCardLinks,
       initLinkPrefetch,
       initBackToTop,
       initCopyLinkButtons,

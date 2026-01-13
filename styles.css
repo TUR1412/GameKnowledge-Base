@@ -10060,3 +10060,69 @@ h3,
         transition: none !important;
     }
 }
+
+/* ==========================================================================   
+   V20260113 “Pixel UI” · EVO-VIS v4.7（Clickable Cards & Micro Interactions）  
+   目标：补齐分类卡片与 Footer Icon 的交互一致性：hover/press/ripple/focus
+   ========================================================================== */
+
+.small-game-card {
+    display: block;
+    position: relative;
+    overflow: hidden;
+    cursor: pointer;
+    background: var(--surface-strong);
+    border: 1px solid var(--surface-border);
+    border-radius: var(--border-radius-lg);
+    box-shadow: var(--elev-3);
+    color: var(--text-primary);
+    transform: translateZ(0);
+    transition:
+        transform var(--dur-2) var(--ease-out),
+        box-shadow var(--dur-3) var(--ease-out),
+        border-color var(--dur-2) var(--ease-out),
+        background-color var(--dur-2) var(--ease-out);
+}
+
+.small-game-card h4 {
+    color: var(--text-primary);
+}
+
+.small-game-card span {
+    color: var(--text-secondary);
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .small-game-card:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--elev-7);
+    }
+}
+
+.small-game-card:focus-visible {
+    outline: none;
+    box-shadow: var(--focus-ring), var(--elev-3);
+}
+
+.small-game-card:active,
+.small-game-card.is-pressed {
+    transform: translateY(-1px) scale(0.985);
+    box-shadow: var(--elev-2);
+}
+
+.social-icon {
+    position: relative;
+    overflow: hidden;
+    transform: translateZ(0);
+    will-change: transform;
+}
+
+.social-icon:focus-visible {
+    outline: none;
+    box-shadow: var(--focus-ring);
+}
+
+.social-icon:active,
+.social-icon.is-pressed {
+    transform: translateY(-1px) scale(0.97);
+}
