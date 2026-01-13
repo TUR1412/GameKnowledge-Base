@@ -8944,6 +8944,7 @@ header nav a[aria-current="page"] {
 
 /* Icon Button：为 ripple 提供容器（脚本注入 .fx-ripple） */
 .icon-button,
+.mobile-nav-toggle,
 .chip,
 .tag {
     position: relative;
@@ -8956,6 +8957,7 @@ header nav a[aria-current="page"] {
 .btn-small,
 .icon-button,
 .chip,
+.mobile-nav-toggle,
 .select-pill,
 .tag {
     --fx-tx: 0px;
@@ -8986,6 +8988,17 @@ header nav a[aria-current="page"] {
     }
 
     .icon-button:hover {
+        --fx-lift: -2px;
+        transform:
+            translate3d(
+                calc(var(--fx-tx) + 0px),
+                calc(var(--fx-ty) + var(--fx-lift)),
+                0
+            )
+            scale(var(--fx-scale));
+    }
+
+    .mobile-nav-toggle:hover {
         --fx-lift: -2px;
         transform:
             translate3d(
@@ -9036,7 +9049,9 @@ header nav a[aria-current="page"] {
 }
 
 .icon-button:active,
-.icon-button.is-pressed {
+.icon-button.is-pressed,
+.mobile-nav-toggle:active,
+.mobile-nav-toggle.is-pressed {
     --fx-lift: 0px;
     --fx-scale: 0.98;
     transform:
@@ -9080,6 +9095,7 @@ header nav a[aria-current="page"] {
     .btn,
     .btn-small,
     .icon-button,
+    .mobile-nav-toggle,
     .chip,
     .select-pill,
     .tag {
@@ -9126,6 +9142,20 @@ header nav a[aria-current="page"] {
     }
 }
 
+.game-card:focus-within,
+.discussion-card:focus-within,
+.article-card:focus-within,
+.bento-card:focus-within,
+.mini-card:focus-within,
+.topic-card:focus-within,
+.update-card:focus-within,
+.reply-card:focus-within,
+.recent-card:focus-within {
+    transform: translateY(-2px);
+    box-shadow: var(--elev-7);
+    border-color: rgba(109, 40, 217, 0.22);
+}
+
 @media (hover: hover) and (pointer: fine) {
     .game-card::after,
     .discussion-card::after,
@@ -9148,13 +9178,21 @@ header nav a[aria-current="page"] {
     }
 
     .game-card:hover::after,
+    .game-card:focus-within::after,
     .discussion-card:hover::after,
+    .discussion-card:focus-within::after,
     .article-card:hover::after,
+    .article-card:focus-within::after,
     .bento-card:hover::after,
+    .bento-card:focus-within::after,
     .mini-card:hover::after,
+    .mini-card:focus-within::after,
     .topic-card:hover::after,
+    .topic-card:focus-within::after,
     .update-card:hover::after,
+    .update-card:focus-within::after,
     .reply-card:hover::after,
+    .reply-card:focus-within::after,
     .recent-card:hover::after {
         opacity: 1;
     }
