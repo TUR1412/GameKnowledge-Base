@@ -105,6 +105,7 @@ node tools/bump-version.mjs --dry-run
 - 常用微交互：`motionPulse` / `motionSpark` / `motionFlash`
 - Micro-interactions（EVO-VIS v4）：`initMicroInteractions` 写入 `--fx-x/--fx-y`（Spotlight）与 `--fx-tx/--fx-ty`（Magnetic），并注入 `.fx-ripple` 与 `.is-pressed`；默认覆盖 `.btn/.btn-small/.icon-button/.chip/.tag/.toast/.small-game-card/.guide-article/.topic/.game-card.is-link-card/.social-icon` 以及 `.save-pill/.filter-chip/.view-btn/.cmdk-item/.search-btn/.filter-option/.toggle-pill/.checklist-item`（禁用控件自动跳过反馈）；CSS 负责渲染与降级（保持 UI/逻辑分离）
 - Linkified Cards：`initSmallGameCardLinks` 会将 Card 统一为 `role="link" + tabindex="0"`，并优先触发内部 `<a>` 的 click 来复用 SoftNavigation / ViewTransition（避免“整卡可点击”绕过跨页转场）
+- FLIP Layout（All Games）：网格/列表切换与排序使用 FLIP（First-Last-Invert-Play）做布局动画；只动画 transform/opacity/filter，并尊重 `prefers-reduced-motion`（保持 60FPS 合成优先）
 - Range UI（Planner）：仅在 `#planner-focus-range` 写入 `--range-pct` 用于轨道填充表现；数值逻辑仍以 input.value 为准（保持 UI/逻辑分离）
 
 约定：新增动效时 **优先复用上述 helper**，避免散落的 magic number 导致“风格漂移”。

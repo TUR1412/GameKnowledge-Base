@@ -10325,17 +10325,28 @@ h3,
     background: var(--surface-strong);
 }
 
-.game-info .btn,
-.game-info .btn-small {
+.game-actions {
     margin-top: auto;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.game-actions .btn,
+.game-actions .btn-small {
     align-self: flex-start;
 }
 
+.game-actions .compare-toggle {
+    opacity: 0.96;
+}
+
 @media (hover: hover) and (pointer: fine) {
-    .game-card.is-link-card:hover .btn,
-    .game-card.is-link-card:hover .btn-small,
-    .game-card.is-link-card:focus-within .btn,
-    .game-card.is-link-card:focus-within .btn-small {
+    .game-card.is-link-card:hover .game-actions a.btn,
+    .game-card.is-link-card:hover .game-actions a.btn-small,
+    .game-card.is-link-card:focus-within .game-actions a.btn,
+    .game-card.is-link-card:focus-within .game-actions a.btn-small {
         box-shadow: var(--btn-shadow-hover);
     }
 }

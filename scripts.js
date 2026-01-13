@@ -5920,6 +5920,73 @@
     const countEl = $("#result-count", root);
     const activeFiltersEl = $("#active-filters", root);
 
+    // FLIP（First-Last-Invert-Play）：只做布局动画，不改变筛选/排序逻辑
+    // - 目标：网格/列表切换与排序时更“物理直觉”，并保持 60FPS 合成优先
+    // - 约束：尊重 prefers-reduced-motion；避免干扰卡片 hover/press 的基础 transform
+    const flipAnimations = new WeakMap();
+    const cancelAnim = (anim) => {
+      if (!anim) return;
+      try {
+        if (typeof anim.cancel === "function") anim.cancel();
+      } catch (_) {}
+      try {
+        const list = anim.animations;
+        if (Array.isArray(list)) list.forEach(cancelAnim);
+      } catch (_) {}
+    };
+    const rectOf = (el) => {
+      try {
+        return el?.getBoundingClientRect?.() || null;
+      } catch (_) {
+        return null;
+      }
+    };
+    const flipLayout = (mutate, { duration = 0.28, easing = MOTION.easeOut } = {}) => {
+      if (prefersReducedMotion()) {
+        mutate?.();
+        return;
+      }
+
+      const targets = cards.filter((c) => c && !c.hidden);
+      if (targets.length === 0) {
+        mutate?.();
+        return;
+      }
+
+      const first = new Map();
+      targets.forEach((el) => {
+        const r = rectOf(el);
+        if (r) first.set(el, r);
+      });
+
+      mutate?.();
+
+      const stagger = motionStagger(0.008, { from: "center" });
+      targets.forEach((el, i) => {
+        const a = first.get(el);
+        const b = rectOf(el);
+        if (!a || !b) return;
+
+        const dx = a.left - b.left;
+        const dy = a.top - b.top;
+        if (Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5) return;
+
+        cancelAnim(flipAnimations.get(el));
+        const delay = stagger ? stagger(i, targets.length) : 0;
+        const anim = motionAnimate(
+          el,
+          {
+            x: [dx, 0],
+            y: [dy, 0],
+            opacity: [0.98, 1],
+            filter: ["blur(6px)", "blur(0px)"],
+          },
+          { duration, easing, delay }
+        );
+        if (anim) flipAnimations.set(el, anim);
+      });
+    };
+
     // NEW / UPDATED 标记（更新雷达）
     const applyUpdateBadges = () => {
       const data = getData();
@@ -6020,6 +6087,29 @@
     };
 
     const ensureCompareButtons = () => {
+      const ensureActionsRow = (info) => {
+        if (!info) return null;
+        const anchor =
+          info.querySelector?.('a.btn[href], a.btn-small[href], a[href]') || null;
+
+        let row = $(".game-actions", info);
+        if (!row) {
+          row = document.createElement("div");
+          row.className = "game-actions";
+          if (anchor) anchor.insertAdjacentElement("beforebegin", row);
+          else info.appendChild(row);
+        }
+
+        // 将主 CTA anchor 收敛到 actions row（避免散落导致对齐漂移）
+        if (anchor && !row.contains(anchor)) {
+          try {
+            row.appendChild(anchor);
+          } catch (_) {}
+        }
+
+        return row;
+      };
+
       cards.forEach((card) => {
         const id = String(card.dataset.id || "").trim();
         if (!id) return;
@@ -6033,9 +6123,11 @@
         btn.textContent = "对比";
 
         const info = $(".game-info", card) || card;
-        const anchor = $(".btn", info);
-        if (anchor) anchor.insertAdjacentElement("beforebegin", btn);
-        else info.appendChild(btn);
+        const row = ensureActionsRow(info) || info;
+        const anchorInRow =
+          row.querySelector?.('a.btn[href], a.btn-small[href], a[href]') || null;
+        if (anchorInRow) anchorInRow.insertAdjacentElement("beforebegin", btn);
+        else row.appendChild(btn);
       });
     };
 
@@ -6233,6 +6325,7 @@
 
     const originalCards = cards.slice();
     let lastSortKey = "";
+    let didInit = false;
 
     const sort = (sortKey) => {
       const key = sortKey || "popular";
@@ -6240,7 +6333,9 @@
       lastSortKey = key;
 
       if (key === "popular") {
-        originalCards.forEach((c) => listEl.appendChild(c));
+        const apply = () => originalCards.forEach((c) => listEl.appendChild(c));
+        if (didInit && !prefersReducedMotion()) flipLayout(apply, { duration: 0.26 });
+        else apply();
         return;
       }
 
@@ -6258,11 +6353,14 @@
         if (key === "year-asc") return ya - yb;
         return 0;
       };
-      cards.sort(comparator).forEach((c) => listEl.appendChild(c));
+      const apply = () => cards.sort(comparator).forEach((c) => listEl.appendChild(c));
+      if (didInit && !prefersReducedMotion()) flipLayout(apply, { duration: 0.26 });
+      else apply();
     };
 
     let activeFilterChips = [];
     let activeFilterBound = false;
+    let activeFilterSig = "";
 
     const ensureActiveFilterDelegate = () => {
       if (activeFilterBound) return;
@@ -6470,6 +6568,7 @@
       if (chips.length === 0) {
         activeFiltersEl.innerHTML = "";
         activeFilterChips = [];
+        activeFilterSig = "";
         return;
       }
 
@@ -6481,6 +6580,21 @@
           )}<span class="chip-x">×</span></button>`;
         })
         .join("");
+
+      // 轻量动效：仅当 chips 变化时做一次入场（避免每次 sync 都闪）
+      try {
+        const sig = chips.map((c) => c.label).join("|");
+        if (sig !== activeFilterSig) {
+          activeFilterSig = sig;
+          const els = $$(".filter-chip", activeFiltersEl);
+          const stagger = motionStagger(0.012, { from: 0 });
+          motionAnimate(
+            els,
+            { opacity: [0, 1], y: [8, 0], filter: ["blur(10px)", "blur(0px)"] },
+            { duration: 0.22, delay: stagger }
+          );
+        }
+      } catch (_) {}
     };
 
     const syncUrl = (s) => {
@@ -6638,6 +6752,7 @@
 
     applyStateToUi(s);
     sync();
+    didInit = true;
 
     const onSubmitLike = (e) => {
       e?.preventDefault?.();
@@ -6691,16 +6806,20 @@
     });
 
     gridBtn?.addEventListener("click", () => {
-      listEl.classList.remove("list-view-active");
-      gridBtn.classList.add("active");
-      listBtn?.classList.remove("active");
+      flipLayout(() => {
+        listEl.classList.remove("list-view-active");
+        gridBtn.classList.add("active");
+        listBtn?.classList.remove("active");
+      });
       sync();
     });
 
     listBtn?.addEventListener("click", () => {
-      listEl.classList.add("list-view-active");
-      listBtn.classList.add("active");
-      gridBtn?.classList.remove("active");
+      flipLayout(() => {
+        listEl.classList.add("list-view-active");
+        listBtn.classList.add("active");
+        gridBtn?.classList.remove("active");
+      });
       sync();
     });
   };
