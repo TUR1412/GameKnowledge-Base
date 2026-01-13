@@ -9875,3 +9875,143 @@ h3,
         display: none;
     }
 }
+
+/* ==========================================================================
+   V20260113 “Pixel UI” · EVO-VIS v4.5（Navigation / Back-to-Top polish）
+   目标：补齐“导航与浮动控件”的微交互与键盘体验（UI 与逻辑分离）
+   ========================================================================== */
+
+.compare-close,
+.diag-close {
+    position: relative;
+    overflow: hidden;
+}
+
+.compare-close:active,
+.compare-close.is-pressed,
+.diag-close:active,
+.diag-close.is-pressed {
+    transform: translateY(0) scale(0.98);
+}
+
+.skip-link {
+    overflow: hidden;
+}
+
+/* Docs nav：按压/波纹对齐全站控件手感 */
+.docs-nav-link {
+    position: relative;
+    overflow: hidden;
+    transition:
+        transform var(--dur-2) var(--ease-out),
+        box-shadow var(--dur-3) var(--ease-out),
+        background-color var(--dur-2) var(--ease-out),
+        border-color var(--dur-2) var(--ease-out);
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .docs-nav-link:hover {
+        transform: translateY(-1px);
+        box-shadow: var(--elev-2);
+    }
+}
+
+.docs-nav-link:active,
+.docs-nav-link.is-pressed {
+    transform: translateY(0) scale(0.99);
+}
+
+/* Back-to-Top：统一使用物理手感变量（兼容磁吸/按压），并修复隐藏态无法“淡出”的问题 */
+.back-to-top {
+    --fx-tx: 0px;
+    --fx-ty: 0px;
+    --fx-lift: 0px;
+    --fx-scale: 1;
+    --fx-enter: 8px;
+
+    border: 1px solid var(--surface-border);
+    background:
+        linear-gradient(
+            135deg,
+            rgba(109, 40, 217, 0.14),
+            rgba(6, 182, 212, 0.10)
+        ),
+        var(--surface-strong);
+    color: var(--text-primary);
+    box-shadow: var(--elev-6);
+    overflow: hidden;
+
+    opacity: 0;
+    visibility: hidden;
+    transform:
+        translate3d(
+            calc(var(--fx-tx) + 0px),
+            calc(var(--fx-ty) + var(--fx-enter) + var(--fx-lift)),
+            0
+        )
+        scale(var(--fx-scale));
+    transition:
+        opacity var(--dur-3) var(--ease-out),
+        transform var(--dur-3) var(--ease-out),
+        box-shadow var(--dur-3) var(--ease-out),
+        background-color var(--dur-2) var(--ease-out),
+        border-color var(--dur-2) var(--ease-out),
+        visibility 0s linear var(--dur-3);
+    will-change: transform, opacity;
+}
+
+.back-to-top.visible {
+    opacity: 1;
+    visibility: visible;
+    --fx-enter: 0px;
+    transition:
+        opacity var(--dur-3) var(--ease-out),
+        transform var(--dur-3) var(--ease-out),
+        box-shadow var(--dur-3) var(--ease-out),
+        background-color var(--dur-2) var(--ease-out),
+        border-color var(--dur-2) var(--ease-out);
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .back-to-top:hover {
+        --fx-lift: -2px;
+        box-shadow: var(--elev-7);
+        transform:
+            translate3d(
+                calc(var(--fx-tx) + 0px),
+                calc(var(--fx-ty) + var(--fx-enter) + var(--fx-lift)),
+                0
+            )
+            scale(var(--fx-scale));
+    }
+}
+
+.back-to-top:focus-visible {
+    outline: none;
+    box-shadow: var(--focus-ring), var(--elev-7);
+}
+
+.back-to-top:active,
+.back-to-top.is-pressed {
+    --fx-lift: 0px;
+    --fx-scale: 0.985;
+    transform:
+        translate3d(
+            calc(var(--fx-tx) + 0px),
+            calc(var(--fx-ty) + var(--fx-enter) + var(--fx-lift)),
+            0
+        )
+        scale(var(--fx-scale));
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .back-to-top {
+        transition: none !important;
+        transform: none !important;
+    }
+
+    .back-to-top.visible {
+        opacity: 1;
+        visibility: visible;
+    }
+}
