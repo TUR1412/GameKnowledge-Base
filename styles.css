@@ -8892,6 +8892,10 @@ header.scrolled {
 }
 
 header nav a {
+    position: relative;
+    overflow: hidden;
+    display: inline-flex;
+    align-items: center;
     border-radius: 999px;
     padding: 10px 12px;
     transition:
@@ -8907,10 +8911,18 @@ header nav a {
     }
 }
 
+header nav a:focus-visible {
+    background: var(--surface);
+}
+
 header nav a.active,
 header nav a[aria-current="page"] {
     background: var(--surface-strong);
     border: 1px solid var(--surface-border);
+}
+
+header nav a.is-pressed {
+    transform: translateY(0) scale(0.98);
 }
 
 /* Buttons：去掉过重的“彩色阴影”，改为更精致的层级 */
