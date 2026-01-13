@@ -9130,7 +9130,10 @@ header nav a.is-pressed {
 .topic-card,
 .update-card,
 .reply-card,
-.recent-card {
+.recent-card,
+.guide-article,
+.topic,
+.small-game-card {
     position: relative;
     overflow: hidden;
     border-radius: var(--border-radius-lg);
@@ -9150,7 +9153,10 @@ header nav a.is-pressed {
     .topic-card:hover,
     .update-card:hover,
     .reply-card:hover,
-    .recent-card:hover {
+    .recent-card:hover,
+    .guide-article:hover,
+    .topic:hover,
+    .small-game-card:hover {
         transform: translateY(-2px);
         box-shadow: var(--elev-7);
     }
@@ -9164,7 +9170,10 @@ header nav a.is-pressed {
 .topic-card:focus-within,
 .update-card:focus-within,
 .reply-card:focus-within,
-.recent-card:focus-within {
+.recent-card:focus-within,
+.guide-article:focus-within,
+.topic:focus-within,
+.small-game-card:focus-within {
     transform: translateY(-2px);
     box-shadow: var(--elev-7);
     border-color: rgba(109, 40, 217, 0.22);
@@ -9179,7 +9188,10 @@ header nav a.is-pressed {
     .topic-card::after,
     .update-card::after,
     .reply-card::after,
-    .recent-card::after {
+    .recent-card::after,
+    .guide-article::after,
+    .topic::after,
+    .small-game-card::after {
         content: "";
         position: absolute;
         inset: 0;
@@ -9207,7 +9219,14 @@ header nav a.is-pressed {
     .update-card:focus-within::after,
     .reply-card:hover::after,
     .reply-card:focus-within::after,
-    .recent-card:hover::after {
+    .recent-card:hover::after,
+    .recent-card:focus-within::after,
+    .guide-article:hover::after,
+    .guide-article:focus-within::after,
+    .topic:hover::after,
+    .topic:focus-within::after,
+    .small-game-card:hover::after,
+    .small-game-card:focus-within::after {
         opacity: 1;
     }
 }
@@ -9221,7 +9240,10 @@ header nav a.is-pressed {
     .topic-card,
     .update-card,
     .reply-card,
-    .recent-card {
+    .recent-card,
+    .guide-article,
+    .topic,
+    .small-game-card {
         transition: none;
     }
 
@@ -9233,7 +9255,10 @@ header nav a.is-pressed {
     .topic-card::after,
     .update-card::after,
     .reply-card::after,
-    .recent-card::after {
+    .recent-card::after,
+    .guide-article::after,
+    .topic::after,
+    .small-game-card::after {
         display: none;
     }
 }
@@ -10106,6 +10131,26 @@ h3,
 
 .small-game-card:active,
 .small-game-card.is-pressed {
+    transform: translateY(-1px) scale(0.985);
+    box-shadow: var(--elev-2);
+}
+
+.small-game-card a:hover {
+    background-color: var(--primary-dark);
+}
+
+.is-link-card:focus-visible {
+    outline: none;
+    box-shadow: var(--focus-ring), var(--elev-7);
+}
+
+.guide-article.is-link-card,
+.topic.is-link-card {
+    cursor: pointer;
+}
+
+.guide-article.is-pressed,
+.topic.is-pressed {
     transform: translateY(-1px) scale(0.985);
     box-shadow: var(--elev-2);
 }

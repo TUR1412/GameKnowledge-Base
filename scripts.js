@@ -2380,7 +2380,9 @@
   // -------------------------
 
   const initSmallGameCardLinks = () => {
-    const cards = Array.from(document.querySelectorAll(".small-game-card"));
+    const cards = Array.from(
+      document.querySelectorAll(".small-game-card, .guide-article, .topic")
+    );
     if (cards.length === 0) return;
 
     cards.forEach((card) => {
@@ -2408,8 +2410,17 @@
         card.classList.add("is-link-card");
         card.setAttribute("role", "link");
         card.setAttribute("tabindex", "0");
-        const title = card.querySelector?.("h4")?.textContent?.trim?.() || "";
-        if (title) card.setAttribute("aria-label", `${title} · 打开攻略`);
+        const title = card.querySelector?.("h4, h3")?.textContent?.trim?.() || "";
+        const action = (() => {
+          try {
+            if (card.matches?.(".topic")) return "加入讨论";
+            if (card.matches?.(".guide-article")) return "阅读全文";
+            return "打开攻略";
+          } catch (_) {
+            return "打开";
+          }
+        })();
+        if (title) card.setAttribute("aria-label", `${title} · ${action}`);
       } catch (_) {}
 
       try {
@@ -2469,7 +2480,7 @@
     };
 
     const SPOTLIGHT_SELECTOR =
-      ".game-card, .discussion-card, .article-card, .bento-card, .mini-card, .topic-card, .update-card, .reply-card, .recent-card";
+      ".game-card, .discussion-card, .article-card, .bento-card, .mini-card, .topic-card, .update-card, .reply-card, .recent-card, .guide-article, .topic, .small-game-card";
 
     if (canSpotlight()) {
       let active = null;
@@ -2522,7 +2533,7 @@
     }
 
     const INTERACT_SELECTOR =
-      ".btn, .btn-small, .icon-button, .chip, .tag, .mobile-nav-toggle, header nav a, .skip-link, .docs-nav-link, .back-to-top, .compare-close, .diag-close, .save-pill, .filter-chip, .view-btn, .cmdk-item, .search-btn, .select-pill, .filter-option, .toggle-pill, .checklist-item, .toast, .small-game-card, .social-icon";
+      ".btn, .btn-small, .icon-button, .chip, .tag, .mobile-nav-toggle, header nav a, .skip-link, .docs-nav-link, .back-to-top, .compare-close, .diag-close, .save-pill, .filter-chip, .view-btn, .cmdk-item, .search-btn, .select-pill, .filter-option, .toggle-pill, .checklist-item, .toast, .small-game-card, .guide-article, .topic, .social-icon";
     const MAGNETIC_SELECTOR =
       ".btn, .btn-small, .icon-button, .chip, .tag, .mobile-nav-toggle, .back-to-top, .save-pill, .filter-chip, .view-btn, .search-btn";
 
@@ -2572,6 +2583,7 @@
 
       // Ripple：点击即时反馈（可在 CSS 中统一手感；JS 只负责注入与定位）
       const MAX_RIPPLES = 2;
+      const MAX_RIPPLE_SIZE = 560;
 
       const cleanupRipples = (host) => {
         if (!host) return;
@@ -2611,7 +2623,10 @@
           }
           if (!rect) return;
 
-          const size = Math.max(rect.width, rect.height) * 1.35;
+          const size = Math.min(
+            Math.max(rect.width, rect.height) * 1.35,
+            MAX_RIPPLE_SIZE
+          );
           const cx =
             (typeof e.clientX === "number" ? e.clientX : rect.left + rect.width / 2) -
             rect.left;
