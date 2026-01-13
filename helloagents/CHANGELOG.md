@@ -20,6 +20,15 @@
 - README：补齐 CI/CodeQL 状态徽章，并更新质量门禁清单（对齐 `npm run check:all`）
 - HTML（CLS）：对 `images/placeholders/*` 的 `<img>` 强制要求 `width/height`，并补齐 `starlight-miracle.html` 占位图尺寸（降低布局抖动）
 
+## [20260113-20] - 2026-01-13
+
+### 变更
+- All Games：筛选“退出”的卡片新增 exit 动画（绝对定位 overlay + fade/scale/blur），并在动效结束后再设置 hidden（与 FLIP 重排同步、不卡顿）
+- A11y：退出阶段卡片临时 `aria-hidden` + `inert`（若可用），避免离场卡片进入可聚焦序列
+- CSS：新增 `.game-card.is-filter-exiting` 规则，并为 `.games-list` 补齐 `position: relative`（承载退出 overlay）
+- 文档：更新 `docs/STYLE_GUIDE.md`（补齐筛选 exit 约定）
+- 版本号 bump 至 `20260113-20`（全站 `?v=` 与 `data.js.version` 同步）
+
 ## [20260113-19] - 2026-01-13
 
 ### 变更
