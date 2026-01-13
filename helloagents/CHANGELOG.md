@@ -20,6 +20,13 @@
 - README：补齐 CI/CodeQL 状态徽章，并更新质量门禁清单（对齐 `npm run check:all`）
 - HTML（CLS）：对 `images/placeholders/*` 的 `<img>` 强制要求 `width/height`，并补齐 `starlight-miracle.html` 占位图尺寸（降低布局抖动）
 
+## [20260113-15] - 2026-01-13
+
+### 变更
+- 游戏卡片：`game-card` 支持“整卡可点击”（自动 linkify，含 Enter/Space），并纳入 Press/Ripple（保持 UI/逻辑分离）
+- 文档：更新 `docs/STYLE_GUIDE.md`（同步微交互默认覆盖范围）
+- 版本号 bump 至 `20260113-15`（全站 `?v=` 与 `data.js.version` 同步）
+
 ## [20260113-14] - 2026-01-13
 
 ### 变更
