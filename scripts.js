@@ -2141,7 +2141,8 @@
           }
         })();
 
-        const frames = normalizeKeyframes(keyframes, baseTransform);
+        const additive = options.additive !== false;
+        const frames = normalizeKeyframes(keyframes, additive ? baseTransform : "");
 
         const delaySeconds = typeof delayOpt === "function" ? delayOpt(i, elements.length) : delayOpt;
         const delay = toMs(delaySeconds);
@@ -2242,6 +2243,82 @@
     } catch (_) {
       return null;
     }
+  };
+
+  const clamp = (v, min, max) => Math.min(max, Math.max(min, v));
+
+  // Spring easing（物理级“入场”手感）
+  // 说明：
+  // - 输出为“绝对 keyframes”（配合 MotionLite 的 additive:false），避免与 base transform 叠加
+  // - 仅用于少量高价值动效（Command Palette / Compare / Diagnostics），不引入第三方依赖
+  const SPRING_PANEL_IN = (() => {
+    const dt = 1 / 60;
+    const stiffness = 650;
+    const damping = 36;
+    const restDelta = 0.001;
+    const restSpeed = 0.01;
+    const maxTime = 0.5;
+
+    let x = 1;
+    let v = 0;
+    let t = 0;
+    const s = [x];
+
+    const steps = Math.ceil(maxTime / dt);
+    for (let i = 0; i < steps; i += 1) {
+      const a = (0 - x) * stiffness - v * damping;
+      v += a * dt;
+      x += v * dt;
+      t += dt;
+
+      // 采样降频：~30fps keyframes，浏览器插值仍可保持 60fps 合成
+      if (i % 2 === 1) s.push(x);
+      if (Math.abs(x) < restDelta && Math.abs(v) < restSpeed) break;
+    }
+
+    if (s[s.length - 1] !== 0) s.push(0);
+
+    const duration = clamp(t || 0.3, 0.22, 0.36);
+    return {
+      duration,
+      y: s.map((k) => 18 * k),
+      scale: s.map((k) => 1 - 0.015 * k),
+    };
+  })();
+
+  const prepareDialogMotionStart = ({ panel, backdrop } = {}) => {
+    try {
+      if (panel) {
+        panel.style.opacity = "0";
+        panel.style.transform = "translateY(18px) scale(0.985)";
+        panel.style.filter = "blur(12px)";
+      }
+      if (backdrop) backdrop.style.opacity = "0";
+    } catch (_) {}
+  };
+
+  const clearDialogMotionInlineStyles = ({ panel, backdrop } = {}) => {
+    try {
+      if (panel) {
+        panel.style.opacity = "";
+        panel.style.transform = "";
+        panel.style.filter = "";
+      }
+      if (backdrop) backdrop.style.opacity = "";
+    } catch (_) {}
+  };
+
+  const motionPanelIn = (panel) => {
+    return motionAnimate(
+      panel,
+      {
+        opacity: [0, 1],
+        y: SPRING_PANEL_IN.y,
+        scale: SPRING_PANEL_IN.scale,
+        filter: ["blur(12px)", "blur(0px)"],
+      },
+      { duration: SPRING_PANEL_IN.duration, easing: "linear", additive: false }
+    );
   };
 
   const motionPulse = (el, { scale = 1.045, duration = MOTION.durSlow } = {}) => {
@@ -3471,7 +3548,7 @@
       const outPanel = motionAnimate(
         panel,
         { opacity: [1, 0], y: [0, 12], scale: [1, 0.985], filter: ["blur(0px)", "blur(10px)"] },
-        { duration: MOTION.durFast }
+        { duration: MOTION.durFast, additive: false }
       );
       const outBackdrop = motionAnimate(backdrop, { opacity: [1, 0] }, { duration: MOTION.durFast });
 
@@ -3491,21 +3568,33 @@
 
       renderDiagnosticsPanel();
 
-      root.hidden = false;
-      root.dataset.state = "opening";
-      document.body.classList.add("diag-open");
-      window.requestAnimationFrame(() => {
-        root.dataset.state = "open";
-      });
-
       const panel = $(".diag-panel", root);
       const backdrop = $(".diag-backdrop", root);
-      motionAnimate(backdrop, { opacity: [0, 1] }, { duration: MOTION.durFast });
-      motionAnimate(
-        panel,
-        { opacity: [0, 1], y: [18, 0], scale: [0.985, 1], filter: ["blur(12px)", "blur(0px)"] },
-        { duration: MOTION.durBase }
-      );
+
+      const canMotion = !prefersReducedMotion() && Boolean(getMotion());
+      if (canMotion) prepareDialogMotionStart({ panel, backdrop });
+      else clearDialogMotionInlineStyles({ panel, backdrop });
+
+      root.hidden = false;
+      document.body.classList.add("diag-open");
+
+      const inBackdrop = canMotion
+        ? motionAnimate(backdrop, { opacity: [0, 1] }, { duration: MOTION.durFast })
+        : null;
+      const inPanel = canMotion ? motionPanelIn(panel) : null;
+
+      if (canMotion && (inPanel || inBackdrop)) {
+        root.dataset.state = "open";
+        Promise.allSettled([motionFinished(inPanel), motionFinished(inBackdrop)]).finally(
+          () => clearDialogMotionInlineStyles({ panel, backdrop })
+        );
+      } else {
+        clearDialogMotionInlineStyles({ panel, backdrop });
+        root.dataset.state = "opening";
+        window.requestAnimationFrame(() => {
+          root.dataset.state = "open";
+        });
+      }
 
       window.setTimeout(() => {
         try {
@@ -4445,20 +4534,34 @@
     const open = () => {
       if (!root.hidden) return;
       lastActive = document.activeElement;
-      root.hidden = false;
-      root.dataset.state = "opening";
-      document.body.classList.add("cmdk-open");
-      window.requestAnimationFrame(() => {
-        root.dataset.state = "open";
-      });
       const panel = $(".cmdk-panel", root);
       const backdrop = $(".cmdk-backdrop", root);
-      motionAnimate(backdrop, { opacity: [0, 1] }, { duration: MOTION.durFast });
-      motionAnimate(
-        panel,
-        { opacity: [0, 1], y: [18, 0], scale: [0.985, 1], filter: ["blur(12px)", "blur(0px)"] },
-        { duration: MOTION.durBase }
-      );
+
+      const canMotion = !prefersReducedMotion() && Boolean(getMotion());
+      if (canMotion) prepareDialogMotionStart({ panel, backdrop });
+      else clearDialogMotionInlineStyles({ panel, backdrop });
+
+      root.hidden = false;
+      document.body.classList.add("cmdk-open");
+
+      const inBackdrop = canMotion
+        ? motionAnimate(backdrop, { opacity: [0, 1] }, { duration: MOTION.durFast })
+        : null;
+      const inPanel = canMotion ? motionPanelIn(panel) : null;
+
+      if (canMotion && (inPanel || inBackdrop)) {
+        root.dataset.state = "open";
+        Promise.allSettled([motionFinished(inPanel), motionFinished(inBackdrop)]).finally(
+          () => clearDialogMotionInlineStyles({ panel, backdrop })
+        );
+      } else {
+        clearDialogMotionInlineStyles({ panel, backdrop });
+        root.dataset.state = "opening";
+        window.requestAnimationFrame(() => {
+          root.dataset.state = "open";
+        });
+      }
+
       if (input) {
         input.value = "";
         render("");
@@ -4484,7 +4587,7 @@
       const panelAnim = motionAnimate(
         panel,
         { opacity: [1, 0], y: [0, 12], scale: [1, 0.985], filter: ["blur(0px)", "blur(10px)"] },
-        { duration: 0.18, easing: MOTION.easeIn }
+        { duration: 0.18, easing: MOTION.easeIn, additive: false }
       );
       const backdropAnim = motionAnimate(backdrop, { opacity: [1, 0] }, { duration: MOTION.durFast, easing: MOTION.easeIn });
       if (panelAnim || backdropAnim) {
@@ -5504,7 +5607,7 @@
       const outPanel = motionAnimate(
         panel,
         { opacity: [1, 0], y: [0, 12], scale: [1, 0.985], filter: ["blur(0px)", "blur(10px)"] },
-        { duration: MOTION.durFast }
+        { duration: MOTION.durFast, additive: false }
       );
       const outBackdrop = motionAnimate(backdrop, { opacity: [1, 0] }, { duration: MOTION.durFast });
 
@@ -5647,60 +5750,24 @@
     const canMotion = !prefersReducedMotion() && Boolean(getMotion());
 
     // Motion 版本：先写入初始样式再开场，避免 CSS transition 与 Motion 互相抢 transform
-    if (canMotion) {
-      try {
-        if (panel) {
-          panel.style.opacity = "0";
-          panel.style.transform = "translateY(18px) scale(0.985)";
-          panel.style.filter = "blur(12px)";
-        }
-        if (backdrop) backdrop.style.opacity = "0";
-      } catch (_) {}
-    } else {
-      // 保证 CSS 方案可接管（避免遗留 inline style 抢优先级）
-      try {
-        if (panel) {
-          panel.style.opacity = "";
-          panel.style.transform = "";
-          panel.style.filter = "";
-        }
-        if (backdrop) backdrop.style.opacity = "";
-      } catch (_) {}
-    }
+    if (canMotion) prepareDialogMotionStart({ panel, backdrop });
+    else clearDialogMotionInlineStyles({ panel, backdrop });
 
     root.hidden = false;
     document.body.classList.add("compare-open");
 
-    const inBackdrop = canMotion ? motionAnimate(backdrop, { opacity: [0, 1] }, { duration: MOTION.durFast }) : null;
-    const inPanel = canMotion
-      ? motionAnimate(
-          panel,
-          { opacity: [0, 1], y: [18, 0], scale: [0.985, 1], filter: ["blur(12px)", "blur(0px)"] },
-          { duration: MOTION.durBase }
-        )
+    const inBackdrop = canMotion
+      ? motionAnimate(backdrop, { opacity: [0, 1] }, { duration: MOTION.durFast })
       : null;
+    const inPanel = canMotion ? motionPanelIn(panel) : null;
 
     if (canMotion && (inPanel || inBackdrop)) {
       root.dataset.state = "open";
-      Promise.allSettled([motionFinished(inPanel), motionFinished(inBackdrop)]).finally(() => {
-        try {
-          if (panel) {
-            panel.style.opacity = "";
-            panel.style.transform = "";
-            panel.style.filter = "";
-          }
-          if (backdrop) backdrop.style.opacity = "";
-        } catch (_) {}
-      });
+      Promise.allSettled([motionFinished(inPanel), motionFinished(inBackdrop)]).finally(() =>
+        clearDialogMotionInlineStyles({ panel, backdrop })
+      );
     } else {
-      try {
-        if (panel) {
-          panel.style.opacity = "";
-          panel.style.transform = "";
-          panel.style.filter = "";
-        }
-        if (backdrop) backdrop.style.opacity = "";
-      } catch (_) {}
+      clearDialogMotionInlineStyles({ panel, backdrop });
       root.dataset.state = "opening";
       window.requestAnimationFrame(() => {
         root.dataset.state = "open";

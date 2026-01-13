@@ -10015,3 +10015,46 @@ h3,
         visibility: visible;
     }
 }
+
+/* ==========================================================================   
+   V20260113 “Pixel UI” · EVO-VIS v4.6（Spring Modals & 60FPS Compositing）     
+   目标：让“弹层/面板”的 CSS 降级动效与 JS spring 入场保持一致，并显式声明合成层    
+   - JS：MotionLite + spring（additive:false）
+   - CSS：仅作为降级方案（Reduced Motion / 无 WAAPI）
+   ========================================================================== */
+
+.cmdk-panel,
+.compare-panel,
+.diag-panel {
+    will-change: transform, opacity, filter;
+}
+
+.cmdk-backdrop,
+.compare-backdrop,
+.diag-backdrop {
+    will-change: opacity;
+}
+
+/* Align fallback motion direction（从下方轻抬升） */
+.cmdk-panel,
+.compare-panel,
+.diag-panel {
+    transform: translateY(18px) scale(0.985);
+}
+
+.cmdk-root[data-state="closing"] .cmdk-panel,
+.compare-root[data-state="closing"] .compare-panel,
+.diag-root[data-state="closing"] .diag-panel {
+    transform: translateY(12px) scale(0.985);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .cmdk-panel,
+    .compare-panel,
+    .diag-panel,
+    .cmdk-backdrop,
+    .compare-backdrop,
+    .diag-backdrop {
+        transition: none !important;
+    }
+}

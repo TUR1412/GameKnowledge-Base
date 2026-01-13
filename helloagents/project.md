@@ -52,6 +52,7 @@
 - 动效统一走 Motion helper：
   - `MotionLite`：`scripts.js` 内建 WAAPI 轻量层（无第三方依赖）
   - `motionAnimate(...)`：统一入口，内置 `prefers-reduced-motion` 降级与异常兜底
+  - `options.additive`：默认 `true`（相对动画，适合叠加 micro-interactions）；弹层/面板建议使用 `additive: false` 输出绝对 transform（避免与基础 transform 叠加）
 
 ---
 
