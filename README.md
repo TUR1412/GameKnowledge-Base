@@ -5,7 +5,7 @@
 <h1 align="center">GameKnowledge-Base</h1>
 
 <p align="center"><strong>游戏攻略网 · Data-driven Game Knowledge Base</strong></p>
-<p align="center">Static · No framework · Local-first · PWA Offline · View Transitions · Pixel UI (EVO-VIS v4)</p>
+<p align="center">Static · No framework · Local-first · PWA Offline · View Transitions · Pixel UI (EVO-VIS v4.6)</p>
 
 <p align="center">
   <a href="https://github.com/TUR1412/GameKnowledge-Base/actions/workflows/ci.yml">
@@ -62,7 +62,7 @@ GameKnowledge-Base is a data-driven static multi-page site powered by `data.js` 
 
 ## 视觉与动效 / Design & Motion
 
-### Pixel UI (EVO-VIS v4)
+### Pixel UI (EVO-VIS v4.6)
 
 - 视觉：更克制的中性色系统，明确的“hairline border + 精准阴影阶梯”，对标 Apple / Vercel 的信息层级与留白节奏。
 - 交互：统一 hover/press/focus 手感；默认 60FPS 友好（优先 transform/opacity）。
@@ -70,6 +70,7 @@ GameKnowledge-Base is a data-driven static multi-page site powered by `data.js` 
 ### Motion & Micro-interactions
 
 - `scripts.js` 内建 WAAPI 轻量动效层（MotionLite），并统一尊重 `prefers-reduced-motion`。
+- 弹层/面板入场：预计算 spring keyframes（物理级手感），并以 `additive: false` 避免与基础 transform 叠加。
 - 卡片追光（spotlight）：JS 写入 `--fx-x/--fx-y`，CSS 负责渲染（UI 与逻辑解耦、易回归）。
 - Magnetic：JS 写入 `--fx-tx/--fx-ty`（spring + rAF），CSS 负责合成 transform（默认 60FPS 优先）。
 - 点击 Ripple：注入 `span.fx-ripple`，用 CSS keyframes 驱动（无第三方依赖）。

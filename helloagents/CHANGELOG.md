@@ -20,6 +20,40 @@
 - README：补齐 CI/CodeQL 状态徽章，并更新质量门禁清单（对齐 `npm run check:all`）
 - HTML（CLS）：对 `images/placeholders/*` 的 `<img>` 强制要求 `width/height`，并补齐 `starlight-miracle.html` 占位图尺寸（降低布局抖动）
 
+## [20260113-11] - 2026-01-13
+
+### 变更
+- MotionLite：新增 `options.additive`（默认 `true`），允许以 `additive: false` 输出“绝对 transform keyframes”，避免与基础 transform 叠加
+- Spring Panels：Command Palette / Compare / Diagnostics 的面板入场使用预计算 spring keyframes（物理级手感，合成层优先）
+- CSS 降级一致性：弹层/面板的 CSS 过渡方向与 JS spring 入场对齐，并补齐 `will-change`（Reduced Motion 下禁用 transition）
+- 文档：更新双语 `README.md` 与 `docs/STYLE_GUIDE.md`（同步 EVO-VIS v4.6 与 additive/spring 约定）
+- 版本号 bump 至 `20260113-11`（全站 `?v=` 与 `data.js.version` 同步）
+
+## [20260113-10] - 2026-01-13
+
+### 变更
+- Pixel UI v4.5：Docs 导航与 Back-to-Top 浮动控件精修（ripple/press/磁吸/键盘态统一）
+- 版本号 bump 至 `20260113-10`（全站 `?v=` 与 `data.js.version` 同步）
+
+## [20260113-9] - 2026-01-13
+
+### 变更
+- 导航链接微交互：主导航 `header nav a` 的 hover/press/ripple/focus 手感统一（保持 UI/逻辑分离）
+- 版本号 bump 至 `20260113-9`（全站 `?v=` 与 `data.js.version` 同步）
+
+## [20260113-8] - 2026-01-13
+
+### 变更
+- 导航按钮微交互：移动端导航按钮纳入 FX Transform System，并补齐卡片 focus 态（键盘体验更一致）
+- 版本号 bump 至 `20260113-8`（全站 `?v=` 与 `data.js.version` 同步）
+
+## [20260113-7] - 2026-01-13
+
+### 变更
+- 动效性能：View Transition 过渡参数优化为更稳定的 60FPS 合成表现，并补齐 `<select>` press 反馈
+- Form Controls：统一 select pill 的视觉规范，减少历史漂移
+- 版本号 bump 至 `20260113-7`（全站 `?v=` 与 `data.js.version` 同步）
+
 ## [20260113-6] - 2026-01-13
 
 ### 变更
