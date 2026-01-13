@@ -5265,6 +5265,8 @@ img:hover {
     background: var(--surface-strong);
     box-shadow: var(--box-shadow-lg);
     cursor: pointer;
+    position: relative;
+    overflow: hidden;
     transition: transform 0.15s ease, opacity 0.2s ease;
 }
 
