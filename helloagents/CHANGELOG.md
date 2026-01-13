@@ -20,6 +20,14 @@
 - README：补齐 CI/CodeQL 状态徽章，并更新质量门禁清单（对齐 `npm run check:all`）
 - HTML（CLS）：对 `images/placeholders/*` 的 `<img>` 强制要求 `width/height`，并补齐 `starlight-miracle.html` 占位图尺寸（降低布局抖动）
 
+## [20260113-12] - 2026-01-13
+
+### 变更
+- 微交互覆盖：Toast 纳入 `initMicroInteractions` 的 Press/Ripple 反馈（保持 UI/逻辑分离）
+- CSS：`.toast` 增加 ripple 容器能力（`position: relative` + `overflow: hidden`），与其他可点击组件一致
+- 文档：更新 `docs/STYLE_GUIDE.md`（同步微交互默认覆盖范围）
+- 版本号 bump 至 `20260113-12`（全站 `?v=` 与 `data.js.version` 同步）
+
 ## [20260113-11] - 2026-01-13
 
 ### 变更
