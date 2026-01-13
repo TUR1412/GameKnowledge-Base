@@ -20,6 +20,14 @@
 - README：补齐 CI/CodeQL 状态徽章，并更新质量门禁清单（对齐 `npm run check:all`）
 - HTML（CLS）：对 `images/placeholders/*` 的 `<img>` 强制要求 `width/height`，并补齐 `starlight-miracle.html` 占位图尺寸（降低布局抖动）
 
+## [20260113-19] - 2026-01-13
+
+### 变更
+- All Games：筛选导致的卡片重排纳入 FLIP（First-Last-Invert-Play）布局动效（合成层优先，尊重 Reduced Motion）
+- All Games：新增“筛选结果出现”轻量入场动效（避免瞬显，提升物理直觉）
+- 文档：更新 `docs/STYLE_GUIDE.md`（同步 FLIP 覆盖范围：切换/排序/筛选）
+- 版本号 bump 至 `20260113-19`（全站 `?v=` 与 `data.js.version` 同步）
+
 ## [20260113-18] - 2026-01-13
 
 ### 变更
