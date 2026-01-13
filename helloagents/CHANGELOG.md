@@ -20,6 +20,15 @@
 - README：补齐 CI/CodeQL 状态徽章，并更新质量门禁清单（对齐 `npm run check:all`）
 - HTML（CLS）：对 `images/placeholders/*` 的 `<img>` 强制要求 `width/height`，并补齐 `starlight-miracle.html` 占位图尺寸（降低布局抖动）
 
+## [20260113-18] - 2026-01-13
+
+### 变更
+- All Games：列表/网格切换与排序加入 FLIP（First-Last-Invert-Play）布局动效（合成层优先，尊重 Reduced Motion）
+- All Games：对比按钮与主 CTA 收敛到 `.game-actions`（对齐更稳定，交互反馈一致）
+- Active Filters：筛选 chip 入场增加轻量动效（仅在 chips 变化时触发，避免频繁闪烁）
+- 文档：更新 `docs/STYLE_GUIDE.md`（同步 FLIP Layout 约定）
+- 版本号 bump 至 `20260113-18`（全站 `?v=` 与 `data.js.version` 同步）
+
 ## [20260113-17] - 2026-01-13
 
 ### 变更
