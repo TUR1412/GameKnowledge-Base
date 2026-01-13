@@ -9,11 +9,11 @@
 所有页面必须使用带版本号的静态资源引用：
 
 ```html
-<link rel="stylesheet" href="styles.css?v=20260113-15">
-<link rel="manifest" href="manifest.webmanifest?v=20260113-15">
-<script src="boot.js?v=20260113-15"></script>
-<script src="data.js?v=20260113-15" defer></script>
-<script src="scripts.js?v=20260113-15" defer></script>
+<link rel="stylesheet" href="styles.css?v=20260113-17">
+<link rel="manifest" href="manifest.webmanifest?v=20260113-17">
+<script src="boot.js?v=20260113-17"></script>
+<script src="data.js?v=20260113-17" defer></script>
+<script src="scripts.js?v=20260113-17" defer></script>
 ```
 
 当你修改以下任意文件时，请同步更新所有 HTML 页里的 `?v=`：
@@ -104,6 +104,7 @@ node tools/bump-version.mjs --dry-run
 - Spring Panel In：弹层/面板入场可使用预计算 spring keyframes，并通过 `options.additive: false` 避免与基础 transform 叠加（保证手感一致）
 - 常用微交互：`motionPulse` / `motionSpark` / `motionFlash`
 - Micro-interactions（EVO-VIS v4）：`initMicroInteractions` 写入 `--fx-x/--fx-y`（Spotlight）与 `--fx-tx/--fx-ty`（Magnetic），并注入 `.fx-ripple` 与 `.is-pressed`；默认覆盖 `.btn/.btn-small/.icon-button/.chip/.tag/.toast/.small-game-card/.guide-article/.topic/.game-card.is-link-card/.social-icon` 以及 `.save-pill/.filter-chip/.view-btn/.cmdk-item/.search-btn/.filter-option/.toggle-pill/.checklist-item`（禁用控件自动跳过反馈）；CSS 负责渲染与降级（保持 UI/逻辑分离）
+- Linkified Cards：`initSmallGameCardLinks` 会将 Card 统一为 `role="link" + tabindex="0"`，并优先触发内部 `<a>` 的 click 来复用 SoftNavigation / ViewTransition（避免“整卡可点击”绕过跨页转场）
 - Range UI（Planner）：仅在 `#planner-focus-range` 写入 `--range-pct` 用于轨道填充表现；数值逻辑仍以 input.value 为准（保持 UI/逻辑分离）
 
 约定：新增动效时 **优先复用上述 helper**，避免散落的 magic number 导致“风格漂移”。

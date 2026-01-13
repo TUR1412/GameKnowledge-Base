@@ -2434,9 +2434,32 @@
         card.dataset.cardLinkified = "true";
       } catch (_) {}
 
-      const navigate = () => {
+      const resolveHref = () => {
         try {
-          window.location.href = href;
+          return new URL(href, window.location.href).href;
+        } catch (_) {
+          return href;
+        }
+      };
+
+      const navigate = (evt) => {
+        const dest = resolveHref();
+        const wantsNewTab = Boolean(evt && (evt.metaKey || evt.ctrlKey || evt.shiftKey));
+        if (wantsNewTab) {
+          try {
+            window.open(dest, "_blank", "noopener,noreferrer");
+            return;
+          } catch (_) {}
+        }
+
+        try {
+          // 复用站点的 SoftNavigation / ViewTransition（让“整卡可点击”也享受同样的转场）
+          link.click();
+          return;
+        } catch (_) {}
+
+        try {
+          window.location.href = dest;
         } catch (_) {}
       };
 
@@ -2444,7 +2467,7 @@
         if (!e || e.defaultPrevented) return;
         const target = e.target;
         if (target?.closest?.("a, button, input, textarea, select")) return;
-        navigate();
+        navigate(e);
       });
 
       card.addEventListener("keydown", (e) => {
@@ -2454,7 +2477,7 @@
         try {
           e.preventDefault();
         } catch (_) {}
-        navigate();
+        navigate(e);
       });
     });
   };

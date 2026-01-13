@@ -20,6 +20,15 @@
 - README：补齐 CI/CodeQL 状态徽章，并更新质量门禁清单（对齐 `npm run check:all`）
 - HTML（CLS）：对 `images/placeholders/*` 的 `<img>` 强制要求 `width/height`，并补齐 `starlight-miracle.html` 占位图尺寸（降低布局抖动）
 
+## [20260113-17] - 2026-01-13
+
+### 变更
+- Linkified Cards：整卡点击优先触发内部 `<a>` 的 click，复用 SoftNavigation / ViewTransition（避免绕过跨页转场）
+- Pixel UI v4.8：分类页 / all-games 的 game card 内部元素（media/content/平台 pill/CTA）进一步 token 化，暗色与高对比度一致
+- 动效性能：历史 “shine bar” 动效改为 transform-only 合成动画（避免 left/布局抖动，目标 60FPS+）
+- 文档：更新 `docs/STYLE_GUIDE.md`（同步 Linkified Cards 约定）
+- 版本号 bump 至 `20260113-17`（全站 `?v=` 与 `data.js.version` 同步）
+
 ## [20260113-15] - 2026-01-13
 
 ### 变更

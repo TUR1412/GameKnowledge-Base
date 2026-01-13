@@ -10173,3 +10173,169 @@ h3,
 .social-icon.is-pressed {
     transform: translateY(-1px) scale(0.97);
 }
+
+/* ==========================================================================   
+   V20260113 “Pixel UI” · EVO-VIS v4.8（Game List Cards Refinement）
+   目标：
+   - 分类页 / all-games 卡片内部元素全面 token 化（暗色/高对比度一致）
+   - 将历史 “shine bar” 动效升级为 transform 合成（60FPS+）
+   - CTA 层级收敛：卡片可点为主，按钮作为明确的辅助入口
+   ====================================================================== */
+
+/* Game card media surface */
+.game-image {
+    background:
+        radial-gradient(420px 220px at 18% 18%, var(--fx-spot-1), transparent 62%),
+        radial-gradient(480px 240px at 82% 28%, var(--fx-spot-2), transparent 68%),
+        var(--surface);
+    border-bottom: 1px solid var(--surface-border);
+    color: var(--text-secondary);
+}
+
+/* “shine bar”：transform-only（避免 left 触发布局/重绘） */
+.game-card .game-image::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 44%;
+    height: 100%;
+    pointer-events: none;
+    opacity: 0;
+    background: linear-gradient(
+        to right,
+        transparent,
+        rgba(255, 255, 255, 0.34),
+        transparent
+    );
+    transform: translate3d(-165%, 0, 0) skewX(-25deg);
+    will-change: transform, opacity;
+    transition:
+        transform 900ms var(--ease-out),
+        opacity var(--dur-2) var(--ease-out);
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .game-card:hover .game-image::after,
+    .game-card:focus-within .game-image::after {
+        transform: translate3d(265%, 0, 0) skewX(-25deg);
+        opacity: 0.9;
+    }
+
+    .game-card:hover .game-image img,
+    .game-card:hover .game-image svg {
+        transform: translate3d(0, -1px, 0) scale(1.03);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .game-card .game-image::after {
+        display: none;
+    }
+}
+
+:root[data-contrast="high"] .game-card .game-image::after {
+    display: none;
+}
+
+.game-image img,
+.game-image svg {
+    transform: translateZ(0);
+    will-change: transform;
+    transition: transform var(--dur-3) var(--ease-out);
+}
+
+/* Game card content */
+.game-info {
+    padding: 18px;
+    gap: 10px;
+}
+
+.game-info h3 {
+    color: var(--text-primary);
+    letter-spacing: -0.01em;
+}
+
+.game-info p {
+    color: var(--text-secondary);
+    line-height: 1.65;
+}
+
+.game-meta {
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.game-genre,
+.game-year {
+    background: var(--surface);
+    border: 1px solid var(--surface-border);
+    color: var(--text-secondary);
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 0.82rem;
+}
+
+.game-platforms {
+    gap: 6px;
+    margin-bottom: 12px;
+}
+
+.platform {
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: rgba(109, 40, 217, 0.10);
+    border: 1px solid rgba(109, 40, 217, 0.16);
+    color: var(--text-secondary);
+    letter-spacing: 0.01em;
+}
+
+:root[data-theme="dark"] .platform {
+    background: rgba(124, 58, 237, 0.14);
+    border-color: rgba(124, 58, 237, 0.22);
+}
+
+:root[data-contrast="high"] .platform {
+    background: var(--surface);
+    border-color: var(--surface-border);
+    color: var(--text-primary);
+}
+
+/* Rating overlay: glass pill */
+.game-overlay {
+    background: var(--surface);
+    color: var(--text-primary);
+    border: 1px solid var(--surface-border);
+    box-shadow: var(--elev-2);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+}
+
+@media (prefers-reduced-transparency: reduce) {
+    .game-overlay {
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+        background: var(--surface-strong);
+    }
+}
+
+:root[data-contrast="high"] .game-overlay {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    background: var(--surface-strong);
+}
+
+.game-info .btn,
+.game-info .btn-small {
+    margin-top: auto;
+    align-self: flex-start;
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .game-card.is-link-card:hover .btn,
+    .game-card.is-link-card:hover .btn-small,
+    .game-card.is-link-card:focus-within .btn,
+    .game-card.is-link-card:focus-within .btn-small {
+        box-shadow: var(--btn-shadow-hover);
+    }
+}
