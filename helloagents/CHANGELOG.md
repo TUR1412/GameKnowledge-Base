@@ -20,6 +20,15 @@
 - README：补齐 CI/CodeQL 状态徽章，并更新质量门禁清单（对齐 `npm run check:all`）
 - HTML（CLS）：对 `images/placeholders/*` 的 `<img>` 强制要求 `width/height`，并补齐 `starlight-miracle.html` 占位图尺寸（降低布局抖动）
 
+## [20260113-13] - 2026-01-13
+
+### 变更
+- 分类卡片：small-game-card 统一为“整卡可点击”（div 卡片自动 linkify，支持键盘 Enter/Space），并纳入 Press/Ripple
+- Footer：`social-icon` 纳入 Press/Ripple，并补齐 ripple 容器能力（`overflow: hidden`）
+- CSS：small-game-card/social-icon 的 hover/press/focus 手感对齐 Pixel UI tokens（保持 UI/逻辑分离）
+- 文档：更新 `docs/STYLE_GUIDE.md`（同步微交互默认覆盖范围）
+- 版本号 bump 至 `20260113-13`（全站 `?v=` 与 `data.js.version` 同步）
+
 ## [20260113-12] - 2026-01-13
 
 ### 变更
