@@ -2,6 +2,17 @@
 
 本项目以“静态站点稳定交付”为目标：每次大改都会同步更新资源版本号（`?v=`），并通过 CI 做断链/资源/语法校验。
 
+## 2026-01-15 (20260115-1)
+
+### Added
+- Settings Center：新增统一“设置中心”（偏好/离线/数据/诊断），并在 Command Palette 提供快速动作入口
+- UI Preferences：强调色/密度/动效/透明度/粒子背景偏好（local-first，首帧写入 `html.dataset` 避免闪动）
+- Planner：开始日期/时间输入 + iCalendar（`.ics`）导出（可导入 Google Calendar / Outlook / Apple Calendar）
+
+### Changed
+- UI Evolution v5：Design Tokens 收敛（accent/density/motion/transparency/particles），核心组件消费 token 并对高对比度/Reduced Motion/Reduced Transparency 做降级
+- 版本号 bump 至 `20260115-1`（同步更新全站 `?v=` 与 `data.js.version`）
+
 ## 2026-01-13 (20260113-6)
 
 ### Changed

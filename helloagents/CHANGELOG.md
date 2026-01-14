@@ -20,6 +20,18 @@
 - README：补齐 CI/CodeQL 状态徽章，并更新质量门禁清单（对齐 `npm run check:all`）
 - HTML（CLS）：对 `images/placeholders/*` 的 `<img>` 强制要求 `width/height`，并补齐 `starlight-miracle.html` 占位图尺寸（降低布局抖动）
 
+## [20260115-1] - 2026-01-15
+
+### 新增
+- 设置中心：新增 Settings Center 作为“偏好/离线/数据/诊断”的统一入口（Header actions + Dashboard 入口 + Command Palette 动作）
+- 偏好系统：新增 UI Preferences（accent/density/motion/transparency/particles），首帧由 `boot.js` 注入 dataset，运行时由 `scripts.js` 统一读写 `localStorage`
+- Planner：新增开始日期/时间，并支持导出 iCalendar（.ics）用于导入系统日历（本地生成、包含转义/折行与版本标记）
+
+### 变更
+- 视觉系统 v5：在 `styles.css` 收敛 token（accent/density/motion/transparency/particles），核心组件消费 token，并对高对比度/Reduced Motion/Reduced Transparency 提供降级
+- 文档：更新 `docs/STYLE_GUIDE.md`（补齐偏好 key、设置中心与 Planner 日历导出规范）
+- 版本号 bump 至 `20260115-1`（全站 `?v=` 与 `data.js.version` 同步）
+
 ## [20260113-20] - 2026-01-13
 
 ### 变更

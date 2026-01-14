@@ -10,6 +10,11 @@
 
   const THEME_KEY = "gkb-theme";
   const CONTRAST_KEY = "gkb-contrast";
+  const ACCENT_KEY = "gkb-accent";
+  const DENSITY_KEY = "gkb-density";
+  const MOTION_KEY = "gkb-motion";
+  const TRANSPARENCY_KEY = "gkb-transparency";
+  const PARTICLES_KEY = "gkb-particles";
   const VT_KEY = "gkb-vt";
   const root = document.documentElement;
 
@@ -58,6 +63,31 @@
   const contrast =
     storedContrast === "high" || storedContrast === "normal" ? storedContrast : getSystemContrast();
   if (contrast === "high") root.dataset.contrast = "high";
+
+  // UI Preferences（非关键渲染，但尽量在首帧写入，避免“闪一下”）
+  // - 约定：缺省代表 auto（跟随系统）
+  // - 仅在值合法时写入 dataset，避免污染 DOM 状态
+  const safeRead = (key) => {
+    try {
+      return localStorage.getItem(key);
+    } catch (_) {
+      return null;
+    }
+  };
+
+  const writeDatasetIfValid = (datasetKey, value, allowed) => {
+    const v = String(value || "").trim();
+    if (!v) return;
+    if (!Array.isArray(allowed) || allowed.length === 0) return;
+    if (!allowed.includes(v)) return;
+    root.dataset[datasetKey] = v;
+  };
+
+  writeDatasetIfValid("accent", safeRead(ACCENT_KEY), ["violet", "cyan", "rose", "amber", "slate", "emerald"]);
+  writeDatasetIfValid("density", safeRead(DENSITY_KEY), ["comfortable", "compact"]);
+  writeDatasetIfValid("motion", safeRead(MOTION_KEY), ["auto", "reduce"]);
+  writeDatasetIfValid("transparency", safeRead(TRANSPARENCY_KEY), ["auto", "reduce"]);
+  writeDatasetIfValid("particles", safeRead(PARTICLES_KEY), ["on", "off"]);
 
   const syncThemeColor = (next) => {
     try {

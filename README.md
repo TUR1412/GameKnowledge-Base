@@ -5,7 +5,7 @@
 <h1 align="center">GameKnowledge-Base</h1>
 
 <p align="center"><strong>游戏攻略网 · Data-driven Game Knowledge Base</strong></p>
-<p align="center">Static · No framework · Local-first · PWA Offline · View Transitions · Pixel UI (EVO-VIS v4.6)</p>
+<p align="center">Static · No framework · Local-first · PWA Offline · View Transitions · Pixel UI (EVO-VIS v5)</p>
 
 <p align="center">
   <a href="https://github.com/TUR1412/GameKnowledge-Base/actions/workflows/ci.yml">
@@ -51,10 +51,11 @@ GameKnowledge-Base is a data-driven static multi-page site powered by `data.js` 
 | 模块 | 说明（中文） | Description (EN) |
 | --- | --- | --- |
 | Command Palette | `Ctrl + K` / `/`：全站搜索 + 快速动作 | Global search + quick actions |
+| Settings Center | 偏好/离线/数据/诊断统一入口（主题/对比度/强调色/动效/透明度/粒子等） | Unified hub for preferences + offline + data + diagnostics |
 | 本地状态闭环 | 收藏/筛选/笔记/进度/回复均写入 `localStorage` | Local-first state via `localStorage` |
 | View Transitions | 跨页共享元素映射 + Root 过渡 | Cross-page shared element transitions |
 | 微交互体系 | Hover 抬升/追光、Magnetic 磁吸、Press 按压、Click Ripple | Hover lift/spotlight, magnetic follow, press feedback, click ripple |
-| Planner | 路线生成、冲刺拆分、可复制计划 | Plan builder, sprint pacing, copyable schedule |
+| Planner | 路线生成、冲刺拆分、可复制计划 + `.ics` 日历导出 | Plan builder, sprint pacing, copyable schedule + `.ics` export |
 | 运行时诊断 | 错误边界 + 本地埋点 + 健康快照（可导出 bundle） | Error boundary + local telemetry + health snapshot (exportable) |
 | 离线体验 | SW 预缓存 + 导航超时回退缓存 + 资源 SWR | Precache + nav fallback + asset SWR |
 
@@ -62,7 +63,7 @@ GameKnowledge-Base is a data-driven static multi-page site powered by `data.js` 
 
 ## 视觉与动效 / Design & Motion
 
-### Pixel UI (EVO-VIS v4.6)
+### Pixel UI (EVO-VIS v5)
 
 - 视觉：更克制的中性色系统，明确的“hairline border + 精准阴影阶梯”，对标 Apple / Vercel 的信息层级与留白节奏。
 - 交互：统一 hover/press/focus 手感；默认 60FPS 友好（优先 transform/opacity）。

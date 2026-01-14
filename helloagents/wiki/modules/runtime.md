@@ -12,9 +12,10 @@
   - 文档入口：`docs.html`（站内交互式渲染 `docs/*.md`，含贡献指南/数据模型/部署说明）
 
 - `boot.js`
-  - 在页面最早期执行：恢复主题、高对比度、No-JS 标记
+  - 在页面最早期执行：恢复主题/高对比度/UI 偏好（强调色/密度/动效/透明度/粒子），并移除 No-JS 标记
   - 目标：减少“闪白/闪主题”的视觉抖动
   - 约定：当用户未显式设置时，可跟随系统 `prefers-contrast: more` / `forced-colors: active`
+  - 约定：UI 偏好通过 `html.dataset` 首帧注入（`data-accent/data-density/data-motion/data-transparency/data-particles`），避免后续 CSS 才生效导致“闪一下”
 
 - `styles.css`
   - Aurora/Glass/Bento 视觉系统
@@ -46,6 +47,8 @@
     - 错误边界与诊断面板：捕获 `error/unhandledrejection/securitypolicyviolation` 并写入 `gkb-diagnostics-errors`；可在指挥舱/Command Palette 打开诊断面板并导出诊断包（调试句柄：`GKB.runtime.diagnostics`）
     - 本地日志：统一 `logger`（ring buffer），默认持久化 `info/warn/error` 写入 `gkb-diagnostics-logs`；可在诊断面板查看/清空（调试句柄：`GKB.runtime.logger`）
     - 行为画像引擎：基于收藏/进度/路线等本地信号生成 DNA、动量、冲刺、热度与影响力指标，驱动指挥舱/探索/路线/社区/更新中心
+    - 设置中心：统一偏好/离线/数据/诊断入口（Modal Panel + Command Palette 动作），降低功能分散导致的维护成本
+    - Planner：冲刺节奏支持开始日期/时间，并可导出 iCalendar（.ics）用于导入系统日历（本地生成、不依赖服务端）
   - 动效：
     - 内建 `MotionLite`（WAAPI 轻量层：`animate/stagger`）
     - 统一走 `motionAnimate` 并尊重 `prefers-reduced-motion`
@@ -62,6 +65,18 @@
 ## 2) 运行时状态（localStorage）
 
 所有 key 使用 `gkb-` 前缀，避免与其他站点冲突；导出/导入用于本地备份迁移。      
+
+补充：UI 偏好相关 key（首帧由 `boot.js` 写入 dataset，运行时由 `scripts.js` 同步与持久化）
+
+- `gkb-accent`：强调色（`violet/cyan/rose/amber/slate/emerald`）
+- `gkb-density`：密度（`comfortable/compact`）
+- `gkb-motion`：动效偏好（`auto/reduce`）
+- `gkb-transparency`：透明度偏好（`auto/reduce`）
+- `gkb-particles`：粒子背景开关（`on/off`）
+
+补充：Planner 设置（用于冲刺节奏与日历导出）
+
+- `gkb-plan-settings`：Planner 设置（JSON：`focusMinutes/startDate/startTime`）
 
 补充：诊断相关 key（仅本地存储，不外发）
 
@@ -90,6 +105,8 @@
 ---
 
 ## 5) 变更历史
+
+- [202601150530_ui-evo-v5-settings-planner-ics](../../history/2026-01/202601150530_ui-evo-v5-settings-planner-ics/) - UI Evolution v5：设置中心 + 偏好系统 + Planner iCalendar（.ics）导出
 
 - [202601120253_local-logging-and-runtime-checks](../../history/2026-01/202601120253_local-logging-and-runtime-checks/) - 本地日志监控 + 运行时质量门禁（诊断面板扩展 / CI 门禁）
 - [202601120222_observability-runtime-diagnostics](../../history/2026-01/202601120222_observability-runtime-diagnostics/) - 运行时可观测性与诊断闭环（错误边界/诊断面板/指标增强）

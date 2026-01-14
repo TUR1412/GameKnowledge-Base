@@ -9,11 +9,11 @@
 所有页面必须使用带版本号的静态资源引用：
 
 ```html
-<link rel="stylesheet" href="styles.css?v=20260113-20">
-<link rel="manifest" href="manifest.webmanifest?v=20260113-20">
-<script src="boot.js?v=20260113-20"></script>
-<script src="data.js?v=20260113-20" defer></script>
-<script src="scripts.js?v=20260113-20" defer></script>
+<link rel="stylesheet" href="styles.css?v=20260115-1">
+<link rel="manifest" href="manifest.webmanifest?v=20260115-1">
+<script src="boot.js?v=20260115-1"></script>
+<script src="data.js?v=20260115-1" defer></script>
+<script src="scripts.js?v=20260115-1" defer></script>
 ```
 
 当你修改以下任意文件时，请同步更新所有 HTML 页里的 `?v=`：
@@ -59,6 +59,12 @@ node tools/bump-version.mjs --dry-run
 - 主题：`localStorage["gkb-theme"]`
 - 对比度：`localStorage["gkb-contrast"]`（`high` / `normal`）
   - 约定：当用户未显式设置时，站点可跟随系统 `prefers-contrast: more` / `forced-colors: active`（由 `boot.js` 首帧注入，`scripts.js` 负责二次对齐与持久化）
+- 外观偏好（UI Preferences）：**允许用户覆盖系统偏好**，并在首帧尽可能写入 `html.dataset` 避免“闪一下”
+  - 强调色：`localStorage["gkb-accent"]`（`violet/cyan/rose/amber/slate/emerald`）→ `html[data-accent]`
+  - 密度：`localStorage["gkb-density"]`（`comfortable/compact`）→ `html[data-density]`
+  - 动效：`localStorage["gkb-motion"]`（`auto/reduce`）→ `html[data-motion]`
+  - 透明度：`localStorage["gkb-transparency"]`（`auto/reduce`）→ `html[data-transparency]`
+  - 粒子背景：`localStorage["gkb-particles"]`（`on/off`）→ `html[data-particles]`
 - 搜索：Command Palette（`Ctrl + K` / `/`）
 - 筛选/收藏/话题回复：全部落地到 `localStorage`，刷新不丢（含 `gkb-saved-games` / `gkb-saved-guides` / `gkb-saved-topics`）
 - 游戏/攻略笔记：`gkb-game-notes:*` / `gkb-guide-notes:*`
@@ -66,6 +72,28 @@ node tools/bump-version.mjs --dry-run
 - 攻略阅读设置：`gkb-guide-font-size` / `gkb-guide-line-height` / `gkb-guide-reading-mode` / `gkb-guide-last-section:*`
 - 话题排序偏好：`gkb-forum-sort:*`
 - 话题库筛选：`gkb-community-topics-state`
+
+### 3.1 设置中心（Settings Center）
+
+设置中心是“偏好/离线/数据/诊断”的统一入口，避免同类功能散落在不同页面角落导致维护困难：
+
+- UI/交互：由 `scripts.js` 动态注入（Modal Panel），支持 `Esc` / Backdrop 关闭、focus 管理、Reduced Motion 降级
+- 入口：Header actions + Dashboard 入口（并在 Command Palette 提供快速动作）
+- 能力范围：主题/对比度/强调色/密度/动效/透明度/粒子开关 + 离线包/离线更新检查 + 诊断面板 + 本地数据导出/导入/清空
+- 数据承诺：所有偏好与数据仅存于本地浏览器（local-first），不依赖账号系统
+
+### 3.2 Planner：开始时间与日历导出（.ics）
+
+Planner 的冲刺节奏支持导出为 iCalendar（`.ics`），用于导入系统日历（Google Calendar / Outlook / Apple Calendar 等）：
+
+- 设置：`localStorage["gkb-plan-settings"]`（JSON）
+  - `focusMinutes`：每次专注分钟数
+  - `startDate`：开始日期（`YYYY-MM-DD`）
+  - `startTime`：开始时间（`HH:MM`，建议 15 分钟粒度）
+- 导出：前端生成文本并 Blob 下载（不依赖服务端）
+  - 时间：使用“本地浮动时间”（`DTSTART/DTEND` 不带 `Z`），`DTSTAMP` 使用 UTC（带 `Z`）
+  - 安全：文本会做 `\\ ; ,` 转义并执行行折叠（line folding）
+  - 可追溯：事件包含 `X-GKB-VERSION`（对应 `data.js.version`）
 
 ---
 

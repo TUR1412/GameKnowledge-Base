@@ -12,6 +12,11 @@
   const STORAGE_KEYS = {
     theme: "gkb-theme",
     contrast: "gkb-contrast",
+    accent: "gkb-accent",
+    density: "gkb-density",
+    motion: "gkb-motion",
+    transparency: "gkb-transparency",
+    particles: "gkb-particles",
     allGamesState: "gkb-all-games-state",
     allGuidesState: "gkb-all-guides-state",
     savedGuides: "gkb-saved-guides",
@@ -761,11 +766,38 @@
 
   const prefersReducedMotion = () => {
     try {
-      return (
-        window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches
+      // 用户显式设置优先，其次尊重系统偏好（可访问性优先）
+      const user = String(document.documentElement?.dataset?.motion || "").trim();
+      if (user === "reduce") return true;
+
+      return Boolean(
+        window.matchMedia &&
+          window.matchMedia("(prefers-reduced-motion: reduce)").matches
       );
     } catch (_) {
       return false;
+    }
+  };
+
+  const prefersReducedTransparency = () => {
+    try {
+      const user = String(document.documentElement?.dataset?.transparency || "").trim();
+      if (user === "reduce") return true;
+
+      return Boolean(
+        window.matchMedia &&
+          window.matchMedia("(prefers-reduced-transparency: reduce)").matches
+      );
+    } catch (_) {
+      return false;
+    }
+  };
+
+  const isParticlesEnabled = () => {
+    try {
+      return String(document.documentElement?.dataset?.particles || "") !== "off";
+    } catch (_) {
+      return true;
     }
   };
 
@@ -2490,14 +2522,7 @@
         if (document.documentElement.dataset.contrast === "high") return false;
       } catch (_) {}
 
-      try {
-        if (
-          window.matchMedia &&
-          window.matchMedia("(prefers-reduced-transparency: reduce)").matches
-        ) {
-          return false;
-        }
-      } catch (_) {}
+      if (prefersReducedTransparency()) return false;
 
       try {
         return Boolean(
@@ -2703,14 +2728,7 @@
           if (document.documentElement.dataset.contrast === "high") return false;
         } catch (_) {}
 
-        try {
-          if (
-            window.matchMedia &&
-            window.matchMedia("(prefers-reduced-transparency: reduce)").matches
-          ) {
-            return false;
-          }
-        } catch (_) {}
+        if (prefersReducedTransparency()) return false;
 
         try {
           return Boolean(
@@ -3980,6 +3998,11 @@
 
   const setTheme = (theme) => applyTheme(theme, { persist: true });
 
+  const getThemeLabel = () => {
+    const current = document.documentElement.dataset.theme || "light";
+    return current === "dark" ? "切换到浅色主题" : "切换到深色主题";
+  };
+
   const applyContrast = (contrast, { persist = false } = {}) => {
     const next = contrast === "high" ? "high" : "normal";
     if (next === "high") document.documentElement.dataset.contrast = "high";
@@ -3991,9 +4014,126 @@
   const setContrast = (contrast) => applyContrast(contrast, { persist: true });
 
   const getContrastLabel = () => {
-    const active = document.documentElement.dataset.contrast === "high";
+    const active = document.documentElement.dataset.contrast === "high";        
     return active ? "关闭高对比度" : "开启高对比度";
   };
+
+  // -------------------------
+  // UI Preferences (Accent / Density / Motion / Transparency / Particles)
+  // -------------------------
+
+  const UI_PREFS = {
+    accent: {
+      storage: STORAGE_KEYS.accent,
+      dataset: "accent",
+      allowed: ["violet", "cyan", "rose", "amber", "slate", "emerald"],
+      fallback: "violet",
+    },
+    density: {
+      storage: STORAGE_KEYS.density,
+      dataset: "density",
+      allowed: ["comfortable", "compact"],
+      fallback: "comfortable",
+    },
+    motion: {
+      storage: STORAGE_KEYS.motion,
+      dataset: "motion",
+      allowed: ["auto", "reduce"],
+      fallback: "auto",
+    },
+    transparency: {
+      storage: STORAGE_KEYS.transparency,
+      dataset: "transparency",
+      allowed: ["auto", "reduce"],
+      fallback: "auto",
+    },
+    particles: {
+      storage: STORAGE_KEYS.particles,
+      dataset: "particles",
+      allowed: ["on", "off"],
+      fallback: "on",
+    },
+  };
+
+  const normalizeChoice = (value, allowed, fallback) => {
+    const v = String(value ?? "").trim();
+    if (!v) return fallback;
+    const list = Array.isArray(allowed) ? allowed : [];
+    return list.includes(v) ? v : fallback;
+  };
+
+  const readChoice = (pref) => {
+    if (!pref) return "";
+
+    // 1) localStorage（用户显式设置）
+    const stored = storage.get(pref.storage);
+    if (stored != null) return normalizeChoice(stored, pref.allowed, pref.fallback);
+
+    // 2) dataset（boot.js 首帧注入）
+    try {
+      const ds = document.documentElement?.dataset?.[pref.dataset];
+      if (ds != null) return normalizeChoice(ds, pref.allowed, pref.fallback);
+    } catch (_) {}
+
+    return pref.fallback;
+  };
+
+  const applyChoice = (pref, value, { persist = false } = {}) => {
+    if (!pref) return "";
+    const next = normalizeChoice(value, pref.allowed, pref.fallback);
+
+    try {
+      document.documentElement.dataset[pref.dataset] = next;
+    } catch (_) {}
+
+    if (persist) storage.set(pref.storage, next);
+    return next;
+  };
+
+  const getUiPref = (name) => readChoice(UI_PREFS[name]);
+  const setUiPref = (name, value) => applyChoice(UI_PREFS[name], value, { persist: true });
+
+  const toggleUiPref = (name, a, b) => {
+    const current = getUiPref(name);
+    const next = current === a ? b : a;
+    return setUiPref(name, next);
+  };
+
+  const getAccentLabel = () => {
+    const v = getUiPref("accent");
+    return (
+      v === "cyan"
+        ? "强调色：青"
+        : v === "rose"
+          ? "强调色：玫"
+          : v === "amber"
+            ? "强调色：琥"
+            : v === "slate"
+              ? "强调色：灰"
+              : v === "emerald"
+                ? "强调色：翠"
+                : "强调色：紫"
+    );
+  };
+
+  const getDensityLabel = () => (getUiPref("density") === "compact" ? "密度：紧凑" : "密度：舒适");
+  const getMotionLabel = () => (getUiPref("motion") === "reduce" ? "动效：减少" : "动效：跟随系统");
+  const getTransparencyLabel = () =>
+    getUiPref("transparency") === "reduce" ? "透明度：减少" : "透明度：跟随系统";
+  const getParticlesLabel = () => (getUiPref("particles") === "off" ? "粒子背景：关闭" : "粒子背景：开启");
+
+  const cycleAccent = () => {
+    const list = UI_PREFS.accent.allowed;
+    const current = getUiPref("accent");
+    const idx = Math.max(0, list.indexOf(current));
+    const next = list[(idx + 1) % list.length];
+    return setUiPref("accent", next);
+  };
+
+  const toggleDensity = () => toggleUiPref("density", "comfortable", "compact");
+  const toggleMotion = () => toggleUiPref("motion", "auto", "reduce");
+  const toggleTransparency = () => toggleUiPref("transparency", "auto", "reduce");
+  const toggleParticles = () => toggleUiPref("particles", "on", "off");
 
   const checkServiceWorkerUpdate = () => {
     if (!("serviceWorker" in navigator)) {
@@ -4045,8 +4185,388 @@
     }
 
     // boot.js 可能已根据系统偏好写入 dataset（prefers-contrast / forced-colors）
-    const booted = document.documentElement.dataset.contrast === "high";
+    const booted = document.documentElement.dataset.contrast === "high";        
     applyContrast(booted ? "high" : "normal", { persist: false });
+  };
+
+  // -------------------------
+  // Settings Center（统一偏好面板）
+  // -------------------------
+
+  let settingsDialogRoot = null;
+  let settingsDialogLastActive = null;
+
+  const syncSettingsUi = (root) => {
+    if (!root) return;
+
+    const syncToggle = (action, { text, pressed = null, label = "" } = {}) => {
+      const btn = $(`button[data-action="${action}"]`, root);
+      if (!btn) return;
+      if (text) btn.textContent = text;
+      if (label) btn.setAttribute("aria-label", label);
+      if (pressed != null) btn.setAttribute("aria-pressed", pressed ? "true" : "false");
+    };
+
+    const themeNow = document.documentElement.dataset.theme || "light";
+    const contrastNow = document.documentElement.dataset.contrast === "high";
+
+    syncToggle("settings-theme", {
+      text: getThemeLabel(),
+      pressed: themeNow === "dark",
+      label: "切换主题",
+    });
+    syncToggle("settings-contrast", {
+      text: getContrastLabel(),
+      pressed: contrastNow,
+      label: "切换高对比度",
+    });
+    syncToggle("settings-density", { text: getDensityLabel(), label: "切换密度" });
+    syncToggle("settings-motion", { text: getMotionLabel(), label: "动效偏好" });
+    syncToggle("settings-transparency", { text: getTransparencyLabel(), label: "透明度偏好" });
+    syncToggle("settings-particles", { text: getParticlesLabel(), label: "粒子背景开关" });
+
+    const accent = getUiPref("accent");
+    $$('button[data-action="settings-accent"]', root).forEach((btn) => {
+      const v = String(btn.dataset.value || "");
+      const active = v === accent;
+      btn.setAttribute("aria-pressed", active ? "true" : "false");
+      btn.classList.toggle("active", active);
+    });
+  };
+
+  const ensureSettingsDialog = () => {
+    if (settingsDialogRoot) return settingsDialogRoot;
+
+    const root = document.createElement("div");
+    root.className = "settings-root";
+    root.hidden = true;
+    root.dataset.state = "closed";
+    root.innerHTML = `
+      <div class="settings-backdrop" data-action="settings-close" aria-hidden="true"></div>
+      <div class="settings-panel" role="dialog" aria-modal="true" aria-label="设置中心">
+        <div class="settings-header">
+          <div class="settings-header-title">
+            <div class="settings-title">设置中心</div>
+            <div class="settings-subtitle">外观 · 舒适度 · 离线 · 数据</div>
+          </div>
+          <div class="settings-header-actions">
+            <button type="button" class="settings-close" data-action="settings-close" aria-label="关闭">Esc</button>
+          </div>
+        </div>
+        <div class="settings-body">
+          <div class="settings-section">
+            <div class="settings-section-title">外观</div>
+
+            <div class="settings-row">
+              <div class="settings-row-main">
+                <div class="settings-row-title">主题</div>
+                <div class="settings-row-desc">浅色 / 深色（保存到本地）</div>
+              </div>
+              <button type="button" class="btn btn-small btn-secondary" data-action="settings-theme"></button>
+            </div>
+
+            <div class="settings-row">
+              <div class="settings-row-main">
+                <div class="settings-row-title">高对比度</div>
+                <div class="settings-row-desc">强光环境更清晰（可读性优先）</div>
+              </div>
+              <button type="button" class="btn btn-small btn-secondary" data-action="settings-contrast"></button>
+            </div>
+
+            <div class="settings-row">
+              <div class="settings-row-main">
+                <div class="settings-row-title">强调色</div>
+                <div class="settings-row-desc">影响按钮/高亮/边框强调</div>
+              </div>
+              <div class="settings-choice" aria-label="强调色">
+                <button type="button" class="chip settings-choice-item" data-action="settings-accent" data-value="violet">紫</button>
+                <button type="button" class="chip settings-choice-item" data-action="settings-accent" data-value="cyan">青</button>
+                <button type="button" class="chip settings-choice-item" data-action="settings-accent" data-value="rose">玫</button>
+                <button type="button" class="chip settings-choice-item" data-action="settings-accent" data-value="amber">琥</button>
+                <button type="button" class="chip settings-choice-item" data-action="settings-accent" data-value="emerald">翠</button>
+                <button type="button" class="chip settings-choice-item" data-action="settings-accent" data-value="slate">灰</button>
+              </div>
+            </div>
+
+            <div class="settings-row">
+              <div class="settings-row-main">
+                <div class="settings-row-title">密度</div>
+                <div class="settings-row-desc">影响间距与列表密度</div>
+              </div>
+              <button type="button" class="btn btn-small btn-secondary" data-action="settings-density"></button>
+            </div>
+          </div>
+
+          <div class="settings-section">
+            <div class="settings-section-title">舒适度与性能</div>
+
+            <div class="settings-row">
+              <div class="settings-row-main">
+                <div class="settings-row-title">动效</div>
+                <div class="settings-row-desc">减少动效可提升稳定性（尊重无障碍偏好）</div>
+              </div>
+              <button type="button" class="btn btn-small btn-secondary" data-action="settings-motion"></button>
+            </div>
+
+            <div class="settings-row">
+              <div class="settings-row-main">
+                <div class="settings-row-title">透明度</div>
+                <div class="settings-row-desc">减少玻璃/模糊以降低渲染压力</div>
+              </div>
+              <button type="button" class="btn btn-small btn-secondary" data-action="settings-transparency"></button>
+            </div>
+
+            <div class="settings-row">
+              <div class="settings-row-main">
+                <div class="settings-row-title">粒子背景</div>
+                <div class="settings-row-desc">背景视觉点缀（可关闭）</div>
+              </div>
+              <button type="button" class="btn btn-small btn-secondary" data-action="settings-particles"></button>
+            </div>
+          </div>
+
+          <div class="settings-section">
+            <div class="settings-section-title">离线与数据</div>
+            <div class="settings-actions" role="group" aria-label="离线与数据操作">
+              <button type="button" class="btn btn-small" data-action="settings-sw-update">检查离线缓存更新</button>
+              <button type="button" class="btn btn-small btn-secondary" data-action="settings-offline-pack">下载离线包</button>
+              <button type="button" class="btn btn-small btn-secondary" data-action="settings-diag">系统诊断</button>
+              <button type="button" class="btn btn-small btn-secondary" data-action="settings-export">导出本地数据</button>
+              <button type="button" class="btn btn-small btn-secondary" data-action="settings-import">导入本地数据</button>
+              <button type="button" class="btn btn-small btn-secondary" data-action="settings-reset">清空本地数据</button>
+            </div>
+            <div class="settings-hint">所有数据仅保存在本地浏览器，不依赖账号系统。</div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    const getFocusable = (host) =>
+      $$(
+        'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        host
+      );
+
+    const open = () => {
+      if (!root.hidden) return;
+      settingsDialogLastActive = document.activeElement;
+      root.hidden = false;
+      root.dataset.state = prefersReducedMotion() ? "open" : "opening";
+
+      telemetry.log("settings_open", { page: String(getPage() || "") });
+
+      const panel = $(".settings-panel", root);
+      const backdrop = $(".settings-backdrop", root);
+      const canMotion = !prefersReducedMotion() && Boolean(getMotion());
+      if (canMotion) prepareDialogMotionStart({ panel, backdrop });
+      else clearDialogMotionInlineStyles({ panel, backdrop });
+
+      syncSettingsUi(root);
+
+      const inPanel = canMotion
+        ? motionAnimate(panel, { opacity: [0, 1], y: [10, 0], scale: [0.985, 1], filter: ["blur(10px)", "blur(0px)"] }, { duration: MOTION.durBase })
+        : null;
+      const inBackdrop = canMotion ? motionAnimate(backdrop, { opacity: [0, 1] }, { duration: MOTION.durFast }) : null;
+
+      if (inPanel || inBackdrop) {
+        Promise.allSettled([motionFinished(inPanel), motionFinished(inBackdrop)]).finally(() => {
+          root.dataset.state = "open";
+          clearDialogMotionInlineStyles({ panel, backdrop });
+        });
+      } else {
+        root.dataset.state = "open";
+      }
+
+      window.setTimeout(() => {
+        const focusable = getFocusable(root);
+        (focusable[0] || panel || root)?.focus?.();
+      }, 0);
+    };
+
+    const close = () => {
+      if (root.hidden) return;
+      const panel = $(".settings-panel", root);
+      const backdrop = $(".settings-backdrop", root);
+
+      const finalize = () => {
+        root.hidden = true;
+        root.dataset.state = "closed";
+        try {
+          settingsDialogLastActive?.focus?.();
+        } catch (_) {}
+        settingsDialogLastActive = null;
+      };
+
+      const canMotion = !prefersReducedMotion() && Boolean(getMotion());
+      root.dataset.state = canMotion ? "closing" : "closed";
+      if (!canMotion) {
+        finalize();
+        return;
+      }
+
+      const outPanel = motionAnimate(
+        panel,
+        { opacity: [1, 0], y: [0, 8], scale: [1, 0.985], filter: ["blur(0px)", "blur(10px)"] },
+        { duration: MOTION.durFast, easing: MOTION.easeIn }
+      );
+      const outBackdrop = motionAnimate(backdrop, { opacity: [1, 0] }, { duration: MOTION.durFast, easing: MOTION.easeIn });
+
+      Promise.allSettled([motionFinished(outPanel), motionFinished(outBackdrop)]).finally(() => {
+        clearDialogMotionInlineStyles({ panel, backdrop });
+        finalize();
+      });
+    };
+
+    root.addEventListener("click", (e) => {
+      const btn = e.target?.closest?.("button[data-action]");
+      const action = String(btn?.dataset?.action || "");
+
+      if (action === "settings-close") {
+        close();
+        return;
+      }
+
+      if (action === "settings-theme") {
+        const current = document.documentElement.dataset.theme || "light";
+        setTheme(current === "dark" ? "light" : "dark");
+        toast({ title: "主题已切换", message: "偏好已保存到本地。", tone: "success" });
+        syncSettingsUi(root);
+        return;
+      }
+
+      if (action === "settings-contrast") {
+        const active = document.documentElement.dataset.contrast === "high";
+        setContrast(active ? "normal" : "high");
+        toast({ title: "对比度已切换", message: active ? "已恢复默认对比度。" : "已开启高对比度模式。", tone: "info" });
+        syncSettingsUi(root);
+        return;
+      }
+
+      if (action === "settings-density") {
+        const next = toggleDensity();
+        toast({ title: "密度已切换", message: next === "compact" ? "已切换为紧凑密度。" : "已切换为舒适密度。", tone: "info" });
+        syncSettingsUi(root);
+        return;
+      }
+
+      if (action === "settings-motion") {
+        const next = toggleMotion();
+        toast({ title: "动效偏好已更新", message: next === "reduce" ? "已减少动效（优先可访问性）。" : "已跟随系统动效偏好。", tone: "info" });
+        syncSettingsUi(root);
+        return;
+      }
+
+      if (action === "settings-transparency") {
+        const next = toggleTransparency();
+        toast({ title: "透明度偏好已更新", message: next === "reduce" ? "已减少透明/模糊效果。" : "已跟随系统透明度偏好。", tone: "info" });
+        syncSettingsUi(root);
+        return;
+      }
+
+      if (action === "settings-particles") {
+        const next = toggleParticles();
+        initParticles();
+        toast({ title: "粒子背景已切换", message: next === "off" ? "已关闭粒子背景。" : "已开启粒子背景。", tone: "info" });
+        syncSettingsUi(root);
+        return;
+      }
+
+      if (action === "settings-diag") {
+        openDiagnosticsDialog();
+        return;
+      }
+      if (action === "settings-sw-update") {
+        checkServiceWorkerUpdate();
+        return;
+      }
+      if (action === "settings-offline-pack") {
+        precacheOfflinePack();
+        return;
+      }
+      if (action === "settings-export") {
+        exportLocalData();
+        return;
+      }
+      if (action === "settings-import") {
+        importLocalData();
+        return;
+      }
+      if (action === "settings-reset") {
+        resetLocalData();
+        return;
+      }
+
+      if (action === "settings-accent") {
+        const value = String(btn?.dataset?.value || "");
+        const next = setUiPref("accent", value);
+        toast({ title: "强调色已更新", message: `当前：${getAccentLabel().replace(/^强调色：/, "")}`, tone: "success" });
+        telemetry.log("settings_accent", { accent: next });
+        syncSettingsUi(root);
+      }
+    });
+
+    root.addEventListener("keydown", (e) => {
+      if (root.hidden) return;
+      if (e.key === "Escape") close();
+    });
+
+    // Focus trap（避免 Tab 跑到弹窗外）
+    root.addEventListener("keydown", (e) => {
+      if (root.hidden) return;
+      if (e.key !== "Tab") return;
+      const focusable = getFocusable(root);
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    });
+
+    document.body.appendChild(root);
+    settingsDialogRoot = root;
+
+    root._settingsOpen = open;
+    root._settingsClose = close;
+
+    return root;
+  };
+
+  const openSettingsDialog = () => {
+    const root = ensureSettingsDialog();
+    root._settingsOpen?.();
+  };
+
+  const initSettingsCenter = () => {
+    const host = $(".header-actions");
+    if (!host) return;
+    if ($(".settings-toggle", host)) return;
+
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "icon-button settings-toggle";
+    btn.setAttribute("aria-label", "打开设置中心");
+    btn.innerHTML = `
+      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+        <path fill="currentColor" d="M19.14 12.94c.04-.3.06-.6.06-.94s-.02-.64-.07-.94l2.03-1.58a.5.5 0 0 0 .12-.64l-1.92-3.32a.5.5 0 0 0-.6-.22l-2.39.96a7.03 7.03 0 0 0-1.63-.94l-.36-2.54A.5.5 0 0 0 13.88 1h-3.76a.5.5 0 0 0-.49.42l-.36 2.54c-.58.22-1.13.52-1.64.9l-2.39-.96a.5.5 0 0 0-.6.22L2.72 7.44a.5.5 0 0 0 .12.64l2.03 1.58c-.05.31-.07.63-.07.94s.02.63.07.94l-2.03 1.58a.5.5 0 0 0-.12.64l1.92 3.32c.14.24.43.34.69.22l2.37-.96c.51.39 1.06.7 1.66.93l.36 2.54c.04.24.25.42.49.42h3.76c.24 0 .45-.18.49-.42l.36-2.54c.6-.23 1.16-.54 1.67-.93l2.37.96c.26.11.55.02.69-.22l1.92-3.32a.5.5 0 0 0-.12-.64l-2.03-1.58zM12 15.5A3.5 3.5 0 1 1 12 8a3.5 3.5 0 0 1 0 7.5z"/>
+      </svg>
+      <span class="icon-button-text">设置</span>
+    `;
+    btn.addEventListener("click", openSettingsDialog);
+
+    const anchor = $(".theme-toggle", host) || host.firstChild;
+    host.insertBefore(btn, anchor);
+
+    // 首次启动时确保 dataset 与偏好一致（用于 CSS 选择器与 UI 状态）
+    applyChoice(UI_PREFS.accent, getUiPref("accent"), { persist: false });
+    applyChoice(UI_PREFS.density, getUiPref("density"), { persist: false });
+    applyChoice(UI_PREFS.motion, getUiPref("motion"), { persist: false });
+    applyChoice(UI_PREFS.transparency, getUiPref("transparency"), { persist: false });
+    applyChoice(UI_PREFS.particles, getUiPref("particles"), { persist: false });
   };
 
   // -------------------------
@@ -4142,11 +4662,6 @@
         h = idx + 1;
       }
       return score;
-    };
-
-    const getThemeLabel = () => {
-      const current = document.documentElement.dataset.theme || "light";
-      return current === "dark" ? "切换到浅色主题" : "切换到深色主题";
     };
 
     const getReadingLabel = () => {
@@ -4276,6 +4791,65 @@
               message: active ? "已恢复默认对比度。" : "已开启高对比度模式。",
               tone: "info",
             });
+          },
+        },
+        {
+          kind: "action",
+          badge: "设置",
+          title: "打开设置中心",
+          subtitle: "主题/强调色/密度/动效/透明度",
+          run: openSettingsDialog,
+        },
+        {
+          kind: "action",
+          badge: "设置",
+          title: getAccentLabel(),
+          subtitle: "循环切换强调色（影响按钮/高亮/边框强调）",
+          run: () => {
+            const next = cycleAccent();
+            toast({ title: "强调色已切换", message: `当前：${getAccentLabel().replace(/^强调色：/, "")}`, tone: "success" });
+            telemetry.log("settings_accent", { accent: next });
+          },
+        },
+        {
+          kind: "action",
+          badge: "设置",
+          title: getDensityLabel(),
+          subtitle: "切换布局密度（更紧凑/更舒适）",
+          run: () => {
+            const next = toggleDensity();
+            toast({ title: "密度已切换", message: next === "compact" ? "已切换为紧凑密度。" : "已切换为舒适密度。", tone: "info" });
+          },
+        },
+        {
+          kind: "action",
+          badge: "设置",
+          title: getMotionLabel(),
+          subtitle: "减少动效可提升稳定性（可访问性优先）",
+          run: () => {
+            const next = toggleMotion();
+            toast({ title: "动效偏好已更新", message: next === "reduce" ? "已减少动效（优先可访问性）。" : "已跟随系统动效偏好。", tone: "info" });
+          },
+        },
+        {
+          kind: "action",
+          badge: "设置",
+          title: getTransparencyLabel(),
+          subtitle: "减少玻璃/模糊以降低渲染压力",
+          run: () => {
+            const next = toggleTransparency();
+            toast({ title: "透明度偏好已更新", message: next === "reduce" ? "已减少透明/模糊效果。" : "已跟随系统透明度偏好。", tone: "info" });
+          },
+        },
+        {
+          kind: "action",
+          badge: "设置",
+          title: getParticlesLabel(),
+          subtitle: "背景视觉点缀（可关闭）",
+          run: () => {
+            const next = toggleParticles();
+            initParticles();
+            toast({ title: "粒子背景已切换", message: next === "off" ? "已关闭粒子背景。" : "已开启粒子背景。", tone: "info" });
           },
         },
         ...(readCompareGames().length > 0
@@ -5478,6 +6052,10 @@
     const container = $("#particles-background");
     if (!container) return;
     if (prefersReducedMotion()) return;
+    if (!isParticlesEnabled()) {
+      $$(".particle", container).forEach((n) => n.remove());
+      return;
+    }
 
     $$(".particle", container).forEach((n) => n.remove());
 
@@ -8177,6 +8755,7 @@
 
     const exportBtn = $("#dash-export");
     const importBtn = $("#dash-import");
+    const settingsBtn = $("#dash-settings");
     const resetBtn = $("#dash-reset");
     const markAllBtn = $("#dash-mark-all");
     const diagOpenBtn = $("#dash-diag-open");
@@ -8186,6 +8765,7 @@
 
     exportBtn?.addEventListener("click", exportLocalData);
     importBtn?.addEventListener("click", importLocalData);
+    settingsBtn?.addEventListener("click", openSettingsDialog);
     resetBtn?.addEventListener("click", resetLocalData);
     diagOpenBtn?.addEventListener("click", openDiagnosticsDialog);
     diagExportBtn?.addEventListener("click", exportDiagnosticsBundle);
@@ -8843,6 +9423,9 @@
     const sprintSummary = $("#planner-sprint-summary");
     const smartSortBtn = $("#planner-smart-sort");
     const sprintCopyBtn = $("#planner-sprint-copy");
+    const startDateInput = $("#planner-start-date");
+    const startTimeInput = $("#planner-start-time");
+    const exportIcsBtn = $("#planner-export-ics");
 
     const addInput = $("#planner-add-input");
     const addBtn = $("#planner-add-btn");
@@ -8964,13 +9547,60 @@
 
     const readPlanSettings = () => {
       const parsed = safeJsonParse(storage.get(STORAGE_KEYS.planSettings), null);
+
+      const pad2 = (n) => String(n).padStart(2, "0");
+      const formatLocalDate = (d) => {
+        try {
+          const date = d instanceof Date ? d : new Date();
+          return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
+        } catch (_) {
+          return new Date().toISOString().slice(0, 10);
+        }
+      };
+
+      const isDateString = (v) => /^\d{4}-\d{2}-\d{2}$/.test(String(v || "").trim());
+      const isTimeString = (v) => {
+        const raw = String(v || "").trim();
+        if (!/^\d{2}:\d{2}$/.test(raw)) return false;
+        const [hh, mm] = raw.split(":").map((x) => Number(x));
+        return (
+          Number.isFinite(hh) &&
+          Number.isFinite(mm) &&
+          hh >= 0 &&
+          hh <= 23 &&
+          mm >= 0 &&
+          mm <= 59
+        );
+      };
+
       const focusMinutes = clampNumber(parsed?.focusMinutes || 45, 20, 120);
-      return { focusMinutes };
+      const startDateRaw = String(parsed?.startDate || "").trim();
+      const startTimeRaw = String(parsed?.startTime || "").trim();
+
+      const startDate = isDateString(startDateRaw) ? startDateRaw : formatLocalDate(new Date());
+      const startTime = isTimeString(startTimeRaw) ? startTimeRaw : "20:00";
+
+      return { focusMinutes, startDate, startTime };
     };
 
     const writePlanSettings = (settings) => storage.set(STORAGE_KEYS.planSettings, JSON.stringify(settings));
 
     let planSettings = readPlanSettings();
+
+    const isPlanDate = (v) => /^\d{4}-\d{2}-\d{2}$/.test(String(v || "").trim());
+    const isPlanTime = (v) => {
+      const raw = String(v || "").trim();
+      if (!/^\d{2}:\d{2}$/.test(raw)) return false;
+      const [hh, mm] = raw.split(":").map((x) => Number(x));
+      return (
+        Number.isFinite(hh) &&
+        Number.isFinite(mm) &&
+        hh >= 0 &&
+        hh <= 23 &&
+        mm >= 0 &&
+        mm <= 59
+      );
+    };
 
     const syncFocusLabel = () => {
       if (focusRange) {
@@ -8988,6 +9618,8 @@
         } catch (_) {}
       }
       if (focusValue) focusValue.textContent = `${planSettings.focusMinutes} 分钟`;
+      if (startDateInput) startDateInput.value = String(planSettings.startDate || "");
+      if (startTimeInput) startTimeInput.value = String(planSettings.startTime || "");
     };
 
     const getPlan = () => state.plans?.[state.currentId] || null;
@@ -9108,6 +9740,7 @@
         { label: "总时长", value: `${Math.round(schedule.totalMinutes)} 分钟` },
         { label: "冲刺段数", value: `${schedule.sessions.length}` },
         { label: "单次目标", value: `${planSettings.focusMinutes} 分钟` },
+        { label: "开始", value: `${planSettings.startDate} ${planSettings.startTime}` },
       ]);
     };
 
@@ -9401,6 +10034,32 @@
       renderSprint(getPlan());
     });
 
+    startDateInput?.addEventListener("change", () => {
+      const raw = String(startDateInput.value || "").trim();
+      if (!isPlanDate(raw)) {
+        startDateInput.value = String(planSettings.startDate || "");
+        toast({ title: "日期格式不正确", message: "请使用 YYYY-MM-DD。", tone: "warn" });
+        return;
+      }
+      planSettings = { ...planSettings, startDate: raw };
+      writePlanSettings(planSettings);
+      syncFocusLabel();
+      renderSprint(getPlan());
+    });
+
+    startTimeInput?.addEventListener("change", () => {
+      const raw = String(startTimeInput.value || "").trim();
+      if (!isPlanTime(raw)) {
+        startTimeInput.value = String(planSettings.startTime || "");
+        toast({ title: "时间格式不正确", message: "请使用 HH:MM。", tone: "warn" });
+        return;
+      }
+      planSettings = { ...planSettings, startTime: raw };
+      writePlanSettings(planSettings);
+      syncFocusLabel();
+      renderSprint(getPlan());
+    });
+
     smartSortBtn?.addEventListener("click", () => {
       const plan = getPlan();
       if (!plan) return;
@@ -9434,6 +10093,130 @@
           message: ok ? "已写入剪贴板，可直接发给队友或备忘。" : "当前环境不支持剪贴板。",
           tone: ok ? "success" : "warn",
         });
+      });
+    });
+
+    // Export sprint schedule as iCalendar (.ics)
+    const exportPlannerIcs = (plan, schedule) => {
+      const pad2 = (n) => String(n).padStart(2, "0");
+      const formatLocalDateTime = (d) => {
+        const date = d instanceof Date ? d : new Date();
+        return `${date.getFullYear()}${pad2(date.getMonth() + 1)}${pad2(date.getDate())}T${pad2(date.getHours())}${pad2(date.getMinutes())}${pad2(date.getSeconds())}`;
+      };
+      const formatDtStamp = (d) => {
+        const iso = (d instanceof Date ? d : new Date()).toISOString();
+        return iso.replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");
+      };
+      const escapeIcsText = (value) => {
+        const s = String(value ?? "");
+        return s
+          .replace(/\\/g, "\\\\")
+          .replace(/\r?\n/g, "\\n")
+          .replace(/;/g, "\\;")
+          .replace(/,/g, "\\,");
+      };
+      const foldIcsLine = (line) => {
+        const raw = String(line ?? "");
+        const limit = 72;
+        if (raw.length <= limit) return [raw];
+        const out = [];
+        let i = 0;
+        while (i < raw.length) {
+          const chunk = raw.slice(i, i + limit);
+          out.push(i === 0 ? chunk : ` ${chunk}`);
+          i += limit;
+        }
+        return out;
+      };
+
+      const version = String(data?.version || "");
+      const safeVersion = version || "unknown";
+      const dtstamp = formatDtStamp(new Date());
+
+      const name = String(plan?.name || "我的路线").trim() || "我的路线";
+      const uidBase = `${String(plan?.id || "plan").replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 18) || "plan"}-${Date.now().toString(36)}`;
+
+      const [y, m, d] = String(planSettings.startDate || "").split("-").map((x) => Number(x));
+      const [hh, mm] = String(planSettings.startTime || "").split(":").map((x) => Number(x));
+      const now = new Date();
+      const base = new Date(
+        Number.isFinite(y) ? y : now.getFullYear(),
+        Number.isFinite(m) ? m - 1 : now.getMonth(),
+        Number.isFinite(d) ? d : now.getDate(),
+        Number.isFinite(hh) ? hh : 20,
+        Number.isFinite(mm) ? mm : 0,
+        0,
+        0
+      );
+
+      const shareUrl = buildShareUrl(plan);
+      const shareHint = shareUrl && shareUrl.length <= 1200 ? `\n\n分享链接：${shareUrl}` : "";
+
+      const header = [
+        "BEGIN:VCALENDAR",
+        "VERSION:2.0",
+        "PRODID:-//GameKnowledge-Base//Planner//ZH-CN",
+        "CALSCALE:GREGORIAN",
+        "METHOD:PUBLISH",
+      ];
+
+      const events = schedule.sessions.flatMap((session, idx) => {
+        const start = new Date(base.getTime());
+        try {
+          start.setDate(base.getDate() + idx);
+        } catch (_) {}
+        const end = new Date(start.getTime() + Math.max(1, Math.round(session.minutes)) * 60 * 1000);
+
+        const items = session.items
+          .map((x) => `- ${x.label}（${Math.round(x.minutes)}m）`)
+          .join("\n");
+        const desc = `冲刺 ${idx + 1} · 预计 ${Math.round(session.minutes)} 分钟\n\n${items}${shareHint}`;
+
+        return [
+          "BEGIN:VEVENT",
+          `UID:${uidBase}-${idx + 1}@gkb`,
+          `DTSTAMP:${dtstamp}`,
+          `DTSTART:${formatLocalDateTime(start)}`,
+          `DTEND:${formatLocalDateTime(end)}`,
+          `SUMMARY:${escapeIcsText(`${name} · 冲刺 ${idx + 1}`)}`,
+          `DESCRIPTION:${escapeIcsText(desc)}`,
+          `CATEGORIES:${escapeIcsText("GameKnowledgeBase")}`,
+          `X-GKB-VERSION:${escapeIcsText(safeVersion)}`,
+          "END:VEVENT",
+        ];
+      });
+
+      const footer = ["END:VCALENDAR"];
+      const lines = [...header, ...events, ...footer].flatMap(foldIcsLine);
+      return lines.join("\r\n") + "\r\n";
+    };
+
+    exportIcsBtn?.addEventListener("click", () => {
+      const plan = getPlan();
+      if (!plan) return;
+      const schedule = buildSprintSchedule(plan, data, planSettings.focusMinutes);
+      if (schedule.sessions.length === 0) {
+        toast({ title: "暂无可导出内容", message: "路线为空时无法导出日历。", tone: "warn" });
+        return;
+      }
+
+      if (!isPlanDate(planSettings.startDate) || !isPlanTime(planSettings.startTime)) {
+        toast({ title: "开始时间未设置", message: "请先设置开始日期与开始时间。", tone: "warn" });
+        return;
+      }
+
+      const date = new Date().toISOString().slice(0, 10);
+      const version = String(data?.version || "") || "unknown";
+      const safeName = String(plan.name || "plan").trim().replace(/[\\\\/:*?\"<>|]/g, "-").slice(0, 24) || "plan";
+      const fileName = `gkb-sprints-${safeName}-${version}-${date}.ics`;
+
+      const ics = exportPlannerIcs(plan, schedule);
+      const ok = downloadTextFile(fileName, ics, "text/calendar;charset=utf-8");
+      telemetry.log("planner_export_ics", { ok: Boolean(ok), sessions: schedule.sessions.length });
+      toast({
+        title: ok ? "日历已导出" : "导出失败",
+        message: ok ? "已下载 .ics 文件，可导入到系统日历/日程工具。" : "浏览器不支持下载或权限受限。",
+        tone: ok ? "success" : "warn",
       });
     });
 
@@ -10710,6 +11493,7 @@
       initErrorBoundary,
       initThemeToggle,
       initContrast,
+      initSettingsCenter,
       seedUpdateRadarIfNeeded,
       initCommandPalette,
       initHeaderQuickLinks,
