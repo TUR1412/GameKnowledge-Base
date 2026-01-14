@@ -1,0 +1,76 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "lts/*"
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Quality Gates (CI parity)
+        run: npm run check:all
+
+      - name: Prepare Pages Artifact
+        run: |
+          mkdir -p _site
+          rsync -av --delete \
+            --exclude ".git" \
+            --exclude ".github" \
+            --exclude "helloagents" \
+            --exclude "node_modules" \
+            --exclude "src" \
+            --exclude "tests" \
+            --exclude "tools" \
+            --exclude "dist" \
+            --exclude "package.json" \
+            --exclude "package-lock.json" \
+            --exclude "vite.config.mjs" \
+            --exclude "Task_Status.md" \
+            --exclude "README.md" \
+            --exclude "CHANGELOG.md" \
+            --exclude "CODE_OF_CONDUCT.md" \
+            --exclude "CONTRIBUTING.md" \
+            --exclude "SECURITY.md" \
+            ./ _site/
+
+          # Disable Jekyll to avoid special handling of leading-underscore paths.
+          touch _site/.nojekyll
+
+      - name: Upload Pages Artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
