@@ -10375,25 +10375,62 @@ h3,
     --accent-dark: hsl(var(--accent-h) var(--accent-s) 44%);
     --accent-soft: hsl(var(--accent-h) var(--accent-s) var(--accent-l) / 0.12);
 
+    /* Secondary：与 grad/glow 的第二色保持一致（避免主色变了但辅色还停留在旧方案） */
+    --accent-2-h: calc(var(--accent-h) + 42);
+    --accent-2: hsl(var(--accent-2-h) var(--accent-s) var(--accent-l));
+    --accent-2-dark: hsl(var(--accent-2-h) var(--accent-s) 44%);
+    --accent-2-soft: hsl(var(--accent-2-h) var(--accent-s) var(--accent-l) / 0.12);
+
     --primary-color: var(--accent);
     --primary-dark: var(--accent-dark);
     --primary-light: var(--accent-soft);
 
+    --secondary-color: var(--accent-2);
+    --secondary-dark: var(--accent-2-dark);
+    --secondary-light: var(--accent-2-soft);
+
+    /* 兼容旧语义：全站只保留一个“强调色来源” */
+    --accent-color: var(--accent);
+
     --grad-a: hsl(var(--accent-h) 90% 60% / 0.64);
-    --grad-b: hsl(calc(var(--accent-h) + 42) 88% 58% / 0.52);
+    --grad-b: hsl(var(--accent-2-h) 88% 58% / 0.52);
     --grad-c: hsl(calc(var(--accent-h) + 320) 86% 58% / 0.50);
     --border-grad: linear-gradient(135deg, var(--grad-a), var(--grad-b), var(--grad-c));
 
     --glow-primary: hsl(var(--accent-h) 90% 60% / 0.34);
-    --glow-secondary: hsl(calc(var(--accent-h) + 42) 90% 60% / 0.26);
+    --glow-secondary: hsl(var(--accent-2-h) 90% 60% / 0.26);
+
+    /* Micro-interaction：追光/涟漪随强调色联动，避免割裂 */
+    --fx-spot-1: hsl(var(--accent-h) 90% 60% / 0.16);
+    --fx-spot-2: hsl(var(--accent-2-h) 90% 60% / 0.12);
+    --fx-ripple: rgba(255, 255, 255, 0.45);
 
     --focus-ring: 0 0 0 3px hsl(var(--accent-h) 92% 58% / 0.35);
 }
 
 :root[data-theme="dark"] {
+    --primary-color: var(--accent);
+    --primary-dark: var(--accent-dark);
+
+    --secondary-color: var(--accent-2);
+    --secondary-dark: var(--accent-2-dark);
+
     --glow-primary: hsl(var(--accent-h) 90% 62% / 0.42);
-    --glow-secondary: hsl(calc(var(--accent-h) + 42) 92% 62% / 0.32);
+    --glow-secondary: hsl(var(--accent-2-h) 92% 62% / 0.32);
     --focus-ring: 0 0 0 3px hsl(var(--accent-h) 92% 62% / 0.40);
+
+    --grad-a: hsl(var(--accent-h) 90% 62% / 0.64);
+    --grad-b: hsl(var(--accent-2-h) 88% 60% / 0.52);
+    --grad-c: hsl(calc(var(--accent-h) + 320) 86% 60% / 0.50);
+    --border-grad: linear-gradient(135deg, var(--grad-a), var(--grad-b), var(--grad-c));
+
+    /* 暗色下提升 soft token 的可见性（但保持克制，避免“霓虹污染”） */
+    --primary-light: hsl(var(--accent-h) var(--accent-s) 60% / 0.18);
+    --secondary-light: hsl(var(--accent-2-h) var(--accent-s) 60% / 0.16);
+
+    --fx-spot-1: hsl(var(--accent-h) 92% 62% / 0.20);
+    --fx-spot-2: hsl(var(--accent-2-h) 92% 62% / 0.14);
+    --fx-ripple: rgba(255, 255, 255, 0.28);
 }
 
 :root[data-accent="cyan"] {
@@ -10629,4 +10666,86 @@ h3,
     .sprint-field .input-pill {
         width: 100%;
     }
+}
+
+/* ==========================================================================
+   V20260115 UI Evolution v6：Pixel UI 精修补丁（以 Accent 为单源，收敛组件一致性）
+   - 目标：解决历史 token/组件叠加导致的“主色变了但辅色/追光/涟漪仍停留旧方案”的漂移
+   - 策略：延续末尾覆盖；仅对关键交互面（链接/按钮/Chip/Icon Button）做确定性收敛
+   ========================================================================== */
+
+:root[data-theme="light"] {
+    color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+    color-scheme: dark;
+}
+
+/* Inline Content Links：只对“正文文本链接”做 underline 动效，避免卡片/控件被误命中 */
+main :where(p, li, blockquote, dd, dt) a:not(.btn):not(.btn-small):not(.icon-button):not(.chip):not(.tag):not(.social-icon) {
+    text-decoration: none;
+    background-image: linear-gradient(currentColor, currentColor);
+    background-position: 0% 100%;
+    background-repeat: no-repeat;
+    background-size: 0% 2px;
+    transition: background-size var(--dur-3) var(--ease-out);
+}
+
+main :where(p, li, blockquote, dd, dt) a:not(.btn):not(.btn-small):not(.icon-button):not(.chip):not(.tag):not(.social-icon):hover,
+main :where(p, li, blockquote, dd, dt) a:not(.btn):not(.btn-small):not(.icon-button):not(.chip):not(.tag):not(.social-icon):focus-visible {
+    background-size: 100% 2px;
+}
+
+/* Buttons：全部消费 token（primary/secondary + btn-shadow + glow），移除固定色漂移 */
+.btn,
+.btn-small {
+    background: linear-gradient(180deg, var(--primary-color), var(--primary-dark));
+    border: 1px solid var(--surface-border);
+    box-shadow: var(--btn-shadow), 0 18px 45px var(--glow-primary);
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .btn:hover,
+    .btn-small:hover {
+        box-shadow: var(--btn-shadow-hover), 0 26px 70px var(--glow-primary);
+    }
+}
+
+.btn:active,
+.btn-small:active {
+    box-shadow: var(--btn-shadow-press), 0 14px 34px rgba(0, 0, 0, 0.10);
+}
+
+.btn.btn-secondary,
+.btn-small.btn-secondary {
+    background: linear-gradient(180deg, var(--secondary-color), var(--secondary-dark));
+    border: 1px solid var(--surface-border);
+    box-shadow: var(--btn-shadow), 0 18px 45px var(--glow-secondary);
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .btn.btn-secondary:hover,
+    .btn-small.btn-secondary:hover {
+        box-shadow: var(--btn-shadow-hover), 0 26px 70px var(--glow-secondary);
+    }
+}
+
+.btn.btn-secondary:active,
+.btn-small.btn-secondary:active {
+    box-shadow: var(--btn-shadow-press), 0 14px 34px rgba(0, 0, 0, 0.10);
+}
+
+/* Icon Button / Chips：确保在强调色切换时边界与文本层级稳定 */
+.icon-button,
+.chip,
+.tag {
+    border-color: var(--surface-border);
+    color: var(--text-primary);
+}
+
+:root[data-contrast="high"] .icon-button,
+:root[data-contrast="high"] .chip,
+:root[data-contrast="high"] .tag {
+    box-shadow: var(--elev-1) !important;
 }

@@ -9,11 +9,11 @@
 所有页面必须使用带版本号的静态资源引用：
 
 ```html
-<link rel="stylesheet" href="styles.css?v=20260115-1">
-<link rel="manifest" href="manifest.webmanifest?v=20260115-1">
-<script src="boot.js?v=20260115-1"></script>
-<script src="data.js?v=20260115-1" defer></script>
-<script src="scripts.js?v=20260115-1" defer></script>
+<link rel="stylesheet" href="styles.css?v=20260115-2">
+<link rel="manifest" href="manifest.webmanifest?v=20260115-2">
+<script src="boot.js?v=20260115-2"></script>
+<script src="data.js?v=20260115-2" defer></script>
+<script src="scripts.js?v=20260115-2" defer></script>
 ```
 
 当你修改以下任意文件时，请同步更新所有 HTML 页里的 `?v=`：
@@ -79,7 +79,7 @@ node tools/bump-version.mjs --dry-run
 
 - UI/交互：由 `scripts.js` 动态注入（Modal Panel），支持 `Esc` / Backdrop 关闭、focus 管理、Reduced Motion 降级
 - 入口：Header actions + Dashboard 入口（并在 Command Palette 提供快速动作）
-- 能力范围：主题/对比度/强调色/密度/动效/透明度/粒子开关 + 离线包/离线更新检查 + 诊断面板 + 本地数据导出/导入/清空
+- 能力范围：主题/对比度/强调色/密度/动效/透明度/粒子开关 + 离线包/离线更新检查 + 诊断面板 + 外观偏好重置（不清空业务数据） + 本地数据导出/导入/清空
 - 数据承诺：所有偏好与数据仅存于本地浏览器（local-first），不依赖账号系统
 
 ### 3.2 Planner：开始时间与日历导出（.ics）

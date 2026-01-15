@@ -47,7 +47,7 @@
     - 错误边界与诊断面板：捕获 `error/unhandledrejection/securitypolicyviolation` 并写入 `gkb-diagnostics-errors`；可在指挥舱/Command Palette 打开诊断面板并导出诊断包（调试句柄：`GKB.runtime.diagnostics`）
     - 本地日志：统一 `logger`（ring buffer），默认持久化 `info/warn/error` 写入 `gkb-diagnostics-logs`；可在诊断面板查看/清空（调试句柄：`GKB.runtime.logger`）
     - 行为画像引擎：基于收藏/进度/路线等本地信号生成 DNA、动量、冲刺、热度与影响力指标，驱动指挥舱/探索/路线/社区/更新中心
-    - 设置中心：统一偏好/离线/数据/诊断入口（Modal Panel + Command Palette 动作），降低功能分散导致的维护成本
+    - 设置中心：统一偏好/离线/数据/诊断入口（Modal Panel + Command Palette 动作），并提供“仅重置外观偏好”（不清空业务数据），降低功能分散导致的维护成本
     - Planner：冲刺节奏支持开始日期/时间，并可导出 iCalendar（.ics）用于导入系统日历（本地生成、不依赖服务端）
   - 动效：
     - 内建 `MotionLite`（WAAPI 轻量层：`animate/stagger`）
@@ -106,6 +106,7 @@
 
 ## 5) 变更历史
 
+- [202601150829_ui-evolution-v6](../../history/2026-01/202601150829_ui-evolution-v6/) - UI Evolution v6：Accent 单源收敛 + 外观偏好重置 + Pages 部署稳态
 - [202601150530_ui-evo-v5-settings-planner-ics](../../history/2026-01/202601150530_ui-evo-v5-settings-planner-ics/) - UI Evolution v5：设置中心 + 偏好系统 + Planner iCalendar（.ics）导出
 
 - [202601120253_local-logging-and-runtime-checks](../../history/2026-01/202601120253_local-logging-and-runtime-checks/) - 本地日志监控 + 运行时质量门禁（诊断面板扩展 / CI 门禁）

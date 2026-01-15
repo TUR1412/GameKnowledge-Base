@@ -6,7 +6,7 @@
 
 (() => {
   const data = {
-    version: "20260115-1",
+    version: "20260115-2",
     site: {
       name: "游戏攻略网",
       tagline: "你的专业游戏指南",

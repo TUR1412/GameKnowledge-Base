@@ -20,6 +20,17 @@
 - README：补齐 CI/CodeQL 状态徽章，并更新质量门禁清单（对齐 `npm run check:all`）
 - HTML（CLS）：对 `images/placeholders/*` 的 `<img>` 强制要求 `width/height`，并补齐 `starlight-miracle.html` 占位图尺寸（降低布局抖动）
 
+## [20260115-2] - 2026-01-15
+
+### 新增
+- Settings Center：新增“重置外观偏好”（不清空收藏/笔记/进度/回复等业务数据），并接入 Command Palette 快捷动作
+
+### 变更
+- CSS：Accent 单源派生收敛 secondary/glow/fx，并修复深色主题下旧 token 覆盖导致的强调色漂移；按钮与正文链接统一消费 token
+- Pages：`pages.yml` 补齐 `actions/configure-pages` 并兼容 `main` 分支；部署说明更新为 Actions 优先、分支部署兜底
+- 文档：更新 `docs/STYLE_GUIDE.md`（补齐设置中心能力范围：外观偏好重置）
+- 版本号 bump 至 `20260115-2`（全站 `?v=` 与 `data.js.version` 同步）
+
 ## [20260115-1] - 2026-01-15
 
 ### 新增

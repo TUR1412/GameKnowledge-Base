@@ -2,6 +2,17 @@
 
 本项目以“静态站点稳定交付”为目标：每次大改都会同步更新资源版本号（`?v=`），并通过 CI 做断链/资源/语法校验。
 
+## 2026-01-15 (20260115-2)
+
+### Added
+- Settings Center：新增“重置外观偏好”（不清空收藏/笔记/进度/回复等业务数据），并在 Command Palette 提供快捷动作入口
+
+### Changed
+- UI Evolution v6：Accent token 收敛（primary/secondary/glow/fx），修复深色主题下旧 token 覆盖导致的强调色漂移
+- Inline Link：正文链接 underline 仅作用于正文文本（避免卡片/控件等非正文链接被误命中）
+- GitHub Pages：Pages workflow 补齐 configure-pages 并兼容 main 分支；部署文档同步对齐 Actions 部署与分支兜底
+- 版本号 bump 至 `20260115-2`（同步更新全站 `?v=` 与 `data.js.version`）
+
 ## 2026-01-15 (20260115-1)
 
 ### Added

@@ -3441,6 +3441,35 @@
     window.setTimeout(() => window.location.reload(), 800);
   };
 
+  const resetUiPreferences = () => {
+    // 仅重置“外观偏好”，不影响收藏/笔记/进度/回复等业务数据
+    storage.remove(STORAGE_KEYS.theme);
+    storage.remove(STORAGE_KEYS.contrast);
+
+    Object.values(UI_PREFS).forEach((pref) => {
+      if (!pref) return;
+      storage.remove(pref.storage);
+      try {
+        delete document.documentElement.dataset[pref.dataset];
+      } catch (_) {}
+    });
+
+    const nextTheme = getSystemTheme();
+    const nextContrast = getSystemContrast();
+
+    applyTheme(nextTheme, { persist: false });
+    applyContrast(nextContrast, { persist: false });
+
+    initParticles();
+
+    toast({
+      title: "外观偏好已重置",
+      message: "已恢复为系统主题 + 默认外观偏好（不会清空收藏/笔记/进度等）。",
+      tone: "info",
+      timeout: 3200,
+    });
+  };
+
   // -------------------------
   // Diagnostics Panel（本地可观测性：错误 / 埋点 / 健康快照）
   // -------------------------
@@ -3977,6 +4006,28 @@
   // Theme
   // -------------------------
 
+  const getSystemTheme = () => {
+    try {
+      const prefersDark =
+        window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+      return prefersDark ? "dark" : "light";
+    } catch (_) {
+      return "light";
+    }
+  };
+
+  const getSystemContrast = () => {
+    try {
+      const prefersHigh =
+        window.matchMedia && window.matchMedia("(prefers-contrast: more)").matches;
+      const forcedColors =
+        window.matchMedia && window.matchMedia("(forced-colors: active)").matches;
+      return prefersHigh || forcedColors ? "high" : "normal";
+    } catch (_) {
+      return "normal";
+    }
+  };
+
   const syncThemeColor = (theme) => {
     try {
       const meta = document.querySelector('meta[name="theme-color"]');
@@ -4333,6 +4384,7 @@
               <button type="button" class="btn btn-small btn-secondary" data-action="settings-diag">系统诊断</button>
               <button type="button" class="btn btn-small btn-secondary" data-action="settings-export">导出本地数据</button>
               <button type="button" class="btn btn-small btn-secondary" data-action="settings-import">导入本地数据</button>
+              <button type="button" class="btn btn-small btn-secondary" data-action="settings-reset-ui">重置外观偏好</button>
               <button type="button" class="btn btn-small btn-secondary" data-action="settings-reset">清空本地数据</button>
             </div>
             <div class="settings-hint">所有数据仅保存在本地浏览器，不依赖账号系统。</div>
@@ -4489,6 +4541,12 @@
       }
       if (action === "settings-import") {
         importLocalData();
+        return;
+      }
+      if (action === "settings-reset-ui") {
+        resetUiPreferences();
+        telemetry.log("settings_reset_ui");
+        syncSettingsUi(root);
         return;
       }
       if (action === "settings-reset") {
@@ -4979,6 +5037,16 @@
           title: "导入本地数据",
           subtitle: "从 JSON 恢复（会覆盖当前本地数据）",
           run: importLocalData,
+        },
+        {
+          kind: "action",
+          badge: "外观",
+          title: "重置外观偏好",
+          subtitle: "恢复系统主题 + 默认外观偏好（不清空收藏/进度等）",
+          run: () => {
+            resetUiPreferences();
+            telemetry.log("settings_reset_ui", { source: "cmdk" });
+          },
         },
         {
           kind: "action",
