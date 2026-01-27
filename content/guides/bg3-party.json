@@ -1,0 +1,20 @@
+{
+  "difficulty": "进阶",
+  "gameId": "baldurs-gate3",
+  "icon": "images/icons/skills-guide.svg",
+  "readingTime": 9,
+  "steps": [
+    "确定主C与控制位",
+    "安排前排保护与治疗",
+    "规划法术位与消耗品",
+    "战斗后复盘"
+  ],
+  "summary": "围绕职责互补与控制链，保证施法位与行动点的效率。",
+  "tags": [
+    "队伍配置",
+    "资源管理",
+    "战术"
+  ],
+  "title": "博德之门3：队伍配置与资源循环",
+  "updated": "2025-12-12"
+}

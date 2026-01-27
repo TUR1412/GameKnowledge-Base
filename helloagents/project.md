@@ -18,7 +18,9 @@
 
 ### 版本号 SSOT
 
-- **SSOT:** `data.js` 的 `version: "YYYYMMDD-N"`
+- **SSOT（优先级）:**
+  - 1) `content/meta.json` 的 `version`（存在时）
+  - 2) `data.js` 的 `version: "YYYYMMDD-N"`（未启用 `content/` 时兜底）
 - 所有核心资源必须带 `?v=` 且版本一致：
   - `styles.css?v=...`
   - `boot.js?v=...`
@@ -40,6 +42,8 @@
 执行：
 
 - `node tools/bump-version.mjs`
+
+> 说明：当仓库存在 `content/meta.json` 时，`bump-version` 会以其为版本号 SSOT，并在 bump 后自动执行 `build-data` 生成 `data.js`（避免漏生成）。
 
 ---
 

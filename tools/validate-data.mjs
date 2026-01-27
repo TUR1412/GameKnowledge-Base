@@ -10,6 +10,68 @@ export const isNonEmptyString = (v) => typeof v === "string" && v.trim().length 
 export const isNumber = (v) => typeof v === "number" && Number.isFinite(v);
 export const isDateString = (v) => isNonEmptyString(v) && /^\d{4}-\d{2}-\d{2}$/.test(v.trim());
 
+const stableSort = (v) => {
+  if (Array.isArray(v)) return v.map(stableSort);
+  if (!v || typeof v !== "object") return v;
+  const keys = Object.keys(v).sort((a, b) => a.localeCompare(b));
+  const out = {};
+  keys.forEach((k) => {
+    out[k] = stableSort(v[k]);
+  });
+  return out;
+};
+
+const stableStringify = (v) => JSON.stringify(stableSort(v));
+
+const listJsonFiles = (dirPath) => {
+  if (!fs.existsSync(dirPath)) return [];
+  return fs
+    .readdirSync(dirPath, { withFileTypes: true })
+    .filter((d) => d.isFile() && d.name.toLowerCase().endsWith(".json"))
+    .map((d) => d.name)
+    .sort();
+};
+
+const readJson = (filePath) => {
+  const raw = readText(filePath);
+  try {
+    return JSON.parse(raw);
+  } catch (err) {
+    const msg = String(err?.message || err || "unknown error");
+    throw new Error(`[CONTENT] JSON 解析失败：${filePath} -> ${msg}`);
+  }
+};
+
+export const loadDataFromContent = ({ workspaceRoot = process.cwd() } = {}) => {
+  const contentDir = path.join(workspaceRoot, "content");
+  const metaPath = path.join(contentDir, "meta.json");
+  if (!fs.existsSync(metaPath)) return null;
+
+  const meta = readJson(metaPath);
+  const version = meta?.version;
+  const site = meta?.site;
+
+  const readGroup = (dirName) => {
+    const dirPath = path.join(contentDir, dirName);
+    const out = {};
+    listJsonFiles(dirPath).forEach((fileName) => {
+      const id = String(fileName || "").replace(/\.json$/i, "").trim();
+      if (!id) return;
+      const obj = readJson(path.join(dirPath, fileName));
+      out[id] = obj;
+    });
+    return out;
+  };
+
+  return {
+    version,
+    site,
+    games: readGroup("games"),
+    guides: readGroup("guides"),
+    topics: readGroup("topics"),
+  };
+};
+
 export const validateIcon = ({ where, icon, existsRel }) => {
   if (!isNonEmptyString(icon)) return [`[DATA] ${where}: icon 不能为空`];
   if (!String(icon).startsWith("images/")) {
@@ -146,8 +208,32 @@ export const main = ({ workspaceRoot = process.cwd(), stdout = console.log, stde
     return 1;
   }
 
+  const contentData = loadDataFromContent({ workspaceRoot });
+  if (contentData) {
+    const contentErrors = [];
+    if (!isNonEmptyString(contentData.version)) contentErrors.push("[CONTENT] meta.json.version 不能为空");
+    if (!contentData.site || typeof contentData.site !== "object") contentErrors.push("[CONTENT] meta.json.site 必须是对象");
+    if (!isNonEmptyString(contentData.site?.name)) contentErrors.push("[CONTENT] meta.json.site.name 不能为空");
+    if (!isNonEmptyString(contentData.site?.tagline)) contentErrors.push("[CONTENT] meta.json.site.tagline 不能为空");
+    if (!isNonEmptyString(contentData.site?.description)) contentErrors.push("[CONTENT] meta.json.site.description 不能为空");
+
+    const contentValidation = validateData({ data: contentData, workspaceRoot });
+    contentErrors.push(...contentValidation.errors);
+
+    if (contentErrors.length > 0) {
+      stderr("❌ content/ 数据校验未通过：");
+      contentErrors.forEach((e) => stderr(`- ${e}`));
+      return 1;
+    }
+
+    if (stableStringify(contentData) !== stableStringify(data)) {
+      stderr("❌ content/ 与 data.js 不一致：请先运行 `node tools/build-data.mjs` 重新生成 data.js");
+      return 1;
+    }
+  }
+
   const counts = `games=${result.counts.games}, guides=${result.counts.guides}, topics=${result.counts.topics}`;
-  stdout(`✅ data.js 数据校验通过：${counts}`);
+  stdout(`✅ data.js 数据校验通过：${counts}${contentData ? "（content/ 已对齐）" : ""}`);
   return 0;
 };
 

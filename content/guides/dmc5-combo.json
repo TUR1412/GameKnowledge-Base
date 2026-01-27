@@ -1,0 +1,20 @@
+{
+  "difficulty": "高阶",
+  "gameId": "devil-may-cry5",
+  "icon": "images/icons/combo-guide.svg",
+  "readingTime": 12,
+  "steps": [
+    "确认主武器与风格",
+    "练习基础连段",
+    "加入取消与派生",
+    "控制节奏拿评分"
+  ],
+  "summary": "从基础连段到取消思路，帮助你更稳定拿到高评分。",
+  "tags": [
+    "连招",
+    "练习",
+    "评分系统"
+  ],
+  "title": "鬼泣5：但丁全武器连招指南",
+  "updated": "2025-10-28"
+}

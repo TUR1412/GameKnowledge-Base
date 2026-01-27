@@ -1,0 +1,34 @@
+{
+  "difficulty": "高",
+  "genre": "动作角色 | 魂系",
+  "highlights": [
+    "路线规划",
+    "武器质变",
+    "翻滚节奏",
+    "Boss 机制"
+  ],
+  "icon": "images/icons/dark-souls.svg",
+  "modes": [
+    "单人",
+    "联机合作",
+    "PVP"
+  ],
+  "platforms": [
+    "PC",
+    "PS4",
+    "Xbox One"
+  ],
+  "playtime": "45-70 小时",
+  "rating": 9.6,
+  "subtitle": "硬核动作RPG的经典标杆",
+  "summary": "路线选择、武器质变与体力管理是通关核心。Boss 机制理解比数值更重要。",
+  "tags": [
+    "魂系",
+    "武器质变",
+    "Boss",
+    "路线"
+  ],
+  "title": "黑暗灵魂3",
+  "updated": "2025-09-01",
+  "year": 2016
+}

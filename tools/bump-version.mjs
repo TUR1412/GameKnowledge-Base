@@ -1,6 +1,8 @@
 import fs from "node:fs";
 import path from "node:path";
 
+import { buildData } from "./build-data.mjs";
+
 const WORKSPACE_ROOT = process.cwd();
 
 const readText = (filePath) => fs.readFileSync(filePath, "utf8");
@@ -81,20 +83,53 @@ const bumpDocsStyleGuide = (content, version) => {
     .replace(/scripts\.js\?v=[^\s"']+/g, `scripts.js?v=${version}`);
 };
 
+const stableJsonStringify = (value) => {
+  const sort = (v) => {
+    if (Array.isArray(v)) return v.map(sort);
+    if (!v || typeof v !== "object") return v;
+    const keys = Object.keys(v).sort((a, b) => a.localeCompare(b));
+    const out = {};
+    keys.forEach((k) => {
+      out[k] = sort(v[k]);
+    });
+    return out;
+  };
+  return `${JSON.stringify(sort(value), null, 2)}\n`;
+};
+
 const main = () => {
   const args = new Set(process.argv.slice(2));
   const isDryRun = args.has("--dry-run");
 
+  const contentMetaPath = path.join(WORKSPACE_ROOT, "content", "meta.json");
+  const hasContentMeta = fs.existsSync(contentMetaPath);
+
   const dataPath = path.join(WORKSPACE_ROOT, "data.js");
-  if (!fs.existsSync(dataPath)) {
+  if (!hasContentMeta && !fs.existsSync(dataPath)) {
     console.error("❌ 未找到 data.js（请在仓库根目录运行）");
     process.exit(1);
   }
 
-  const dataText = readText(dataPath);
-  const current = parseCurrentVersion(dataText);
+  let current = "";
+  if (hasContentMeta) {
+    try {
+      const meta = JSON.parse(readText(contentMetaPath));
+      current = String(meta?.version || "").trim();
+    } catch (err) {
+      console.error(`❌ content/meta.json 解析失败：${String(err?.message || err || "unknown error")}`);
+      process.exit(1);
+    }
+  } else {
+    const dataText = readText(dataPath);
+    current = parseCurrentVersion(dataText);
+  }
+
   if (!current) {
-    console.error("❌ data.js 中未找到 data.version（例：version: \"20251218-1\"）");
+    console.error(
+      hasContentMeta
+        ? "❌ content/meta.json 中未找到 version（例：\"version\": \"20251218-1\"）"
+        : "❌ data.js 中未找到 data.version（例：version: \"20251218-1\"）"
+    );
     process.exit(1);
   }
 
@@ -104,7 +139,7 @@ const main = () => {
     ...listRootHtmlFiles().map((f) => path.join(WORKSPACE_ROOT, f)),
     path.join(WORKSPACE_ROOT, "docs", "STYLE_GUIDE.md"),
     path.join(WORKSPACE_ROOT, "docs", "DATA_MODEL.md"),
-    path.join(WORKSPACE_ROOT, "data.js"),
+    hasContentMeta ? path.join(WORKSPACE_ROOT, "content", "meta.json") : path.join(WORKSPACE_ROOT, "data.js"),
   ].filter((p) => fs.existsSync(p));
 
   const missingByFile = [];
@@ -127,6 +162,17 @@ const main = () => {
     } else if (rel === "data.js") {
       next = next.replace(/version:\s*"([^"]+)"/, `version: "${target}"`);
       changed = changed || next !== raw;
+    } else if (rel === "content/meta.json") {
+      try {
+        const meta = JSON.parse(next);
+        if (!meta || typeof meta !== "object") throw new Error("meta.json 必须是对象");
+        meta.version = target;
+        next = stableJsonStringify(meta);
+        changed = changed || next !== raw;
+      } catch (err) {
+        console.error(`❌ content/meta.json 更新失败：${String(err?.message || err || "unknown error")}`);
+        process.exit(1);
+      }
     } else if (rel === "docs/STYLE_GUIDE.md") {
       next = bumpDocsStyleGuide(next, target);
       changed = changed || next !== raw;
@@ -148,8 +194,20 @@ const main = () => {
     process.exit(1);
   }
 
+  // 如果启用了 content/meta.json，则以 meta 为 SSOT 并重新生成 data.js
+  if (hasContentMeta && !isDryRun) {
+    const r = buildData({ workspaceRoot: WORKSPACE_ROOT });
+    if (!r.ok) {
+      console.error("❌ bump-version：build-data 失败：");
+      r.errors.forEach((e) => console.error(`- ${e}`));
+      process.exit(1);
+    }
+    touched += 1;
+  }
+
   const mode = isDryRun ? "DRY RUN" : "写入完成";
-  console.log(`✅ bump-version ${mode}: ${current} -> ${target}（更新文件数=${touched}）`);
+  const extra = hasContentMeta ? (isDryRun ? " (would regenerate data.js)" : " + regenerated data.js") : "";
+  console.log(`✅ bump-version ${mode}: ${current} -> ${target}${extra}（更新文件数=${touched}）`);
 };
 
 main();

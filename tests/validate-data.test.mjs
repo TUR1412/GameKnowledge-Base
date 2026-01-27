@@ -6,7 +6,14 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { isDateString, loadDataFromDataJs, main, validateData, validateTags } from "../tools/validate-data.mjs";
+import {
+  isDateString,
+  loadDataFromContent,
+  loadDataFromDataJs,
+  main,
+  validateData,
+  validateTags,
+} from "../tools/validate-data.mjs";
 
 const TESTS_DIR = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(TESTS_DIR, "..");
@@ -266,6 +273,254 @@ test("main：data.js 存在但不合法时应返回 1", () => {
     const code = main({ workspaceRoot: root, stdout: (s) => out.push(String(s)), stderr: (s) => err.push(String(s)) });
     assert.equal(code, 1);
     assert.ok(err.join("\n").includes("❌ data.js 数据校验未通过"));
+  });
+});
+
+test("loadDataFromContent：meta.json 不存在时返回 null", () => {
+  withTempDir((root) => {
+    const d = loadDataFromContent({ workspaceRoot: root });
+    assert.equal(d, null);
+  });
+});
+
+test("main：content/ 存在且与 data.js 对齐应通过", () => {
+  withTempDir((root) => {
+    fs.mkdirSync(path.join(root, "images"), { recursive: true });
+    fs.mkdirSync(path.join(root, "content", "games"), { recursive: true });
+    fs.mkdirSync(path.join(root, "content", "guides"), { recursive: true });
+    fs.mkdirSync(path.join(root, "content", "topics"), { recursive: true });
+
+    fs.writeFileSync(path.join(root, "images", "icon.svg"), "<svg/>", "utf8");
+    fs.writeFileSync(path.join(root, "deep.html"), "<!doctype html>", "utf8");
+
+    fs.writeFileSync(
+      path.join(root, "content", "meta.json"),
+      JSON.stringify(
+        {
+          version: "1",
+          site: { name: "站点", tagline: "tag", description: "desc" },
+        },
+        null,
+        2
+      ) + "\n",
+      "utf8"
+    );
+
+    fs.writeFileSync(
+      path.join(root, "content", "games", "g1.json"),
+      JSON.stringify(
+        {
+          title: "测试游戏",
+          genre: "动作",
+          rating: 9.1,
+          year: 2025,
+          updated: "2025-12-21",
+          platforms: ["PC"],
+          summary: "summary",
+          icon: "images/icon.svg",
+          modes: ["单人"],
+          tags: ["tag"],
+          highlights: ["h"],
+          hasDeepGuide: true,
+          deepGuideHref: "deep.html",
+        },
+        null,
+        2
+      ) + "\n",
+      "utf8"
+    );
+
+    fs.writeFileSync(
+      path.join(root, "content", "guides", "guide1.json"),
+      JSON.stringify(
+        {
+          title: "测试攻略",
+          summary: "summary",
+          updated: "2025-12-21",
+          difficulty: "入门",
+          readingTime: 5,
+          icon: "images/icon.svg",
+          tags: ["tag"],
+          gameId: "g1",
+        },
+        null,
+        2
+      ) + "\n",
+      "utf8"
+    );
+
+    fs.writeFileSync(
+      path.join(root, "content", "topics", "topic1.json"),
+      JSON.stringify(
+        {
+          title: "测试话题",
+          starter: "测试用户",
+          summary: "summary",
+          category: "综合",
+          tags: ["tag"],
+          replies: 1,
+          updated: "2025-12-21",
+        },
+        null,
+        2
+      ) + "\n",
+      "utf8"
+    );
+
+    const dataJs = `(() => {
+      const data = {
+        version: "1",
+        site: { name: "站点", tagline: "tag", description: "desc" },
+        games: {
+          g1: {
+            title: "测试游戏",
+            genre: "动作",
+            rating: 9.1,
+            year: 2025,
+            updated: "2025-12-21",
+            platforms: ["PC"],
+            summary: "summary",
+            icon: "images/icon.svg",
+            modes: ["单人"],
+            tags: ["tag"],
+            highlights: ["h"],
+            hasDeepGuide: true,
+            deepGuideHref: "deep.html"
+          }
+        },
+        guides: {
+          guide1: {
+            title: "测试攻略",
+            summary: "summary",
+            updated: "2025-12-21",
+            difficulty: "入门",
+            readingTime: 5,
+            icon: "images/icon.svg",
+            tags: ["tag"],
+            gameId: "g1"
+          }
+        },
+        topics: {
+          topic1: {
+            title: "测试话题",
+            starter: "测试用户",
+            summary: "summary",
+            category: "综合",
+            tags: ["tag"],
+            replies: 1,
+            updated: "2025-12-21"
+          }
+        }
+      };
+      window.GKB = window.GKB || {};
+      window.GKB.data = data;
+    })();`;
+    fs.writeFileSync(path.join(root, "data.js"), dataJs, "utf8");
+
+    const out = [];
+    const err = [];
+    const code = main({ workspaceRoot: root, stdout: (s) => out.push(String(s)), stderr: (s) => err.push(String(s)) });
+    assert.equal(code, 0);
+    assert.ok(out.join("\n").includes("content/ 已对齐"));
+    assert.equal(err.length, 0);
+  });
+});
+
+test("main：content/ 与 data.js 不一致应失败", () => {
+  withTempDir((root) => {
+    fs.mkdirSync(path.join(root, "images"), { recursive: true });
+    fs.mkdirSync(path.join(root, "content", "games"), { recursive: true });
+    fs.mkdirSync(path.join(root, "content", "guides"), { recursive: true });
+    fs.mkdirSync(path.join(root, "content", "topics"), { recursive: true });
+
+    fs.writeFileSync(path.join(root, "images", "icon.svg"), "<svg/>", "utf8");
+    fs.writeFileSync(path.join(root, "deep.html"), "<!doctype html>", "utf8");
+
+    fs.writeFileSync(
+      path.join(root, "content", "meta.json"),
+      JSON.stringify(
+        {
+          version: "1",
+          site: { name: "站点", tagline: "tag", description: "desc" },
+        },
+        null,
+        2
+      ) + "\n",
+      "utf8"
+    );
+
+    fs.writeFileSync(
+      path.join(root, "content", "games", "g1.json"),
+      JSON.stringify(
+        {
+          title: "测试游戏",
+          genre: "动作",
+          rating: 9.1,
+          year: 2025,
+          updated: "2025-12-21",
+          platforms: ["PC"],
+          summary: "summary",
+          icon: "images/icon.svg",
+          modes: ["单人"],
+          tags: ["tag"],
+          highlights: ["h"],
+          hasDeepGuide: true,
+          deepGuideHref: "deep.html",
+        },
+        null,
+        2
+      ) + "\n",
+      "utf8"
+    );
+
+    fs.writeFileSync(
+      path.join(root, "content", "guides", "guide1.json"),
+      JSON.stringify(
+        {
+          title: "测试攻略",
+          summary: "summary",
+          updated: "2025-12-21",
+          difficulty: "入门",
+          readingTime: 5,
+          icon: "images/icon.svg",
+          tags: ["tag"],
+          gameId: "g1",
+        },
+        null,
+        2
+      ) + "\n",
+      "utf8"
+    );
+
+    fs.writeFileSync(
+      path.join(root, "content", "topics", "topic1.json"),
+      JSON.stringify(
+        {
+          title: "测试话题",
+          starter: "测试用户",
+          summary: "summary",
+          category: "综合",
+          tags: ["tag"],
+          replies: 1,
+          updated: "2025-12-21",
+        },
+        null,
+        2
+      ) + "\n",
+      "utf8"
+    );
+
+    fs.writeFileSync(
+      path.join(root, "data.js"),
+      `(() => { window.GKB = window.GKB || {}; window.GKB.data = { version: "1", site: { name: "站点", tagline: "tag", description: "desc" }, games: {}, guides: {}, topics: {} }; })();`,
+      "utf8"
+    );
+
+    const out = [];
+    const err = [];
+    const code = main({ workspaceRoot: root, stdout: (s) => out.push(String(s)), stderr: (s) => err.push(String(s)) });
+    assert.equal(code, 1);
+    assert.ok(err.join("\n").includes("content/ 与 data.js 不一致"));
   });
 });
 

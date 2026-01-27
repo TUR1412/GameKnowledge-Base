@@ -1,0 +1,20 @@
+{
+  "difficulty": "进阶",
+  "gameId": "civilization6",
+  "icon": "images/icons/strategy-icon.svg",
+  "readingTime": 10,
+  "steps": [
+    "锁定关键科技线",
+    "规划核心城市区位",
+    "保证产能与科研点",
+    "把握关键政策卡时机"
+  ],
+  "summary": "路线、城市规划、区域联动与关键政策卡，一次讲透科技胜利。",
+  "tags": [
+    "科技树",
+    "城市规划",
+    "节奏"
+  ],
+  "title": "文明6：科技胜利的终极战略",
+  "updated": "2025-11-30"
+}

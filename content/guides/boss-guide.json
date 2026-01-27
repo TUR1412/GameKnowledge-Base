@@ -1,0 +1,19 @@
+{
+  "difficulty": "高阶",
+  "icon": "images/icons/boss-guide.svg",
+  "readingTime": 8,
+  "steps": [
+    "识别阶段与招式库",
+    "找出惩罚窗口",
+    "规划资源交换",
+    "记录失误点"
+  ],
+  "summary": "如何拆解 Boss：招式库、惩罚窗口、资源交换与阶段转场。",
+  "tags": [
+    "Boss",
+    "机制",
+    "容错"
+  ],
+  "title": "Boss 攻略：读懂机制比堆数值更重要",
+  "updated": "2025-03-25"
+}

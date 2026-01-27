@@ -1668,6 +1668,12 @@
   try {
     window.GKB = window.GKB || {};
     window.GKB.runtime = window.GKB.runtime || {};
+    window.GKB.runtime.storage = storage;
+    window.GKB.runtime.storageKeys = STORAGE_KEYS;
+    window.GKB.runtime.safeJsonParse = safeJsonParse;
+    window.GKB.runtime.readStringList = readStringList;
+    window.GKB.runtime.writeStringList = writeStringList;
+    window.GKB.runtime.runIdleTask = runIdleTask;
     window.GKB.runtime.netStore = netStore;
     window.GKB.runtime.net = netClient;
     window.GKB.runtime.health = healthMonitor;

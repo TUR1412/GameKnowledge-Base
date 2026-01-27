@@ -40,9 +40,9 @@
 
 ## 概览 / Overview
 
-游戏攻略网是一个“数据驱动的纯静态多页站点”，以 `data.js` 作为唯一数据源（SSOT），将内容与交互完全交付在浏览器本地：PWA 离线、收藏/进度/笔记/路线规划、本地诊断与可观测性、跨页转场与微交互体系。
+游戏攻略网是一个“数据驱动的纯静态多页站点”，以 `data.js` 作为运行时唯一数据源（SSOT，**由 `content/` 生成**），将内容与交互完全交付在浏览器本地：PWA 离线、收藏/进度/笔记/路线规划、本地诊断与可观测性、跨页转场与微交互体系。
 
-GameKnowledge-Base is a data-driven static multi-page site powered by `data.js` as the single source of truth. It runs fully client-side with local-first state (no backend required): PWA offline, favorites/progress/notes/plans, runtime diagnostics/telemetry, cross-page transitions, and a cohesive micro-interaction system.
+GameKnowledge-Base is a data-driven static multi-page site powered by `data.js` as the runtime single source of truth (**generated from `content/`**). It runs fully client-side with local-first state (no backend required): PWA offline, favorites/progress/notes/plans, runtime diagnostics/telemetry, cross-page transitions, and a cohesive micro-interaction system.
 
 ---
 
@@ -86,6 +86,7 @@ GameKnowledge-Base is a data-driven static multi-page site powered by `data.js` 
 
 ```bash
 npm ci
+npm run build:data
 npm run check:all
 npm run build:vite
 ```

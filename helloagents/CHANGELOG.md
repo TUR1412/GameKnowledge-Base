@@ -9,16 +9,32 @@
 ### 新增
 - PWA Manifest 门禁：新增 `tools/check-manifest.mjs` 校验 `manifest.webmanifest`（必备字段/图标与快捷入口资源/禁止外链），并纳入 `check:all` 与 CI
 - Bundle Size 预算门禁：新增 `tools/check-bundlesize.mjs` 校验 Vite 构建产物 `dist/gkb.min.{css,js}` gzip 体积，并纳入 `check:all` 与 CI（默认 CSS≤30kB/JS≤80kB，可通过 env 覆盖）
+- Core Assets 预算门禁：新增 `tools/check-core-assets.mjs` 校验部署路径核心资源 gzip 体积（`scripts.js/styles.css/boot.js/sw.js/manifest`），并纳入 `check:all` 与 CI
 - 社区标准化：新增 `SECURITY.md` / `CODE_OF_CONDUCT.md`（并同步到 Docs Portal），补齐 Issue/PR 模板提升协作一致性
 - 依赖自动更新：新增 `.github/dependabot.yml`，对 npm 依赖与 GitHub Actions 进行每周更新检查
 - 安全扫描：新增 CodeQL 工作流 `.github/workflows/codeql.yml`（push/PR/每周定时）对 JavaScript 做静态分析
 - A11y/SEO 门禁：新增 `tools/check-a11y.mjs` 校验 `lang/title/description` 与 CSP 兼容（禁止 inline style / on* handler），并纳入 `check:all` 与 CI
 - A11y 细化：主导航（`#site-nav`）当前页链接统一补齐 `aria-current="page"`，并由门禁防回退
+- 知识库与路线图：新增 `helloagents/INDEX.md` / `helloagents/context.md` 与“GKB 2026 全方位升级”方案包（`helloagents/plan/202601272249_gkb_2026_full_upgrade/`）
+- 基线快照：新增 `helloagents/modules/baseline-2026.md` 固化升级前关键指标（体积/离线/SEO/数据规模）
+- 预算文档：新增 `helloagents/modules/budgets.md` 统一记录可回归预算（构建产物/部署核心资产/离线壳）
+- 发布门禁清单：新增 `helloagents/modules/release.md` 固化“bump + check:all”的稳定交付流程
+- 内容源目录：新增 `content/`（games/guides/topics + meta.json），作为可协作内容源
+- 数据生成器：新增 `tools/build-data.mjs`（`content/` → `data.js`）与 `tools/export-content.mjs`（从现有 `data.js` 导出 `content/`）
+- 内容工作流文档：新增 `docs/CONTENT_WORKFLOW.md`，规范“修改 content → build-data → check:all”的协作流程
+- 内容管线回归测试：新增 `tests/content-pipeline.test.mjs`，覆盖 `build-data/export-content/validate-data` 的关键成功与失败分支
+- 运行时内核 core：新增 `src/runtime/core/{dom,events,storage,telemetry,motion,net,logger,diagnostics}.mjs` 与单测 `tests/runtime-{core,net,diagnostics,dom-events-motion}.test.mjs`，为后续 `scripts.js` 拆分提供可测试基石
 
 ### 变更
 - PWA 离线预缓存：`sw.js` 补齐 `docs/SECURITY.md` 与 `docs/CODE_OF_CONDUCT.md`（Docs Portal 离线可读）
 - README：补齐 CI/CodeQL 状态徽章，并更新质量门禁清单（对齐 `npm run check:all`）
+- 协作入口对齐：更新 `docs/CONTRIBUTING.md` / `docs/DATA_MODEL.md` / `README.md`，统一引导“编辑 content → build-data → check:all”
 - HTML（CLS）：对 `images/placeholders/*` 的 `<img>` 强制要求 `width/height`，并补齐 `starlight-miracle.html` 占位图尺寸（降低布局抖动）
+- SW 门禁增强：`tools/check-sw.mjs` 新增预缓存资源存在性校验与预缓存总量预算（默认 1200kB，可用 env 覆盖）
+- 数据一致性门禁：`tools/validate-data.mjs` 新增 `content/` 校验与 `content/` ↔ `data.js` 一致性对齐检查（避免手改/漏生成）
+- bump-version：当存在 `content/meta.json` 时以其为版本号 SSOT，并在 bump 后自动执行 build-data 生成 `data.js`
+- npm scripts：新增 `build:data` / `export:content` / `validate:data` / `bump:version`，降低贡献者上手摩擦
+- Runtime API：`scripts.js` 额外暴露 `GKB.runtime.{storage,storageKeys,safeJsonParse,readStringList,writeStringList,runIdleTask,netStore,net,health,telemetry,diagnostics,logger}` 等只读句柄，作为后续模块化迁移的兼容层
 
 ## [20260115-2] - 2026-01-15
 

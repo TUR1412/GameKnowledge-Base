@@ -1,0 +1,20 @@
+{
+  "difficulty": "进阶",
+  "gameId": "crusader-kings3",
+  "icon": "images/icons/strategy-icon.svg",
+  "readingTime": 11,
+  "steps": [
+    "规划婚姻联盟",
+    "稳定继承权",
+    "管理封臣忠诚",
+    "控制扩张节奏"
+  ],
+  "summary": "通过婚姻、继承与内政治理控制扩张节奏，避免断代与叛乱。",
+  "tags": [
+    "王朝",
+    "内政",
+    "继承"
+  ],
+  "title": "十字军之王3：王朝运营与继承稳态",
+  "updated": "2025-09-20"
+}

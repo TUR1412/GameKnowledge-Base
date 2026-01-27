@@ -10,10 +10,12 @@
 ## 1) 你可以贡献什么？
 
 ### A. 内容贡献（最常见）
-- 新增游戏条目（`data.js` 的 `games`）
-- 新增/完善攻略（`data.js` 的 `guides`）
-- 新增/完善社区话题（`data.js` 的 `topics`）
+- 新增游戏条目（`content/games/*.json`）
+- 新增/完善攻略（`content/guides/*.json`）
+- 新增/完善社区话题（`content/topics/*.json`）
 - 修复错别字、补齐字段、优化标签体系
+
+> 重要：当前仓库已启用 `content/ → data.js` 的内容工作流。`data.js` 是运行时产物（浏览器直接加载），**禁止手改**；内容修改请在 `content/` 中进行。
 
 ### B. 体验贡献（欢迎但更需要自检）
 - UI/UX 微交互与视觉一致性优化（`styles.css` / `scripts.js`）
@@ -28,10 +30,13 @@
 # 1) 安装依赖
 npm ci
 
-# 2) 跑 CI 同款全量自检（强烈推荐）
+# 2) 若改了内容源（content/），先生成运行时 data.js
+npm run build:data
+
+# 3) 跑 CI 同款全量自检（强烈推荐）
 npm run check:all
 
-# 3) 启动本地预览（任选其一）
+# 4) 启动本地预览（任选其一）
 npm run dev:vite
 # 或
 npm run preview:vite
@@ -60,12 +65,14 @@ npm run preview:vite
 node tools/bump-version.mjs
 ```
 
+> 补充：当仓库存在 `content/meta.json` 时，`bump-version` 会以其为版本号 SSOT，并在 bump 后自动执行 `build-data` 重新生成 `data.js`（避免漏生成）。
+
 ---
 
 ## 4) 数据贡献：最小规则（务必通过校验）
 
 ### 4.1 不要破坏数据模型
-- 修改 `data.js` 时，务必对照 `docs/DATA_MODEL.md`
+- 修改数据时，务必对照 `docs/DATA_MODEL.md`（数据模型说明）与 `docs/CONTENT_WORKFLOW.md`（内容工作流）
 - 字段含义、默认值、可选字段要保持一致
 - 新增字段时：优先“可选字段 + 有默认行为”，避免要求全量数据回填
 
@@ -76,7 +83,11 @@ node tools/bump-version.mjs
 ### 4.3 运行本地数据校验（强烈建议）
 
 ```bash
-node tools/validate-data.mjs
+# 如果你改了 content/，先生成 data.js
+npm run build:data
+
+# 校验数据模型 + content 与 data.js 一致性
+npm run validate:data
 ```
 
 ---
@@ -115,4 +126,3 @@ A: 这是“稳定交付 + 离线一致性”的核心约束：减少构建复�
 
 ### Q: 我只改了 README，需要 bump 版本吗？
 A: 一般不需要。但如果你改动了 `styles.css/scripts.js/data.js/sw.js` 或根目录 HTML 页面，必须 bump。
-

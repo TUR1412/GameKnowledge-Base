@@ -1,0 +1,35 @@
+{
+  "deepGuideHref": "starlight-miracle.html",
+  "difficulty": "中等偏高",
+  "genre": "角色扮演 | 开放世界",
+  "hasDeepGuide": true,
+  "highlights": [
+    "探索地图与奇观",
+    "技能流派构筑",
+    "多阶段 Boss",
+    "装备词条组合"
+  ],
+  "icon": "images/icons/starlight-miracle.svg",
+  "modes": [
+    "单人",
+    "合作"
+  ],
+  "platforms": [
+    "PC",
+    "PS5",
+    "Xbox Series X|S"
+  ],
+  "playtime": "45-65 小时",
+  "rating": 9.4,
+  "subtitle": "东方幻想 × 现代科技的开放世界冒险",
+  "summary": "一款融合东方幻想与现代科技的开放世界角色扮演游戏。探索未知星域、打造流派构筑、挑战多阶段 Boss。",
+  "tags": [
+    "开放世界",
+    "东方幻想",
+    "Build",
+    "Boss战"
+  ],
+  "title": "星光奇迹",
+  "updated": "2025-11-20",
+  "year": 2023
+}

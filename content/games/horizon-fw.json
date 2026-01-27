@@ -1,0 +1,32 @@
+{
+  "difficulty": "中等偏高",
+  "genre": "动作 | 冒险",
+  "highlights": [
+    "部位拆解",
+    "元素克制",
+    "装备强化",
+    "世界探索"
+  ],
+  "icon": "images/icons/action-game.svg",
+  "modes": [
+    "单人"
+  ],
+  "platforms": [
+    "PS5",
+    "PS4",
+    "PC"
+  ],
+  "playtime": "35-55 小时",
+  "rating": 9.1,
+  "subtitle": "机械兽狩猎与开放世界叙事",
+  "summary": "强调弱点拆解与装备搭配的开放世界动作冒险，狩猎节奏与探索规划都很关键。",
+  "tags": [
+    "开放世界",
+    "狩猎",
+    "机械兽",
+    "探索"
+  ],
+  "title": "地平线 西之绝境",
+  "updated": "2025-12-05",
+  "year": 2022
+}

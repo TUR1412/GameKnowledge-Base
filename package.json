@@ -3,6 +3,10 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "build:data": "node tools/build-data.mjs",
+    "export:content": "node tools/export-content.mjs",
+    "validate:data": "node tools/validate-data.mjs",
+    "bump:version": "node tools/bump-version.mjs",
     "generate:feed": "node tools/generate-feed.mjs",
     "check:feed": "node tools/generate-feed.mjs --check",
     "check:all": "node tools/check-all.mjs",

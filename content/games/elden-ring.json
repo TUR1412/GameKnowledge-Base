@@ -1,0 +1,36 @@
+{
+  "difficulty": "硬核",
+  "genre": "动作角色 | 开放世界",
+  "highlights": [
+    "路线规划与探索",
+    "Boss 机制拆解",
+    "流派构筑",
+    "资源管理"
+  ],
+  "icon": "images/icons/elden-ring.svg",
+  "modes": [
+    "单人",
+    "联机合作",
+    "PVP"
+  ],
+  "platforms": [
+    "PC",
+    "PS5",
+    "PS4",
+    "Xbox Series X|S",
+    "Xbox One"
+  ],
+  "playtime": "70-110 小时",
+  "rating": 9.7,
+  "subtitle": "高自由度开放世界魂系动作RPG",
+  "summary": "探索交界地、构筑流派、挑战高压 Boss。路线规划与资源管理是前期体验的关键。",
+  "tags": [
+    "魂系",
+    "开放世界",
+    "Boss",
+    "Build"
+  ],
+  "title": "艾尔登法环",
+  "updated": "2025-10-05",
+  "year": 2022
+}

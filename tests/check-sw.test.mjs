@@ -67,6 +67,11 @@ test("validateServiceWorker：通过与失败分支", () => {
   withTempDir((root) => {
     fs.writeFileSync(path.join(root, "index.html"), "<!doctype html>", "utf8");
     fs.writeFileSync(path.join(root, "page.html"), "<!doctype html>", "utf8");
+    fs.writeFileSync(path.join(root, "styles.css"), "body{color:#000}", "utf8");
+    fs.writeFileSync(path.join(root, "data.js"), "window.GKB={data:{version:\"x\",games:{},guides:{},topics:{}}};", "utf8");
+    fs.writeFileSync(path.join(root, "scripts.js"), "(()=>{})();", "utf8");
+    fs.writeFileSync(path.join(root, "boot.js"), "(function(){})();", "utf8");
+    fs.writeFileSync(path.join(root, "manifest.webmanifest"), "{}", "utf8");
 
     const swOk = `
       const VERSION = (() => {
@@ -90,6 +95,8 @@ test("validateServiceWorker：通过与失败分支", () => {
     assert.equal(ok.ok, true);
     assert.equal(ok.errors.length, 0);
     assert.equal(ok.counts.html, 2);
+    assert.equal(ok.counts.precacheFiles, 7);
+    assert.ok(Number(ok.counts.precacheTotalBytes) > 0);
 
     const swBad = swOk.replace("`scripts.js?v=${VERSION}`,", "");
     fs.writeFileSync(path.join(root, "sw.js"), swBad, "utf8");
@@ -136,6 +143,14 @@ test("validateServiceWorker：通过与失败分支", () => {
       assert.equal(unversioned.ok, false);
       assert.ok(unversioned.errors.some((e) => e.includes("未版本化")));
     });
+
+    // 预缓存体积预算：超过预算应失败
+    const huge = "x".repeat(2000);
+    fs.writeFileSync(path.join(root, "scripts.js"), huge, "utf8");
+    fs.writeFileSync(path.join(root, "sw.js"), swOk, "utf8");
+    const overBudget = validateServiceWorker({ workspaceRoot: root, precacheBudgetKb: 0 });
+    assert.equal(overBudget.ok, false);
+    assert.ok(overBudget.errors.some((e) => e.includes("超过预算")));
   });
 });
 
@@ -155,6 +170,11 @@ test("main：通过时返回 0 并输出统计信息", () => {
   withTempDir((root) => {
     fs.writeFileSync(path.join(root, "index.html"), "<!doctype html>", "utf8");
     fs.writeFileSync(path.join(root, "page.html"), "<!doctype html>", "utf8");
+    fs.writeFileSync(path.join(root, "styles.css"), "body{color:#000}", "utf8");
+    fs.writeFileSync(path.join(root, "data.js"), "window.GKB={data:{version:\"x\",games:{},guides:{},topics:{}}};", "utf8");
+    fs.writeFileSync(path.join(root, "scripts.js"), "(()=>{})();", "utf8");
+    fs.writeFileSync(path.join(root, "boot.js"), "(function(){})();", "utf8");
+    fs.writeFileSync(path.join(root, "manifest.webmanifest"), "{}", "utf8");
 
     const swOk = `
       const VERSION = (() => {
@@ -195,6 +215,11 @@ test("CLI：check-sw.mjs 作为脚本运行应 process.exit(main())", () => {
   withTempDir((root) => {
     fs.writeFileSync(path.join(root, "index.html"), "<!doctype html>", "utf8");
     fs.writeFileSync(path.join(root, "page.html"), "<!doctype html>", "utf8");
+    fs.writeFileSync(path.join(root, "styles.css"), "body{color:#000}", "utf8");
+    fs.writeFileSync(path.join(root, "data.js"), "window.GKB={data:{version:\"x\",games:{},guides:{},topics:{}}};", "utf8");
+    fs.writeFileSync(path.join(root, "scripts.js"), "(()=>{})();", "utf8");
+    fs.writeFileSync(path.join(root, "boot.js"), "(function(){})();", "utf8");
+    fs.writeFileSync(path.join(root, "manifest.webmanifest"), "{}", "utf8");
 
     const swOk = `
       const VERSION = (() => {

@@ -2,6 +2,19 @@ import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
+const toNumberOrNull = (v) => {
+  if (v === undefined || v === null) return null;
+  const n = Number(String(v).trim());
+  return Number.isFinite(n) ? n : null;
+};
+
+// 约定：kB 使用十进制（1000 bytes），与 Vite 构建输出一致。
+// 为了避免浮点精度导致的 23.075 → 23.07，按 0.01kB = 10 bytes 做整数四舍五入。
+const formatKb = (bytes) => {
+  const kbTimes100 = Math.round(Number(bytes || 0) / 10);
+  return (kbTimes100 / 100).toFixed(2);
+};
+
 export const listRootHtml = (workspaceRoot) =>
   fs
     .readdirSync(workspaceRoot, { withFileTypes: true })
@@ -39,7 +52,15 @@ export const parseTemplateStrings = (s) => {
   return items;
 };
 
-export const validateServiceWorker = ({ workspaceRoot }) => {
+const normalizePrecachePath = (value) => {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  if (/^https?:\/\//i.test(raw)) return "";
+  const noQuery = raw.split(/[?#]/, 1)[0];
+  return String(noQuery || "").replace(/^[./\\]+/, "");
+};
+
+export const validateServiceWorker = ({ workspaceRoot, precacheBudgetKb } = {}) => {
   const readText = (filePath) => fs.readFileSync(filePath, "utf8");
   const errors = [];
 
@@ -111,11 +132,46 @@ export const validateServiceWorker = ({ workspaceRoot }) => {
     }
   });
 
+  // 6) 预缓存资源必须存在，且体积要可预算（避免“离线壳”无限膨胀）
+  const allItems = [...literalItems, ...templateItems];
+  const uniquePaths = new Set(allItems.map(normalizePrecachePath).filter(Boolean));
+  let precacheTotalBytes = 0;
+
+  uniquePaths.forEach((rel) => {
+    const filePath = path.join(workspaceRoot, rel);
+    if (!fs.existsSync(filePath)) {
+      errors.push(`[SW] PRECACHE_URLS 引用不存在资源：${rel}`);
+      return;
+    }
+    const st = fs.statSync(filePath);
+    if (!st.isFile()) {
+      errors.push(`[SW] PRECACHE_URLS 引用的资源不是文件：${rel}`);
+      return;
+    }
+    precacheTotalBytes += st.size;
+  });
+
+  const budgetKb =
+    toNumberOrNull(precacheBudgetKb) ?? toNumberOrNull(process.env.GKB_BUDGET_SW_PRECACHE_KB) ?? 1200;
+  const budgetBytes = Math.round(budgetKb * 1000);
+  if (precacheTotalBytes > budgetBytes) {
+    errors.push(
+      `[SW] PRECACHE_URLS 预缓存体积超过预算：${formatKb(precacheTotalBytes)}kB > ${budgetKb.toFixed(2)}kB`
+    );
+  }
+
   if (errors.length > 0) return { ok: false, errors, counts: null };
   return {
     ok: true,
     errors: [],
-    counts: { html: rootHtml.length, precacheLiteral: literalItems.length, precacheTemplate: templateItems.length },
+    counts: {
+      html: rootHtml.length,
+      precacheLiteral: literalItems.length,
+      precacheTemplate: templateItems.length,
+      precacheFiles: uniquePaths.size,
+      precacheTotalBytes,
+      precacheBudgetKb: budgetKb,
+    },
   };
 };
 
@@ -127,7 +183,7 @@ export const main = ({ workspaceRoot = process.cwd(), stdout = console.log, stde
     return 1;
   }
   stdout(
-    `✅ SW 检查通过：html=${result.counts.html}, precache(literal)=${result.counts.precacheLiteral}, precache(template)=${result.counts.precacheTemplate}`
+    `✅ SW 检查通过：html=${result.counts.html}, precache(literal)=${result.counts.precacheLiteral}, precache(template)=${result.counts.precacheTemplate}, precache(files)=${result.counts.precacheFiles}, precache(size)=${formatKb(result.counts.precacheTotalBytes)}kB <= ${result.counts.precacheBudgetKb.toFixed(2)}kB`
   );
   return 0;
 };

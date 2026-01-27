@@ -1,0 +1,20 @@
+{
+  "difficulty": "中等",
+  "gameId": "horizon-fw",
+  "icon": "images/icons/boss-guide.svg",
+  "readingTime": 7,
+  "steps": [
+    "锁定目标弱点",
+    "准备元素弹药",
+    "拆解关键部件",
+    "整理掉落路线"
+  ],
+  "summary": "利用元素克制与部位拆解，提高对机械兽的击杀效率。",
+  "tags": [
+    "弱点",
+    "装备",
+    "狩猎"
+  ],
+  "title": "地平线：弱点拆解与狩猎效率",
+  "updated": "2025-12-05"
+}

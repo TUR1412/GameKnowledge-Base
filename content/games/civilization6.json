@@ -1,0 +1,35 @@
+{
+  "difficulty": "策略向",
+  "genre": "策略 | 回合制",
+  "highlights": [
+    "科技路线",
+    "城市区位",
+    "政策卡",
+    "胜利条件"
+  ],
+  "icon": "images/icons/civilization.svg",
+  "modes": [
+    "单人",
+    "多人"
+  ],
+  "platforms": [
+    "PC",
+    "Switch",
+    "PS4",
+    "Xbox One",
+    "Mobile"
+  ],
+  "playtime": "20-60 小时/局",
+  "rating": 9.5,
+  "subtitle": "从石器时代走向未来的帝国史诗",
+  "summary": "通过城市规划、科技路线与外交博弈塑造文明。胜利条件多样，玩法深度极高。",
+  "tags": [
+    "回合制策略",
+    "科技树",
+    "城市规划",
+    "外交"
+  ],
+  "title": "文明6",
+  "updated": "2025-08-18",
+  "year": 2016
+}

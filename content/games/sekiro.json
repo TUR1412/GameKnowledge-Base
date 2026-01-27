@@ -1,0 +1,32 @@
+{
+  "difficulty": "极高",
+  "genre": "动作 | 冒险",
+  "highlights": [
+    "招架节奏",
+    "义手组合",
+    "体势管理",
+    "Boss 学习曲线"
+  ],
+  "icon": "images/icons/sekiro.svg",
+  "modes": [
+    "单人"
+  ],
+  "platforms": [
+    "PC",
+    "PS4",
+    "Xbox One"
+  ],
+  "playtime": "30-50 小时",
+  "rating": 9.4,
+  "subtitle": "招架为王的极致刀剑对决",
+  "summary": "核心是架势条与节奏博弈。学会招架、识破与义手组合后，难度曲线会明显变友好。",
+  "tags": [
+    "魂系",
+    "招架",
+    "Boss",
+    "高难"
+  ],
+  "title": "只狼：影逝二度",
+  "updated": "2025-09-12",
+  "year": 2019
+}

@@ -1,0 +1,33 @@
+{
+  "difficulty": "高",
+  "genre": "角色扮演 | 战术回合制",
+  "highlights": [
+    "队伍职责搭配",
+    "对话分支",
+    "战术回合制",
+    "资源循环"
+  ],
+  "icon": "images/icons/rpg-icon.svg",
+  "modes": [
+    "单人",
+    "联机合作"
+  ],
+  "platforms": [
+    "PC",
+    "PS5",
+    "Xbox Series X|S"
+  ],
+  "playtime": "80-120 小时",
+  "rating": 9.6,
+  "subtitle": "高自由度团队RPG与剧情分支",
+  "summary": "以战斗回合制与丰富对话分支为核心，队伍配置与资源管理决定整体节奏。",
+  "tags": [
+    "回合制",
+    "叙事",
+    "队伍",
+    "Build"
+  ],
+  "title": "博德之门3",
+  "updated": "2025-12-10",
+  "year": 2023
+}

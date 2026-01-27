@@ -6,6 +6,8 @@
 - `guide-detail.html?id=yyy` 读取 `data.guides[yyy]`
 - `forum-topic.html?id=zzz` 读取 `data.topics[zzz]`
 
+> 提示：仓库已引入可协作内容源 `content/`。日常新增/修改内容请编辑 `content/*`，再执行 `npm run build:data` 生成 `data.js`。详见：`docs/CONTENT_WORKFLOW.md`。
+
 > 设计目标：减少静态页面数量、降低断链风险、统一视觉与交互。
 
 ---
