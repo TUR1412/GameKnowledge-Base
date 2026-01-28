@@ -23,6 +23,94 @@ const stableSort = (v) => {
 
 const stableStringify = (v) => JSON.stringify(stableSort(v));
 
+const readJsonFileOrNull = (filePath) => {
+  if (!fs.existsSync(filePath)) return null;
+  const raw = readText(filePath);
+  try {
+    return JSON.parse(raw);
+  } catch (err) {
+    const msg = String(err?.message || err || "unknown error");
+    throw new Error(`[TAXONOMY] JSON 解析失败：${filePath} -> ${msg}`);
+  }
+};
+
+const isAsciiLike = (s) => /^[\x00-\x7F]+$/.test(String(s || ""));
+
+const buildAliasIndex = (table) => {
+  const alias = new Map();
+  const canonical = new Set();
+
+  const obj = table && typeof table === "object" ? table : {};
+  Object.entries(obj).forEach(([rawCanonical, rawAliases]) => {
+    const c = String(rawCanonical || "").trim();
+    if (!c) return;
+
+    canonical.add(c);
+    alias.set(c, c);
+    if (isAsciiLike(c)) alias.set(c.toLowerCase(), c);
+
+    const list = Array.isArray(rawAliases) ? rawAliases : [];
+    list.forEach((a) => {
+      const k = String(a || "").trim();
+      if (!k) return;
+      alias.set(k, c);
+      if (isAsciiLike(k)) alias.set(k.toLowerCase(), c);
+    });
+  });
+
+  return { alias, canonical };
+};
+
+const normalizeWithAlias = (value, aliasIndex) => {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  const direct = aliasIndex.alias.get(raw);
+  if (direct) return direct;
+
+  const lower = raw.toLowerCase();
+  const lowered = lower !== raw ? aliasIndex.alias.get(lower) : null;
+  if (lowered) return lowered;
+
+  return raw;
+};
+
+export const loadTaxonomyFromContent = ({ workspaceRoot = process.cwd() } = {}) => {
+  const contentDir = path.join(workspaceRoot, "content");
+  const metaPath = path.join(contentDir, "meta.json");
+  if (!fs.existsSync(metaPath)) return null;
+
+  const taxonomyPath = path.join(contentDir, "taxonomy.json");
+  if (!fs.existsSync(taxonomyPath)) {
+    return {
+      ok: false,
+      errors: ["[TAXONOMY] 缺少 content/taxonomy.json（标签/分类治理必备）"],
+      taxonomy: null,
+    };
+  }
+
+  const taxonomy = readJsonFileOrNull(taxonomyPath);
+  if (!taxonomy || typeof taxonomy !== "object" || Array.isArray(taxonomy)) {
+    return { ok: false, errors: ["[TAXONOMY] taxonomy.json 必须是对象"], taxonomy: null };
+  }
+
+  const tagsTable = taxonomy.tags;
+  const categoriesTable = taxonomy.topicCategories;
+  if (!tagsTable || typeof tagsTable !== "object" || Array.isArray(tagsTable)) {
+    return { ok: false, errors: ["[TAXONOMY] taxonomy.json.tags 必须是对象（canonical->aliases[]）"], taxonomy: null };
+  }
+  if (!categoriesTable || typeof categoriesTable !== "object" || Array.isArray(categoriesTable)) {
+    return {
+      ok: false,
+      errors: ["[TAXONOMY] taxonomy.json.topicCategories 必须是对象（canonical->aliases[]）"],
+      taxonomy: null,
+    };
+  }
+
+  const tagIndex = buildAliasIndex(tagsTable);
+  const categoryIndex = buildAliasIndex(categoriesTable);
+  return { ok: true, errors: [], taxonomy: { raw: taxonomy, tagIndex, categoryIndex } };
+};
+
 const listJsonFiles = (dirPath) => {
   if (!fs.existsSync(dirPath)) return [];
   return fs
@@ -89,6 +177,45 @@ export const validateTags = ({ where, tags }) => {
   return [];
 };
 
+export const normalizeTags = ({ where, tags, taxonomy, errors }) => {
+  if (!taxonomy) return tags;
+  if (tags == null) return tags;
+  if (!Array.isArray(tags)) return tags;
+
+  const out = [];
+  const seen = new Set();
+
+  tags.forEach((t) => {
+    const raw = String(t || "").trim();
+    if (!raw) {
+      errors.push(`[DATA] ${where}: tags 必须是非空字符串数组`);
+      return;
+    }
+    const normalized = normalizeWithAlias(raw, taxonomy.tagIndex);
+    if (!taxonomy.tagIndex.canonical.has(normalized)) {
+      errors.push(`[DATA] ${where}: tags 存在未登记标签 -> ${raw}`);
+      return;
+    }
+    if (seen.has(normalized)) return;
+    seen.add(normalized);
+    out.push(normalized);
+  });
+
+  return out;
+};
+
+export const normalizeTopicCategory = ({ where, category, taxonomy, errors }) => {
+  if (!taxonomy) return category;
+  const raw = String(category || "").trim();
+  if (!raw) return category;
+  const normalized = normalizeWithAlias(raw, taxonomy.categoryIndex);
+  if (!taxonomy.categoryIndex.canonical.has(normalized)) {
+    errors.push(`[DATA] ${where}: category 未登记 -> ${raw}`);
+    return category;
+  }
+  return normalized;
+};
+
 export const validateStringArray = ({ where, value, label }) => {
   if (value == null) return [];
   if (!Array.isArray(value) || value.length === 0) return [`[DATA] ${where}: ${label} 必须是非空数组`];
@@ -97,7 +224,7 @@ export const validateStringArray = ({ where, value, label }) => {
   return [];
 };
 
-export const validateData = ({ data, existsRel, workspaceRoot }) => {
+export const validateData = ({ data, existsRel, workspaceRoot, taxonomy = null }) => {
   const errors = [];
 
   const safeExistsRel =
@@ -134,6 +261,7 @@ export const validateData = ({ data, existsRel, workspaceRoot }) => {
     if (!isNonEmptyString(g.summary)) errors.push(`[DATA] ${where}: summary 不能为空`);
     errors.push(...validateIcon({ where, icon: g.icon, existsRel: safeExistsRel }));
     errors.push(...validateStringArray({ where, value: g.modes, label: "modes" }));
+    g.tags = normalizeTags({ where, tags: g.tags, taxonomy, errors });
     errors.push(...validateTags({ where, tags: g.tags }));
     errors.push(...validateStringArray({ where, value: g.highlights, label: "highlights" }));
     if (g.hasDeepGuide === true) {
@@ -164,6 +292,7 @@ export const validateData = ({ data, existsRel, workspaceRoot }) => {
       else if (!(gameId in games)) errors.push(`[DATA] ${where}: gameId 不存在 -> ${gameId}`);
     }
     if (g.icon != null) errors.push(...validateIcon({ where, icon: g.icon, existsRel: safeExistsRel }));
+    g.tags = normalizeTags({ where, tags: g.tags, taxonomy, errors });
     errors.push(...validateTags({ where, tags: g.tags }));
   }
 
@@ -179,8 +308,10 @@ export const validateData = ({ data, existsRel, workspaceRoot }) => {
     if (!isNonEmptyString(t.starter)) errors.push(`[DATA] ${where}: starter 不能为空`);
     if (!isNonEmptyString(t.summary)) errors.push(`[DATA] ${where}: summary 不能为空`);
     if (!isNonEmptyString(t.category)) errors.push(`[DATA] ${where}: category 不能为空`);
+    t.category = normalizeTopicCategory({ where, category: t.category, taxonomy, errors });
     if (!isDateString(t.updated)) errors.push(`[DATA] ${where}: updated 必须是 YYYY-MM-DD 格式`);
     if (!isNumber(t.replies)) errors.push(`[DATA] ${where}: replies 必须是数字`);
+    t.tags = normalizeTags({ where, tags: t.tags, taxonomy, errors });
     errors.push(...validateTags({ where, tags: t.tags }));
   }
 
@@ -201,7 +332,15 @@ export const main = ({ workspaceRoot = process.cwd(), stdout = console.log, stde
     return 1;
   }
 
-  const result = validateData({ data, workspaceRoot });
+  const taxonomyResult = loadTaxonomyFromContent({ workspaceRoot });
+  if (taxonomyResult && taxonomyResult.ok === false) {
+    stderr("❌ taxonomy 校验未通过：");
+    taxonomyResult.errors.forEach((e) => stderr(`- ${e}`));
+    return 1;
+  }
+  const taxonomy = taxonomyResult && taxonomyResult.ok ? taxonomyResult.taxonomy : null;
+
+  const result = validateData({ data, workspaceRoot, taxonomy });
   if (result.errors.length > 0) {
     stderr("❌ data.js 数据校验未通过：");
     result.errors.forEach((e) => stderr(`- ${e}`));
@@ -217,7 +356,7 @@ export const main = ({ workspaceRoot = process.cwd(), stdout = console.log, stde
     if (!isNonEmptyString(contentData.site?.tagline)) contentErrors.push("[CONTENT] meta.json.site.tagline 不能为空");
     if (!isNonEmptyString(contentData.site?.description)) contentErrors.push("[CONTENT] meta.json.site.description 不能为空");
 
-    const contentValidation = validateData({ data: contentData, workspaceRoot });
+    const contentValidation = validateData({ data: contentData, workspaceRoot, taxonomy });
     contentErrors.push(...contentValidation.errors);
 
     if (contentErrors.length > 0) {

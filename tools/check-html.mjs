@@ -36,8 +36,34 @@ const checkHeadBasics = (fileName, content, errors) => {
 const checkNoInlineScripts = (fileName, content, errors) => {
   // 禁止内联脚本：避免与 CSP 冲突，同时降低 XSS 风险
   const inlineScriptRe = /<script\b(?![^>]*\bsrc=)[^>]*>/gi;
-  if (inlineScriptRe.test(content)) {
-    errors.push(`[HTML] ${fileName}: 存在内联 <script>（应使用外部文件）`);
+  const matches = String(content || "").matchAll(inlineScriptRe);
+  for (const m of matches) {
+    const tag = String(m[0] || "");
+    // 例外：允许 JSON-LD（不执行，仅供 SEO 结构化数据使用）
+    if (/type\s*=\s*"application\/ld\+json"/i.test(tag)) continue;
+    errors.push(`[HTML] ${fileName}: 存在内联 <script>（应使用外部文件；JSON-LD 例外）`);
+    return;
+  }
+};
+
+const checkSeo = (fileName, content, errors) => {
+  // Open Graph / Twitter
+  const required = [
+    { label: "og:title", re: /property\s*=\s*"og:title"/i },
+    { label: "og:description", re: /property\s*=\s*"og:description"/i },
+    { label: "og:type", re: /property\s*=\s*"og:type"/i },
+    { label: "og:site_name", re: /property\s*=\s*"og:site_name"/i },
+    { label: "og:locale", re: /property\s*=\s*"og:locale"/i },
+    { label: "twitter:card", re: /name\s*=\s*"twitter:card"/i },
+  ];
+
+  for (const r of required) {
+    if (!has(content, r.re)) errors.push(`[HTML] ${fileName}: 缺少 SEO meta（${r.label}）`);
+  }
+
+  // JSON-LD
+  if (!has(content, /<script\s+type\s*=\s*"application\/ld\+json"/i)) {
+    errors.push(`[HTML] ${fileName}: 缺少 JSON-LD（<script type="application/ld+json">）`);
   }
 };
 
@@ -109,6 +135,7 @@ export const validateHtml = ({ workspaceRoot = process.cwd() } = {}) => {
     const content = readText(path.join(workspaceRoot, file));
     checkHeadBasics(file, content, errors);
     checkNoInlineScripts(file, content, errors);
+    checkSeo(file, content, errors);
     checkSkipLink(file, content, errors);
     checkImages(file, content, errors);
   }

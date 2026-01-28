@@ -10,6 +10,7 @@ import {
   isDateString,
   loadDataFromContent,
   loadDataFromDataJs,
+  loadTaxonomyFromContent,
   main,
   validateData,
   validateTags,
@@ -87,7 +88,12 @@ test("validateData：最小可用数据应通过校验", () => {
   };
 
   const existsRel = (rel) => rel === "images/icon.svg" || rel === "deep.html";
-  const result = validateData({ data, workspaceRoot: "/tmp", existsRel });
+  const taxonomy = {
+    raw: { version: 1, tags: { tag: [] }, topicCategories: { 综合: [] } },
+    tagIndex: { alias: new Map([["tag", "tag"]]), canonical: new Set(["tag"]) },
+    categoryIndex: { alias: new Map([["综合", "综合"]]), canonical: new Set(["综合"]) },
+  };
+  const result = validateData({ data, workspaceRoot: "/tmp", existsRel, taxonomy });
   assert.equal(result.errors.length, 0);
   assert.deepEqual(result.counts, { games: 1, guides: 1, topics: 1 });
 });
@@ -307,6 +313,12 @@ test("main：content/ 存在且与 data.js 对齐应通过", () => {
     );
 
     fs.writeFileSync(
+      path.join(root, "content", "taxonomy.json"),
+      JSON.stringify({ version: 1, tags: { tag: [] }, topicCategories: { 综合: [] } }, null, 2) + "\n",
+      "utf8"
+    );
+
+    fs.writeFileSync(
       path.join(root, "content", "games", "g1.json"),
       JSON.stringify(
         {
@@ -450,6 +462,12 @@ test("main：content/ 与 data.js 不一致应失败", () => {
     );
 
     fs.writeFileSync(
+      path.join(root, "content", "taxonomy.json"),
+      JSON.stringify({ version: 1, tags: { tag: [] }, topicCategories: { 综合: [] } }, null, 2) + "\n",
+      "utf8"
+    );
+
+    fs.writeFileSync(
       path.join(root, "content", "games", "g1.json"),
       JSON.stringify(
         {
@@ -539,5 +557,140 @@ test("CLI：validate-data.mjs 作为脚本运行应 process.exit(main())", () =>
 
     assert.equal(r.status, 0);
     assert.equal(r.signal, null);
+  });
+});
+
+test("loadTaxonomyFromContent：taxonomy.json 非法 JSON 应抛错（覆盖 JSON 解析失败分支）", () => {
+  withTempDir((root) => {
+    fs.mkdirSync(path.join(root, "content"), { recursive: true });
+    fs.writeFileSync(path.join(root, "content", "meta.json"), "{}", "utf8");
+    fs.writeFileSync(path.join(root, "content", "taxonomy.json"), "{", "utf8");
+
+    assert.throws(() => loadTaxonomyFromContent({ workspaceRoot: root }), /JSON 解析失败/);
+  });
+});
+
+test("loadTaxonomyFromContent：taxonomy.json 表结构非法应返回 ok=false（覆盖结构校验分支）", () => {
+  withTempDir((root) => {
+    fs.mkdirSync(path.join(root, "content"), { recursive: true });
+    fs.writeFileSync(path.join(root, "content", "meta.json"), "{}", "utf8");
+
+    // taxonomy.json 必须是对象
+    fs.writeFileSync(path.join(root, "content", "taxonomy.json"), "[]\n", "utf8");
+    const r1 = loadTaxonomyFromContent({ workspaceRoot: root });
+    assert.ok(r1 && r1.ok === false);
+    assert.ok(r1.errors.some((e) => e.includes("taxonomy.json 必须是对象")));
+
+    // tags/topicCategories 必须是对象
+    fs.writeFileSync(
+      path.join(root, "content", "taxonomy.json"),
+      JSON.stringify({ version: 1, tags: [], topicCategories: {} }, null, 2) + "\n",
+      "utf8"
+    );
+    const r2 = loadTaxonomyFromContent({ workspaceRoot: root });
+    assert.ok(r2 && r2.ok === false);
+    assert.ok(r2.errors.some((e) => e.includes("taxonomy.json.tags")));
+
+    fs.writeFileSync(
+      path.join(root, "content", "taxonomy.json"),
+      JSON.stringify({ version: 1, tags: {}, topicCategories: [] }, null, 2) + "\n",
+      "utf8"
+    );
+    const r3 = loadTaxonomyFromContent({ workspaceRoot: root });
+    assert.ok(r3 && r3.ok === false);
+    assert.ok(r3.errors.some((e) => e.includes("taxonomy.json.topicCategories")));
+  });
+});
+
+test("validateData：taxonomy 治理应支持 alias 归一化，并拦截未登记 tags/category（覆盖 normalize* 分支）", () => {
+  withTempDir((root) => {
+    fs.mkdirSync(path.join(root, "content"), { recursive: true });
+    fs.writeFileSync(path.join(root, "content", "meta.json"), "{}", "utf8");
+    fs.writeFileSync(
+      path.join(root, "content", "taxonomy.json"),
+      JSON.stringify(
+        {
+          version: 1,
+          tags: { Boss: ["boss"] },
+          topicCategories: { News: ["news"] },
+        },
+        null,
+        2
+      ) + "\n",
+      "utf8"
+    );
+
+    const tr = loadTaxonomyFromContent({ workspaceRoot: root });
+    assert.ok(tr && tr.ok);
+    const taxonomy = tr.taxonomy;
+
+    const data = {
+      games: {
+        g1: {
+          title: "测试游戏",
+          genre: "动作",
+          rating: 9.1,
+          year: 2025,
+          updated: "2025-12-21",
+          platforms: ["PC"],
+          summary: "summary",
+          icon: "images/icon.svg",
+          modes: ["单人"],
+          highlights: ["h"],
+          tags: ["BOSS", "UnknownTag", ""],
+        },
+      },
+      guides: {},
+      topics: {
+        t1: {
+          title: "话题1",
+          starter: "用户",
+          summary: "summary",
+          category: "NEWS",
+          replies: 1,
+          updated: "2025-12-21",
+          tags: ["boss"],
+        },
+        t2: {
+          title: "话题2",
+          starter: "用户",
+          summary: "summary",
+          category: "UnknownCategory",
+          replies: 1,
+          updated: "2025-12-21",
+          tags: ["UnknownTag"],
+        },
+      },
+    };
+
+    const existsRel = () => true;
+    const result = validateData({ data, workspaceRoot: root, existsRel, taxonomy });
+
+    // alias 归一化：BOSS / boss 应都归一到 Boss / News（覆盖 direct + lower 分支）
+    assert.deepEqual(data.games.g1.tags, ["Boss"]);
+    assert.equal(data.topics.t1.category, "News");
+
+    // 未登记标签 / 空标签 / 未登记分类应给出可定位错误
+    assert.ok(result.errors.some((e) => e.includes("games.g1") && e.includes("tags 必须是非空字符串数组")));
+    assert.ok(result.errors.some((e) => e.includes("games.g1") && e.includes("未登记标签") && e.includes("UnknownTag")));
+    assert.ok(result.errors.some((e) => e.includes("topics.t2") && e.includes("category 未登记") && e.includes("UnknownCategory")));
+  });
+});
+
+test("main：taxonomy 缺失时应失败并输出错误（覆盖 main taxonomyResult.ok=false 分支）", () => {
+  withTempDir((root) => {
+    fs.writeFileSync(
+      path.join(root, "data.js"),
+      `(() => { window.GKB = window.GKB || {}; window.GKB.data = { games: {}, guides: {}, topics: {} }; })();\n`,
+      "utf8"
+    );
+    fs.mkdirSync(path.join(root, "content"), { recursive: true });
+    fs.writeFileSync(path.join(root, "content", "meta.json"), "{}", "utf8");
+
+    const out = [];
+    const err = [];
+    const code = main({ workspaceRoot: root, stdout: out.push.bind(out), stderr: err.push.bind(err) });
+    assert.equal(code, 1);
+    assert.ok(err.join("\n").includes("taxonomy 校验未通过"));
   });
 });

@@ -3342,6 +3342,7 @@
     const exportedAt = new Date().toISOString();
     const payload = {
       schema: "gkb-local-storage",
+      schemaVersion: 1,
       version,
       exportedAt,
       data,
@@ -3393,16 +3394,64 @@
           .text()
           .then((text) => {
             const parsed = safeJsonParse(text, null);
-            const entries = parsed && typeof parsed === "object" ? parsed.data : null;
+            const payload = parsed && typeof parsed === "object" ? parsed : null;
+
+            const schema = String(payload?.schema || "");
+            const schemaVersion = Number(payload?.schemaVersion || 0) || 0;
+            if (schema && schema !== "gkb-local-storage") {
+              toast({ title: "导入失败", message: "备份文件 schema 不匹配。", tone: "warn" });
+              return;
+            }
+            if (schemaVersion && schemaVersion !== 1) {
+              toast({ title: "导入失败", message: "备份文件 schemaVersion 不受支持。", tone: "warn" });
+              return;
+            }
+
+            const fromVersion = String(payload?.version || "");
+            const toVersion = String(getData()?.version || "");
+            if (fromVersion && toVersion && fromVersion !== toVersion) {
+              const ok = window.confirm(
+                `备份版本（${fromVersion}）与当前版本（${toVersion}）不同。\n\n仍要导入吗？（将尽量做兼容迁移）`
+              );
+              if (!ok) return;
+            }
+
+            const entries = payload ? payload.data : null;
             if (!entries || typeof entries !== "object") {
               toast({ title: "导入失败", message: "备份文件格式不正确。", tone: "warn" });
               return;
             }
 
-            const keys = Object.keys(entries).filter((k) => k.startsWith("gkb-"));
+            // 迁移策略：统一入口（未来 key 变更只需在此处维护映射）
+            const migrateKey = (key) => {
+              const k = String(key || "").trim();
+              if (!k) return "";
+
+              const legacyMap = {
+                "gkb-ui-motion": STORAGE_KEYS.motion,
+                "gkb-ui-transparency": STORAGE_KEYS.transparency,
+                "gkb-ui-particles": STORAGE_KEYS.particles,
+              };
+              return legacyMap[k] || k;
+            };
+
+            const migrated = {};
+            Object.entries(entries).forEach(([rawKey, rawVal]) => {
+              const k = migrateKey(rawKey);
+              if (!k.startsWith("gkb-")) return;
+              if (typeof rawVal !== "string") return;
+              migrated[k] = rawVal;
+            });
+
+            const keys = Object.keys(migrated);
+
+            // 真正“覆盖”：先清空现有 gkb-*，再写入备份（避免旧 key 残留）
+            const existing = listLocalStorageKeys().filter((k) => k.startsWith("gkb-"));
+            existing.forEach((k) => storage.remove(k));
+
             let written = 0;
             keys.forEach((k) => {
-              const v = entries[k];
+              const v = migrated[k];
               if (typeof v !== "string") return;
               if (storage.set(k, v)) written += 1;
             });
@@ -4192,6 +4241,64 @@
   const toggleTransparency = () => toggleUiPref("transparency", "auto", "reduce");
   const toggleParticles = () => toggleUiPref("particles", "on", "off");
 
+  // -------------------------
+  // Service Worker Update UX（新版本提示 / 可控刷新）
+  // -------------------------
+
+  let swUpdateReady = false;
+  let swUpdateReadyVersion = "";
+  let swUpdateUxInstalled = false;
+
+  const extractSwVersion = (scriptUrl) => {
+    const raw = String(scriptUrl || "");
+    if (!raw) return "";
+    try {
+      return new URL(raw, window.location.href).searchParams.get("v") || "";
+    } catch (_) {
+      return "";
+    }
+  };
+
+  const promptSwUpdateReady = ({ version } = {}) => {
+    const v = String(version || "").trim();
+    if (!v) return;
+    if (swUpdateReady && swUpdateReadyVersion === v) return;
+
+    swUpdateReady = true;
+    swUpdateReadyVersion = v;
+
+    toast({
+      id: "sw-update-ready",
+      title: "新版本已就绪",
+      message: "离线缓存已在后台更新。打开全站搜索（Ctrl+K），选择“立即刷新”加载新版本。",
+      tone: "success",
+      timeout: 0,
+    });
+  };
+
+  const initServiceWorkerUpdateUx = () => {
+    if (!("serviceWorker" in navigator)) return;
+    if (swUpdateUxInstalled) return;
+    swUpdateUxInstalled = true;
+
+    // 控制权切换：通常意味着“新版本 SW 已接管”。此时提示用户刷新，避免旧页面/新缓存错配。
+    navigator.serviceWorker.addEventListener("controllerchange", () => {
+      const assetVersion = detectAssetVersion() || String(getData()?.version || "");
+
+      navigator.serviceWorker
+        .getRegistration()
+        .then((reg) => {
+          const swVersion = extractSwVersion(reg?.active?.scriptURL);
+          if (!swVersion) return;
+          if (assetVersion && swVersion === assetVersion) return;
+          promptSwUpdateReady({ version: swVersion });
+        })
+        .catch(() => {
+          // ignore
+        });
+    });
+  };
+
   const checkServiceWorkerUpdate = () => {
     if (!("serviceWorker" in navigator)) {
       toast({ title: "当前环境不支持", message: "该浏览器不支持 Service Worker。", tone: "warn" });
@@ -4205,8 +4312,15 @@
           toast({ title: "未启用离线缓存", message: "当前页面未注册 Service Worker。", tone: "warn" });
           return;
         }
+
+        initServiceWorkerUpdateUx();
+
         return reg.update().then(() => {
-          toast({ title: "已检查更新", message: "如果有新版本会自动下载并在后台更新。", tone: "info" });
+          toast({
+            title: "已检查更新",
+            message: "如果发现新版本会自动下载并在后台更新；若提示“新版本已就绪”，建议立即刷新。",
+            tone: "info",
+          });
         });
       })
       .catch(() => {
@@ -4736,8 +4850,130 @@
     const getTelemetryLabel = () => (telemetry.isEnabled() ? "关闭本地埋点" : "开启本地埋点");
 
     // 搜索索引缓存：避免每次输入都重复构造全文字符串（性能压榨）
+    // - searchPool 仅用于“检索 blob”（不存大对象），渲染数据仍以 data.js 为准
+    // - 额外持久化到 IndexedDB：同版本复用，避免每次冷启动都重建索引
     let searchPool = null;
     let searchPoolVersion = "";
+    let searchPoolPersistedVersion = "";
+    let searchPoolLoadPromise = null;
+
+    const openIdb = ({ name = "gkb", store = "kv", version = 1 } = {}) =>
+      new Promise((resolve, reject) => {
+        try {
+          if (!("indexedDB" in window)) return resolve(null);
+        } catch (_) {
+          return resolve(null);
+        }
+
+        try {
+          const req = indexedDB.open(String(name), Number(version || 1) || 1);
+
+          req.onupgradeneeded = () => {
+            try {
+              const db = req.result;
+              if (!db.objectStoreNames.contains(store)) {
+                db.createObjectStore(store);
+              }
+            } catch (_) {}
+          };
+
+          req.onsuccess = () => resolve(req.result || null);
+          req.onerror = () => reject(req.error || new Error("indexedDB.open failed"));
+        } catch (err) {
+          resolve(null);
+        }
+      });
+
+    let idbDbPromise = null;
+    const getIdb = () => {
+      if (idbDbPromise) return idbDbPromise;
+      idbDbPromise = openIdb().catch(() => null);
+      return idbDbPromise;
+    };
+
+    const idbGet = async (key) => {
+      const db = await getIdb();
+      if (!db) return null;
+
+      return await new Promise((resolve) => {
+        try {
+          const tx = db.transaction("kv", "readonly");
+          const store = tx.objectStore("kv");
+          const req = store.get(String(key || ""));
+          req.onsuccess = () => resolve(req.result ?? null);
+          req.onerror = () => resolve(null);
+        } catch (_) {
+          resolve(null);
+        }
+      });
+    };
+
+    const idbSet = async (key, value) => {
+      const db = await getIdb();
+      if (!db) return false;
+
+      return await new Promise((resolve) => {
+        try {
+          const tx = db.transaction("kv", "readwrite");
+          const store = tx.objectStore("kv");
+          store.put(value, String(key || ""));
+          tx.oncomplete = () => resolve(true);
+          tx.onerror = () => resolve(false);
+          tx.onabort = () => resolve(false);
+        } catch (_) {
+          resolve(false);
+        }
+      });
+    };
+
+    const searchPoolIdbKey = (version) => `gkb-search-pool:${String(version || "").trim()}`;
+
+    const isValidSearchPool = (pool) => {
+      const p = pool && typeof pool === "object" ? pool : null;
+      if (!p) return false;
+
+      const listOk = (list) =>
+        Array.isArray(list) &&
+        list.every((x) => x && typeof x === "object" && typeof x.id === "string" && typeof x.blob === "string");
+
+      return listOk(p.games) && listOk(p.guides) && listOk(p.topics);
+    };
+
+    const loadSearchPoolFromIdb = () => {
+      const data = getData();
+      const version = String(data?.version || "").trim();
+      if (!version) return Promise.resolve(null);
+
+      if (searchPool && searchPoolVersion === version) return Promise.resolve(searchPool);
+      if (searchPoolLoadPromise) return searchPoolLoadPromise;
+
+      searchPoolLoadPromise = idbGet(searchPoolIdbKey(version))
+        .then((stored) => {
+          const payload = stored && typeof stored === "object" ? stored : null;
+          const pool = payload?.pool;
+          if (!isValidSearchPool(pool)) return null;
+          searchPool = pool;
+          searchPoolVersion = version;
+          searchPoolPersistedVersion = version;
+          return pool;
+        })
+        .catch(() => null)
+        .finally(() => {
+          searchPoolLoadPromise = null;
+        });
+
+      return searchPoolLoadPromise;
+    };
+
+    const persistSearchPoolToIdb = (pool, version) => {
+      const v = String(version || "").trim();
+      if (!v) return;
+      if (!isValidSearchPool(pool)) return;
+      if (searchPoolPersistedVersion === v) return;
+      searchPoolPersistedVersion = v;
+
+      void idbSet(searchPoolIdbKey(v), { version: v, savedAt: Date.now(), pool });
+    };
 
     const getSearchPool = () => {
       const data = getData();
@@ -4751,23 +4987,28 @@
           const title = String(g?.title || id);
           const genre = String(g?.genre || "");
           const year = g?.year ? `${g.year}` : "";
-          return { id, g, blob: `${id} ${title} ${genre} ${year}` };
+          const tags = Array.isArray(g?.tags) ? g.tags.map(String).join(" ") : "";
+          const boostedTitle = title ? `${title} ${title}` : id;
+          return { id, blob: `${boostedTitle} ${id} ${genre} ${tags} ${year}`.trim() };
         }),
         guides: Object.entries(data.guides || {}).map(([id, g]) => {
           const title = String(g?.title || id);
           const summary = String(g?.summary || "");
           const tags = Array.isArray(g?.tags) ? g.tags.map(String).join(" ") : "";
-          return { id, g, blob: `${id} ${title} ${summary} ${tags}` };
+          const boostedTitle = title ? `${title} ${title}` : id;
+          return { id, blob: `${boostedTitle} ${id} ${summary} ${tags}`.trim() };
         }),
         topics: Object.entries(data.topics || {}).map(([id, t]) => {
           const title = String(t?.title || id);
           const summary = String(t?.summary || "");
-          return { id, t, blob: `${id} ${title} ${summary}` };
+          const boostedTitle = title ? `${title} ${title}` : id;
+          return { id, blob: `${boostedTitle} ${id} ${summary}`.trim() };
         }),
       };
 
       searchPool = next;
       searchPoolVersion = version || searchPoolVersion;
+      persistSearchPoolToIdb(next, version);
       return next;
     };
 
@@ -4859,9 +5100,9 @@
             type: "GKB_SEARCH_INIT",
             version,
             pool: {
-              games: (pool.games || []).map(({ id, blob }) => ({ id, blob })),
-              guides: (pool.guides || []).map(({ id, blob }) => ({ id, blob })),
-              topics: (pool.topics || []).map(({ id, blob }) => ({ id, blob })),
+              games: pool.games || [],
+              guides: pool.guides || [],
+              topics: pool.topics || [],
             },
           });
           searchWorkerVersion = version;
@@ -4900,7 +5141,8 @@
             type: "GKB_SEARCH_QUERY",
             requestId,
             query: q,
-            limits: { games: 6, guides: 8, topics: 6 },
+            // Worker 返回更多候选，主线程再基于“收藏/最近”做二次排序（更像产品）
+            limits: { games: 18, guides: 24, topics: 18 },
           });
         } catch (_) {
           window.clearTimeout(timer);
@@ -4909,6 +5151,18 @@
         }
       });
     };
+
+    // 预热：尽量在用户按下 Ctrl+K 之前完成索引加载/Worker 初始化（减少首次卡顿）
+    void loadSearchPoolFromIdb();
+    runIdleTask(() => {
+      loadSearchPoolFromIdb()
+        .catch(() => null)
+        .finally(() => {
+          try {
+            ensureSearchWorker();
+          } catch (_) {}
+        });
+    }, { timeout: 1200 });
 
     const buildGroups = (query, { searchResults = null, searching = false } = {}) => {
       const data = getData();
@@ -5087,12 +5341,30 @@
           subtitle: "手动触发 Service Worker 更新检查",
           run: checkServiceWorkerUpdate,
         },
+        ...(swUpdateReady
+          ? [
+              {
+                kind: "action",
+                badge: "PWA",
+                title: swUpdateReadyVersion ? `立即刷新（应用新版本 ${swUpdateReadyVersion}）` : "立即刷新（应用新版本）",
+                subtitle: "刷新页面以加载最新脚本/样式与离线缓存（推荐）",
+                run: () => window.location.reload(),
+              },
+            ]
+          : []),
         {
           kind: "action",
           badge: "PWA",
-          title: "下载离线包（图标/封面/深度页）",
-          subtitle: "让离线时也能显示大部分图标与封面资源",
-          run: precacheOfflinePack,
+          title: "下载离线包：媒体（图标/封面/深度页）",
+          subtitle: "缓存常用图标与深度页，离线体验更完整",
+          run: () => precacheOfflinePack({ kind: "media" }),
+        },
+        {
+          kind: "action",
+          badge: "PWA",
+          title: "下载离线包：文档（Docs Portal）",
+          subtitle: "缓存 docs/*.md，离线时也能打开文档中心",
+          run: () => precacheOfflinePack({ kind: "docs" }),
         },
         ...(deferredPwaInstallPrompt
           ? [
@@ -5303,8 +5575,41 @@
       const guideIds = results ? normalizeIds(results.guides) : null;
       const topicIds = results ? normalizeIds(results.topics) : null;
 
-      const gameItems = gameIds
-        ? gameIds.slice(0, 6).map((id) => {
+      const rerankByLocalAffinity = (ids, { saved = [], recent = [] } = {}) => {
+        const input = Array.isArray(ids) ? ids : [];
+        if (input.length === 0) return [];
+
+        const unique = Array.from(new Set(input));
+        const savedSet = new Set(Array.isArray(saved) ? saved : []);
+        const recentSet = new Set(Array.isArray(recent) ? recent : []);
+
+        return unique
+          .map((id, idx) => {
+            const base = Math.max(0, 2000 - idx); // idx 越小越好（Worker 已按相关性排序）
+            const boostSaved = savedSet.has(id) ? 240 : 0;
+            const boostRecent = recentSet.has(id) ? 120 : 0;
+            return { id, score: base + boostSaved + boostRecent };
+          })
+          .sort((a, b) => (b.score || 0) - (a.score || 0))
+          .map((x) => x.id);
+      };
+
+      const localSavedGames = readStringList(STORAGE_KEYS.savedGames);
+      const localRecentGames = readStringList(STORAGE_KEYS.recentGames);
+      const localSavedGuides = readStringList(STORAGE_KEYS.savedGuides);
+      const localRecentGuides = readStringList(STORAGE_KEYS.recentGuides);
+      const localSavedTopics = readStringList(STORAGE_KEYS.savedTopics);
+
+      const rankedGameIds = gameIds
+        ? rerankByLocalAffinity(gameIds, { saved: localSavedGames, recent: localRecentGames })
+        : null;
+      const rankedGuideIds = guideIds
+        ? rerankByLocalAffinity(guideIds, { saved: localSavedGuides, recent: localRecentGuides })
+        : null;
+      const rankedTopicIds = topicIds ? rerankByLocalAffinity(topicIds, { saved: localSavedTopics }) : null;
+
+      const gameItems = rankedGameIds
+        ? rankedGameIds.slice(0, 6).map((id) => {
             const g = data?.games?.[id] || null;
             return {
               kind: "link",
@@ -5315,24 +5620,27 @@
             };
           })
         : pool.games
-            .map(({ id, g, blob }) => {
+            .map(({ id, blob }) => {
               const score = fuzzyScore(blob, q);
-              return { id, g, score };
+              return { id, score };
             })
             .filter((x) => x.score != null)
             .sort((a, b) => (b.score || 0) - (a.score || 0))
             .slice(0, 6)
-            .map(({ id, g }) => ({
-              kind: "link",
-              badge: "游戏",
-              title: g?.title || id,
-              subtitle:
-                [g?.genre, g?.year ? `${g.year}` : ""].filter(Boolean).join(" · ") || "打开游戏详情",
-              href: `game.html?id=${encodeURIComponent(id)}`,
-            }));
+            .map(({ id }) => {
+              const g = data?.games?.[id] || null;
+              return {
+                kind: "link",
+                badge: "游戏",
+                title: g?.title || id,
+                subtitle:
+                  [g?.genre, g?.year ? `${g.year}` : ""].filter(Boolean).join(" · ") || "打开游戏详情",
+                href: `game.html?id=${encodeURIComponent(id)}`,
+              };
+            });
 
-      const guideItems = guideIds
-        ? guideIds.slice(0, 8).map((id) => {
+      const guideItems = rankedGuideIds
+        ? rankedGuideIds.slice(0, 8).map((id) => {
             const g = data?.guides?.[id] || null;
             return {
               kind: "link",
@@ -5343,23 +5651,26 @@
             };
           })
         : pool.guides
-            .map(({ id, g, blob }) => {
+            .map(({ id, blob }) => {
               const score = fuzzyScore(blob, q);
-              return { id, g, score };
+              return { id, score };
             })
             .filter((x) => x.score != null)
             .sort((a, b) => (b.score || 0) - (a.score || 0))
             .slice(0, 8)
-            .map(({ id, g }) => ({
-              kind: "link",
-              badge: "攻略",
-              title: g?.title || id,
-              subtitle: g?.summary || "打开攻略详情",
-              href: `guide-detail.html?id=${encodeURIComponent(id)}`,
-            }));
+            .map(({ id }) => {
+              const g = data?.guides?.[id] || null;
+              return {
+                kind: "link",
+                badge: "攻略",
+                title: g?.title || id,
+                subtitle: g?.summary || "打开攻略详情",
+                href: `guide-detail.html?id=${encodeURIComponent(id)}`,
+              };
+            });
 
-      const topicItems = topicIds
-        ? topicIds.slice(0, 6).map((id) => {
+      const topicItems = rankedTopicIds
+        ? rankedTopicIds.slice(0, 6).map((id) => {
             const t = data?.topics?.[id] || null;
             return {
               kind: "link",
@@ -5370,20 +5681,23 @@
             };
           })
         : pool.topics
-            .map(({ id, t, blob }) => {
+            .map(({ id, blob }) => {
               const score = fuzzyScore(blob, q);
-              return { id, g: t, score };
+              return { id, score };
             })
             .filter((x) => x.score != null)
             .sort((a, b) => (b.score || 0) - (a.score || 0))
             .slice(0, 6)
-            .map(({ id, g }) => ({
-              kind: "link",
-              badge: "话题",
-              title: g?.title || id,
-              subtitle: g?.summary || "进入讨论",
-              href: `forum-topic.html?id=${encodeURIComponent(id)}`,
-            }));
+            .map(({ id }) => {
+              const t = data?.topics?.[id] || null;
+              return {
+                kind: "link",
+                badge: "话题",
+                title: t?.title || id,
+                subtitle: t?.summary || "进入讨论",
+                href: `forum-topic.html?id=${encodeURIComponent(id)}`,
+              };
+            });
 
       const groups = [{ title: "快捷操作", items: actions }];
       if (gameItems.length > 0) groups.push({ title: "游戏", items: gameItems });
@@ -6009,12 +6323,28 @@
     if (!("serviceWorker" in navigator)) return;
     if (window.location.protocol !== "https:" && window.location.hostname !== "localhost") return;
 
+    initServiceWorkerUpdateUx();
+
     const v = detectAssetVersion();
     const swUrl = v ? `sw.js?v=${encodeURIComponent(v)}` : "sw.js";
 
     navigator.serviceWorker
       .register(swUrl)
-      .then(() => {
+      .then((reg) => {
+        // updatefound → installed：提示“新版本已就绪”（避免“旧页面 + 新缓存”错配）
+        try {
+          reg?.addEventListener?.("updatefound", () => {
+            const installing = reg.installing;
+            if (!installing) return;
+
+            installing.addEventListener("statechange", () => {
+              if (installing.state !== "installed") return;
+              if (!navigator.serviceWorker.controller) return; // 首次安装不提示
+              promptSwUpdateReady({ version: extractSwVersion(installing.scriptURL) });
+            });
+          });
+        } catch (_) {}
+
         if (!v) return;
         const key = `${STORAGE_KEYS.swSeenPrefix}${v}`;
         if (storage.get(key)) return;
@@ -6034,7 +6364,50 @@
   let offlinePackInFlight = false;
   let offlinePackRequestId = 0;
   let offlinePackStorageKey = "";
+  let offlinePackKind = "";
   const OFFLINE_PACK_TOAST_ID = "offline-pack";
+
+  const getOfflinePackLabel = (kind) => {
+    const k = String(kind || "").trim();
+    if (k === "docs") return "文档（Docs Portal）";
+    return "媒体资源（图标/封面/深度页）";
+  };
+
+  const offlinePackKey = (version, kind) => {
+    const v = String(version || "unknown").trim() || "unknown";
+    const k = String(kind || "media").trim() || "media";
+    return `${STORAGE_KEYS.offlinePackPrefix}${v}:${k}`;
+  };
+
+  const readOfflinePackState = (key) => {
+    const parsed = safeJsonParse(storage.get(key), null);
+    const s = parsed && typeof parsed === "object" ? parsed : null;
+    const status = String(s?.status || "");
+    if (status !== "complete" && status !== "partial") return null;
+    return {
+      status,
+      ok: Number(s?.ok || 0) || 0,
+      fail: Number(s?.fail || 0) || 0,
+      total: Number(s?.total || 0) || 0,
+      savedAt: Number(s?.savedAt || 0) || 0,
+    };
+  };
+
+  const writeOfflinePackState = (key, state) => {
+    if (!key) return false;
+    try {
+      const payload = {
+        status: String(state?.status || ""),
+        ok: Number(state?.ok || 0) || 0,
+        fail: Number(state?.fail || 0) || 0,
+        total: Number(state?.total || 0) || 0,
+        savedAt: Number(state?.savedAt || Date.now()) || Date.now(),
+      };
+      return storage.set(key, JSON.stringify(payload));
+    } catch (_) {
+      return false;
+    }
+  };
 
   const normalizeRelativeAssetUrl = (value) => {
     const raw = String(value || "").trim();
@@ -6059,16 +6432,35 @@
     return path;
   };
 
-  const collectOfflinePackUrls = () => {
-    const data = getData();
-    if (!data) return [];
-
+  const collectOfflinePackUrls = ({ kind = "media", version = "" } = {}) => {
+    const k = String(kind || "").trim() || "media";
     const urls = [];
+
     const add = (u) => {
       const normalized = normalizeRelativeAssetUrl(u);
       if (!normalized) return;
       urls.push(normalized);
     };
+
+    const v = String(version || detectAssetVersion() || String(getData()?.version || "") || "").trim();
+    const withV = (path) => (v ? `${path}?v=${encodeURIComponent(v)}` : path);
+
+    if (k === "docs") {
+      const docs = [
+        "docs/STYLE_GUIDE.md",
+        "docs/DATA_MODEL.md",
+        "docs/CONTENT_WORKFLOW.md",
+        "docs/CONTRIBUTING.md",
+        "docs/SECURITY.md",
+        "docs/CODE_OF_CONDUCT.md",
+        "docs/DEPLOYMENT.md",
+      ];
+      docs.forEach((p) => add(withV(p)));
+      return Array.from(new Set(urls));
+    }
+
+    const data = getData();
+    if (!data) return [];
 
     // 常用占位图（首屏/空状态/预览）
     add("images/placeholders/screenshot-ui.svg");
@@ -6104,12 +6496,15 @@
     return true;
   };
 
-  const precacheOfflinePack = async () => {
+  const precacheOfflinePack = async ({ kind = "media" } = {}) => {
+    const k = String(kind || "").trim() || "media";
+    const label = getOfflinePackLabel(k);
+
     if (offlinePackInFlight) {
       toast({
         id: OFFLINE_PACK_TOAST_ID,
         title: "正在缓存离线包",
-        message: "离线包正在准备中，请稍候…",
+        message: `离线包正在准备中（${getOfflinePackLabel(offlinePackKind || k)}），请稍候…`,
         tone: "info",
         timeout: 0,
       });
@@ -6117,24 +6512,27 @@
     }
 
     const v = detectAssetVersion() || String(getData()?.version || "") || "unknown";
-    offlinePackStorageKey = `${STORAGE_KEYS.offlinePackPrefix}${v}`;
-    if (storage.get(offlinePackStorageKey) === "1") {
+    offlinePackKind = k;
+    offlinePackStorageKey = offlinePackKey(v, k);
+
+    const existing = readOfflinePackState(offlinePackStorageKey);
+    if (existing?.status === "complete" && existing.fail === 0) {
       toast({
         id: OFFLINE_PACK_TOAST_ID,
-        title: "离线包已就绪",
-        message: "常用图标与页面已缓存。",
+        title: `离线包已就绪：${label}`,
+        message: "无需重复缓存；如遇异常可在设置中心重置站点数据后再试。",
         tone: "success",
-        timeout: 2600,
+        timeout: 2800,
       });
       return;
     }
 
-    const urls = collectOfflinePackUrls();
+    const urls = collectOfflinePackUrls({ kind: k, version: v });
     if (urls.length === 0) {
       toast({
         id: OFFLINE_PACK_TOAST_ID,
         title: "无可缓存资源",
-        message: "当前页面未加载数据，稍后再试。",
+        message: k === "docs" ? "未识别到可缓存的文档资源。" : "当前页面未加载数据，稍后再试。",
         tone: "warn",
         timeout: 4200,
       });
@@ -6145,8 +6543,8 @@
     offlinePackRequestId = Date.now();
     toast({
       id: OFFLINE_PACK_TOAST_ID,
-      title: "开始缓存离线包",
-      message: `准备中 0/${urls.length}（图标/封面/深度页）。`,
+      title: `开始缓存离线包：${label}`,
+      message: `准备中 0/${urls.length}`,
       tone: "info",
       timeout: 0,
     });
@@ -6154,6 +6552,8 @@
     const ok = await requestSwPrecache(urls);
     if (!ok) {
       offlinePackInFlight = false;
+      offlinePackKind = "";
+      offlinePackStorageKey = "";
       toast({
         id: OFFLINE_PACK_TOAST_ID,
         title: "缓存失败",
@@ -6170,7 +6570,7 @@
       offlinePackInFlight = false;
       toast({
         id: OFFLINE_PACK_TOAST_ID,
-        title: "缓存进行中",
+        title: `缓存进行中：${label}`,
         message: "可能仍在后台缓存（未收到进度回执）。稍后可再试。",
         tone: "info",
         timeout: 4200,
@@ -6180,6 +6580,8 @@
 
   const initServiceWorkerMessaging = () => {
     if (!("serviceWorker" in navigator)) return;
+
+    initServiceWorkerUpdateUx();
 
     navigator.serviceWorker.addEventListener("message", (event) => {
       const data = event?.data;
@@ -6195,9 +6597,10 @@
         const fail = Number(data.fail || 0) || 0;
         const total = Number(data.total || ok + fail) || ok + fail;
         const done = Number(data.done || ok + fail) || ok + fail;
+        const label = getOfflinePackLabel(offlinePackKind);
         toast({
           id: OFFLINE_PACK_TOAST_ID,
-          title: "正在缓存离线包",
+          title: `正在缓存离线包：${label}`,
           message: `进度 ${Math.min(done, total)}/${total}（成功 ${ok} / 失败 ${fail}）`,
           tone: fail > 0 ? "warn" : "info",
           timeout: 0,
@@ -6213,15 +6616,28 @@
       const fail = Number(data.fail || 0) || 0;
       const total = Number(data.total || ok + fail) || ok + fail;
 
-      if (offlinePackStorageKey) storage.set(offlinePackStorageKey, "1");
+      const label = getOfflinePackLabel(offlinePackKind);
+
+      if (offlinePackStorageKey) {
+        writeOfflinePackState(offlinePackStorageKey, {
+          status: fail > 0 ? "partial" : "complete",
+          ok,
+          fail,
+          total,
+          savedAt: Date.now(),
+        });
+      }
 
       toast({
         id: OFFLINE_PACK_TOAST_ID,
-        title: "离线包已缓存",
+        title: fail > 0 ? `离线包已部分缓存：${label}` : `离线包已缓存：${label}`,
         message: fail > 0 ? `已缓存 ${ok}/${total} 项，${fail} 项失败（可稍后重试）。` : `已缓存 ${ok}/${total} 项资源。`,
         tone: fail > 0 ? "warn" : "success",
         timeout: 4200,
       });
+
+      offlinePackKind = "";
+      offlinePackStorageKey = "";
     });
   };
 

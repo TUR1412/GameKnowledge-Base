@@ -27,8 +27,10 @@ const main = () => {
     ["node", ["--check", "tools/build-data.mjs"]],
     ["node", ["--check", "tools/export-content.mjs"]],
     ["node", ["--check", "tools/generate-feed.mjs"]],
+    ["node", ["--check", "tools/inject-seo.mjs"]],
     ["node", ["--check", "tools/generate-sitemap.mjs"]],
     ["node", ["--check", "tools/lib/site.mjs"]],
+    ["node", ["--check", "tools/release.mjs"]],
     ["node", ["--check", "tools/validate-data.mjs"]],
 
     // Unit tests + coverage thresholds (CI parity)

@@ -6,6 +6,28 @@
 
 在仓库根目录执行：
 
+### 推荐：一键发布命令（Owner 模式）
+
+```bash
+npm run release
+```
+
+该命令会串联：
+
+- `build:data`（`content/` → `data.js`，含标签/分类规范化）
+- `inject-seo`（批量补齐 Open Graph / Twitter / JSON-LD）
+- `bump-version`（全站 `?v=` + `content/meta.json` + `data.js.version` 对齐）
+- `generate-sitemap` / `generate-feed`
+- `check:all`（CI 同款全链路门禁）
+
+### CI / 只校验模式
+
+```bash
+npm run release:check
+```
+
+## 兜底：手动分步执行（排障用）
+
 1) bump 版本号（缓存穿透契约）
 
 ```bash
@@ -60,4 +82,3 @@ npm run check:all
 
 - “更新了代码但线上没变”：先确认是否执行了 `node tools/bump-version.mjs`，并检查 `?v=` 与 `data.js.version` 是否对齐
 - “离线异常/页面错配”：优先检查 `tools/check-sw.mjs` 是否通过；必要时在浏览器 DevTools 中 Unregister SW 并硬刷新
-

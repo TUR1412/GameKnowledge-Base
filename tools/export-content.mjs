@@ -22,6 +22,39 @@ const stableJsonStringify = (value) => {
   return `${JSON.stringify(sort(value), null, 2)}\n`;
 };
 
+const buildTaxonomyFromData = (data) => {
+  const tags = new Map();
+  const addTag = (t) => {
+    const v = String(t || "").trim();
+    if (!v) return;
+    tags.set(v, true);
+  };
+
+  Object.values(data?.games || {}).forEach((g) => (Array.isArray(g?.tags) ? g.tags.forEach(addTag) : null));
+  Object.values(data?.guides || {}).forEach((g) => (Array.isArray(g?.tags) ? g.tags.forEach(addTag) : null));
+  Object.values(data?.topics || {}).forEach((t) => (Array.isArray(t?.tags) ? t.tags.forEach(addTag) : null));
+
+  const categories = new Map();
+  Object.values(data?.topics || {}).forEach((t) => {
+    const c = String(t?.category || "").trim();
+    if (!c) return;
+    categories.set(c, true);
+  });
+
+  const sortedTags = Array.from(tags.keys()).sort((a, b) => a.localeCompare(b, "zh-CN"));
+  const sortedCategories = Array.from(categories.keys()).sort((a, b) => a.localeCompare(b, "zh-CN"));
+
+  const obj = { version: 1, tags: {}, topicCategories: {} };
+  sortedTags.forEach((t) => {
+    obj.tags[t] = [];
+  });
+  sortedCategories.forEach((c) => {
+    obj.topicCategories[c] = [];
+  });
+
+  return obj;
+};
+
 export const exportContent = ({
   workspaceRoot = process.cwd(),
   outDir = path.join(process.cwd(), "content"),
@@ -38,6 +71,13 @@ export const exportContent = ({
 
   const meta = { version: data.version, site: data.site };
   writeText(path.join(outDir, "meta.json"), stableJsonStringify(meta));
+
+  // 标签/分类治理：首次导出时生成 taxonomy.json（后续由维护者迭代 aliases）
+  const taxonomyPath = path.join(outDir, "taxonomy.json");
+  if (!fs.existsSync(taxonomyPath)) {
+    const taxonomy = buildTaxonomyFromData(data);
+    writeText(taxonomyPath, stableJsonStringify(taxonomy));
+  }
 
   const writeGroup = (dirName, obj) => {
     const entries = Object.entries(obj || {}).sort(([a], [b]) => String(a).localeCompare(String(b)));
@@ -76,4 +116,3 @@ const isRunAsScript = () => {
 if (isRunAsScript()) {
   process.exit(main());
 }
-

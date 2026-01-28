@@ -28,6 +28,13 @@ const buildHtml = ({ img = "" } = {}) => `<!DOCTYPE html>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="test">
   <meta name="theme-color" content="#f5f7fb">
+  <meta property="og:title" content="test">
+  <meta property="og:description" content="test">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="GameKnowledge-Base">
+  <meta property="og:locale" content="zh_CN">
+  <meta name="twitter:card" content="summary_large_image">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebSite","name":"test","url":"https://example.com/"}</script>
   <link rel="manifest" href="manifest.webmanifest?v=20260112-3">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'">
   <meta name="referrer" content="strict-origin-when-cross-origin">
@@ -99,6 +106,76 @@ test("validateHtml：通过分支", () => {
     );
     const r = validateHtml({ workspaceRoot: root });
     assert.equal(r.ok, true);
+  });
+});
+
+test("validateHtml：workspaceRoot 不可读应失败", () => {
+  withTempDir((root) => {
+    const filePath = path.join(root, "not-a-dir.txt");
+    fs.writeFileSync(filePath, "x", "utf8");
+    const r = validateHtml({ workspaceRoot: filePath });
+    assert.equal(r.ok, false);
+    assert.ok(r.errors.some((e) => e.includes("无法读取目录")));
+  });
+});
+
+test("validateHtml：缺少 head 基础项应失败（覆盖 checkHeadBasics 失败分支）", () => {
+  withTempDir((root) => {
+    const okHtml = buildHtml();
+    const badHtml = okHtml.replace(/\s*<link\s+rel="manifest"[^>]*>\s*/i, "\n");
+    fs.writeFileSync(path.join(root, "index.html"), badHtml, "utf8");
+    const r = validateHtml({ workspaceRoot: root });
+    assert.equal(r.ok, false);
+    assert.ok(r.errors.some((e) => e.includes("缺少 manifest")));
+  });
+});
+
+test("validateHtml：非 JSON-LD 的内联 <script> 应失败（覆盖 checkNoInlineScripts 失败分支）", () => {
+  withTempDir((root) => {
+    fs.writeFileSync(
+      path.join(root, "index.html"),
+      buildHtml({ img: "<script>console.log(1)</script>" }),
+      "utf8"
+    );
+    const r = validateHtml({ workspaceRoot: root });
+    assert.equal(r.ok, false);
+    assert.ok(r.errors.some((e) => e.includes("内联 <script>")));
+  });
+});
+
+test("validateHtml：缺少 JSON-LD 应失败（覆盖 checkSeo JSON-LD 分支）", () => {
+  withTempDir((root) => {
+    const html = buildHtml().replace(/\s*<script\s+type="application\/ld\+json"[^<]*<\/script>\s*/i, "\n");
+    fs.writeFileSync(path.join(root, "index.html"), html, "utf8");
+    const r = validateHtml({ workspaceRoot: root });
+    assert.equal(r.ok, false);
+    assert.ok(r.errors.some((e) => e.includes("缺少 JSON-LD")));
+  });
+});
+
+test("validateHtml：缺少 skip-link / main tabindex 应失败（覆盖 checkSkipLink 失败分支）", () => {
+  withTempDir((root) => {
+    const html = buildHtml()
+      .replace(/\s*<a\s+class="skip-link"[^>]*>[^<]*<\/a>\s*/i, "\n")
+      .replace(/\s+tabindex="-1"/i, "");
+    fs.writeFileSync(path.join(root, "index.html"), html, "utf8");
+    const r = validateHtml({ workspaceRoot: root });
+    assert.equal(r.ok, false);
+    assert.ok(r.errors.some((e) => e.includes("skip-link")));
+    assert.ok(r.errors.some((e) => e.includes("tabindex")));
+  });
+});
+
+test("validateHtml：图片缺少 alt 应失败（覆盖 checkImages alt 分支）", () => {
+  withTempDir((root) => {
+    fs.writeFileSync(
+      path.join(root, "index.html"),
+      buildHtml({ img: '<img loading="lazy" decoding="async" src="images/a.svg">' }),
+      "utf8"
+    );
+    const r = validateHtml({ workspaceRoot: root });
+    assert.equal(r.ok, false);
+    assert.ok(r.errors.some((e) => e.includes("<img> 缺少 alt")));
   });
 });
 

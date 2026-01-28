@@ -58,6 +58,16 @@ test("validateCoreAssets：通过分支", () => {
   });
 });
 
+test("validateCoreAssets：预算参数非法应回退默认值（覆盖 toNumberOrNull isFinite=false 分支）", () => {
+  withTempDir((root) => {
+    writeCoreFiles(root);
+    const r = validateCoreAssets({ workspaceRoot: root, scriptsBudgetGzipKb: "not-a-number", stylesBudgetGzipKb: "NaN" });
+    assert.equal(r.ok, true);
+    assert.equal(r.budgets.scriptsGzipKb, 120);
+    assert.equal(r.budgets.stylesGzipKb, 60);
+  });
+});
+
 test("main：失败时返回 1 并输出错误", () => {
   withTempDir((root) => {
     writeCoreFiles(root);
@@ -89,4 +99,3 @@ test("CLI：check-core-assets.mjs 作为脚本运行应 process.exit(main())", (
     assert.equal(r.signal, null);
   });
 });
-

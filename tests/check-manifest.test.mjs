@@ -170,6 +170,25 @@ test("validateManifest：shortcuts 非数组/缺少 url 分支覆盖", () => {
   });
 });
 
+test("validateManifest：shortcuts.url 外链应失败（覆盖外链分支）", () => {
+  withTempDir((root) => {
+    const m = makeOkManifest();
+    m.shortcuts = [
+      {
+        name: "x",
+        url: "https://evil.example/x",
+      },
+    ];
+    writeManifest(root, m);
+    write(root, "index.html", "<!doctype html>");
+    write(root, "images/icons/favicon.svg", "<svg xmlns=\"http://www.w3.org/2000/svg\"></svg>");
+
+    const r = validateManifest({ workspaceRoot: root });
+    assert.equal(r.ok, false);
+    assert.ok(r.errors.some((e) => e.includes("shortcuts[0].url 非法或包含外链")));
+  });
+});
+
 test("validateManifest：shortcuts 条目/资源/图标分支覆盖", () => {
   withTempDir((root) => {
     const m = makeOkManifest();
@@ -209,6 +228,17 @@ test("validateManifest：通过分支", () => {
     const r = validateManifest({ workspaceRoot: root });
     assert.equal(r.ok, true);
     assert.equal(r.errors.length, 0);
+  });
+});
+
+test("main：失败时返回 1 并输出错误", () => {
+  withTempDir((root) => {
+    writeManifest(root, {});
+    const out = [];
+    const err = [];
+    const code = main({ workspaceRoot: root, stdout: out.push.bind(out), stderr: err.push.bind(err) });
+    assert.equal(code, 1);
+    assert.ok(err.join("\n").includes("❌ Manifest 检查未通过"));
   });
 });
 

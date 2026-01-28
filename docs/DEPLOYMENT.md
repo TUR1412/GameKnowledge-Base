@@ -51,6 +51,14 @@
 node tools/bump-version.mjs
 ```
 
+### 一键发布（推荐：包含生成/校验）
+
+如果你希望把“生成 + bump + 校验 + sitemap/feed”一口气跑完，推荐：
+
+```bash
+npm run release
+```
+
 ## 5) 离线缓存（PWA）
 
 本项目默认启用 PWA 能力：

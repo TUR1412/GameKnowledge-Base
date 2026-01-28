@@ -12,6 +12,7 @@
 ```text
 content/
   meta.json              # 版本号与站点信息（生成 data.js 的元信息）
+  taxonomy.json          # 标签/分类治理（canonical + aliases，阻止“脏标签/脏分类”）
   games/*.json           # 游戏条目（文件名 = id）
   guides/*.json          # 攻略条目（文件名 = id）
   topics/*.json          # 社区话题条目（文件名 = id）
@@ -72,6 +73,8 @@ npm run check:all
   - 必填：`title/starter/summary/category/replies/updated`
   - `replies` 必须是数字
   - `updated` 必须是 `YYYY-MM-DD`
+  - `category` 必须在 `content/taxonomy.json.topicCategories` 中登记（允许通过 aliases 兼容旧写法）
+  - `tags`（如提供）必须在 `content/taxonomy.json.tags` 中登记（允许通过 aliases 兼容旧写法）
 
 ---
 

@@ -27,6 +27,17 @@ const writeJson = (filePath, obj) => {
   fs.writeFileSync(filePath, JSON.stringify(obj, null, 2) + "\n", "utf8");
 };
 
+const writeDefaultTaxonomy = (root, { tags = ["Boss"], topicCategories = ["资讯"] } = {}) => {
+  const taxonomy = { version: 1, tags: {}, topicCategories: {} };
+  tags.forEach((t) => {
+    taxonomy.tags[String(t)] = [];
+  });
+  topicCategories.forEach((c) => {
+    taxonomy.topicCategories[String(c)] = [];
+  });
+  writeJson(path.join(root, "content", "taxonomy.json"), taxonomy);
+};
+
 const runNodeScript = (scriptPath, { cwd }) => {
   return spawnSync(process.execPath, [scriptPath], {
     cwd,
@@ -64,6 +75,7 @@ test("build-data：应报告非法文件名与非对象 JSON（覆盖分支）",
       version: "20260127-1",
       site: { name: "站点", tagline: "tag", description: "desc" },
     });
+    writeDefaultTaxonomy(root, { tags: [], topicCategories: ["资讯"] });
 
     // 非法文件名：.json -> id 为空
     writeJson(path.join(root, "content", "games", ".json"), { any: "x" });
@@ -92,6 +104,7 @@ test("build-data：应生成 data.js 且重复生成无 diff，并能通过 vali
       version: "20260127-1",
       site: { name: "站点", tagline: "tag", description: "desc" },
     });
+    writeDefaultTaxonomy(root, { tags: [], topicCategories: ["资讯"] });
 
     writeJson(path.join(root, "content", "games", "dark-souls3.json"), {
       title: "黑暗之魂3",
@@ -125,7 +138,7 @@ test("build-data：应生成 data.js 且重复生成无 diff，并能通过 vali
       title: "话题",
       starter: "用户",
       summary: "summary",
-      category: "综合",
+      category: "资讯",
       replies: 1,
       updated: "2025-12-21",
     });
@@ -218,6 +231,7 @@ test("export-content：应从 data.js 导出 content/，再 build-data 生成并
     assert.equal(ex.signal, null);
 
     assert.ok(fs.existsSync(path.join(root, "content", "meta.json")));
+    assert.ok(fs.existsSync(path.join(root, "content", "taxonomy.json")));
     assert.ok(fs.existsSync(path.join(root, "content", "games", "g1.json")));
     assert.ok(fs.existsSync(path.join(root, "content", "guides", "guide1.json")));
     assert.ok(fs.existsSync(path.join(root, "content", "topics", "topic1.json")));
@@ -246,6 +260,7 @@ test("validate-data：content/ 存在但元数据不合格应失败（覆盖 con
       version: "20260127-1",
       site: { name: "", tagline: "", description: "" },
     });
+    writeJson(path.join(root, "content", "taxonomy.json"), { version: 1, tags: {}, topicCategories: {} });
 
     const r = runNodeScript(TOOL_VALIDATE_DATA, { cwd: root });
     assert.notEqual(r.status, 0);
@@ -264,6 +279,11 @@ test("validate-data：content/ JSON 解析失败应报错（覆盖 JSON 解析�
 
     fs.mkdirSync(path.join(root, "content", "games"), { recursive: true });
     fs.writeFileSync(path.join(root, "content", "meta.json"), "{}", "utf8");
+    fs.writeFileSync(
+      path.join(root, "content", "taxonomy.json"),
+      JSON.stringify({ version: 1, tags: {}, topicCategories: {} }, null, 2) + "\n",
+      "utf8"
+    );
     fs.writeFileSync(path.join(root, "content", "games", "bad.json"), "{", "utf8");
 
     const r = runNodeScript(TOOL_VALIDATE_DATA, { cwd: root });

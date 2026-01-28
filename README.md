@@ -120,6 +120,12 @@ This project uses cache-busting query params (`?v=`) as a release contract. When
 node tools/bump-version.mjs
 ```
 
+或使用一键发布命令（包含生成/校验/版本号同步）：
+
+```bash
+npm run release
+```
+
 ---
 
 ## Contributing / 贡献

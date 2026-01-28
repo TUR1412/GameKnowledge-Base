@@ -215,6 +215,45 @@ test("validateServiceWorker：缺少 sw.js 应失败", () => {
   });
 });
 
+test("validateServiceWorker：precache 引用不存在资源/非文件应失败（覆盖分支）", () => {
+  withTempDir((root) => {
+    fs.writeFileSync(path.join(root, "index.html"), "<!doctype html>", "utf8");
+    fs.writeFileSync(path.join(root, "page.html"), "<!doctype html>", "utf8");
+    fs.writeFileSync(path.join(root, "styles.css"), "body{color:#000}", "utf8");
+    fs.writeFileSync(path.join(root, "data.js"), "window.GKB={data:{version:\"x\",games:{},guides:{},topics:{}}};", "utf8");
+    fs.writeFileSync(path.join(root, "scripts.js"), "(()=>{})();", "utf8");
+    fs.writeFileSync(path.join(root, "search-worker.js"), "self.addEventListener('message',()=>{});", "utf8");
+    fs.writeFileSync(path.join(root, "boot.js"), "(function(){})();", "utf8");
+    fs.writeFileSync(path.join(root, "manifest.webmanifest"), "{}", "utf8");
+    fs.mkdirSync(path.join(root, "dir"), { recursive: true });
+
+    const sw = `
+      const VERSION = (() => {
+        try { return new URL(self.location.href).searchParams.get("v") || "dev"; } catch (_) { return "dev"; }
+      })();
+      const CACHE_NAME = \`gkb-cache-\${VERSION}\`;
+      const PRECACHE_URLS = [
+        "index.html",
+        "page.html",
+        \`styles.css?v=\${VERSION}\`,
+        \`data.js?v=\${VERSION}\`,
+        \`scripts.js?v=\${VERSION}\`,
+        \`search-worker.js?v=\${VERSION}\`,
+        \`boot.js?v=\${VERSION}\`,
+        \`manifest.webmanifest?v=\${VERSION}\`,
+        "missing.js",
+        "dir"
+      ];
+    `;
+    fs.writeFileSync(path.join(root, "sw.js"), sw, "utf8");
+
+    const r = validateServiceWorker({ workspaceRoot: root });
+    assert.equal(r.ok, false);
+    assert.ok(r.errors.some((e) => e.includes("引用不存在资源") && e.includes("missing.js")));
+    assert.ok(r.errors.some((e) => e.includes("资源不是文件") && e.includes("dir")));
+  });
+});
+
 test("CLI：check-sw.mjs 作为脚本运行应 process.exit(main())", () => {
   withTempDir((root) => {
     fs.writeFileSync(path.join(root, "index.html"), "<!doctype html>", "utf8");

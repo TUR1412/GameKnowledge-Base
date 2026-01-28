@@ -7,6 +7,112 @@ const writeText = (filePath, content) => fs.writeFileSync(filePath, content, "ut
 
 const isNonEmptyString = (v) => typeof v === "string" && v.trim().length > 0;
 
+const readJsonOptional = (filePath) => {
+  if (!fs.existsSync(filePath)) return null;
+  const raw = readText(filePath);
+  try {
+    return JSON.parse(raw);
+  } catch (err) {
+    const msg = String(err?.message || err || "unknown error");
+    throw new Error(`[BUILD-DATA] JSON 解析失败：${filePath} -> ${msg}`);
+  }
+};
+
+const isAsciiLike = (s) => /^[\x00-\x7F]+$/.test(String(s || ""));
+
+const buildAliasIndex = (table) => {
+  const alias = new Map();
+  const canonical = new Set();
+
+  const obj = table && typeof table === "object" ? table : {};
+  Object.entries(obj).forEach(([rawCanonical, rawAliases]) => {
+    const c = String(rawCanonical || "").trim();
+    if (!c) return;
+
+    canonical.add(c);
+    alias.set(c, c);
+    if (isAsciiLike(c)) alias.set(c.toLowerCase(), c);
+
+    const list = Array.isArray(rawAliases) ? rawAliases : [];
+    list.forEach((a) => {
+      const k = String(a || "").trim();
+      if (!k) return;
+      alias.set(k, c);
+      if (isAsciiLike(k)) alias.set(k.toLowerCase(), c);
+    });
+  });
+
+  return { alias, canonical };
+};
+
+const normalizeWithAlias = (value, aliasIndex) => {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  const direct = aliasIndex.alias.get(raw);
+  if (direct) return direct;
+
+  const lower = raw.toLowerCase();
+  const lowered = lower !== raw ? aliasIndex.alias.get(lower) : null;
+  if (lowered) return lowered;
+
+  return raw;
+};
+
+const loadTaxonomy = (contentDir) => {
+  const taxonomyPath = path.join(contentDir, "taxonomy.json");
+  const taxonomy = readJsonOptional(taxonomyPath);
+  if (!taxonomy) return null;
+
+  const tagsTable = taxonomy.tags;
+  const categoriesTable = taxonomy.topicCategories;
+  if (!tagsTable || typeof tagsTable !== "object" || Array.isArray(tagsTable)) return null;
+  if (!categoriesTable || typeof categoriesTable !== "object" || Array.isArray(categoriesTable)) return null;
+
+  return { raw: taxonomy, tagIndex: buildAliasIndex(tagsTable), categoryIndex: buildAliasIndex(categoriesTable) };
+};
+
+const normalizeTags = ({ where, tags, taxonomy, errors }) => {
+  if (!taxonomy) return tags;
+  if (tags == null) return tags;
+  if (!Array.isArray(tags)) {
+    errors.push(`[BUILD-DATA] ${where}: tags 必须是数组`);
+    return tags;
+  }
+
+  const out = [];
+  const seen = new Set();
+
+  tags.forEach((t) => {
+    const raw = String(t || "").trim();
+    if (!raw) {
+      errors.push(`[BUILD-DATA] ${where}: tags 必须是非空字符串数组`);
+      return;
+    }
+    const normalized = normalizeWithAlias(raw, taxonomy.tagIndex);
+    if (!taxonomy.tagIndex.canonical.has(normalized)) {
+      errors.push(`[BUILD-DATA] ${where}: tags 存在未登记标签 -> ${raw}`);
+      return;
+    }
+    if (seen.has(normalized)) return;
+    seen.add(normalized);
+    out.push(normalized);
+  });
+
+  return out;
+};
+
+const normalizeTopicCategory = ({ where, category, taxonomy, errors }) => {
+  if (!taxonomy) return category;
+  const raw = String(category || "").trim();
+  if (!raw) return category;
+  const normalized = normalizeWithAlias(raw, taxonomy.categoryIndex);
+  if (!taxonomy.categoryIndex.canonical.has(normalized)) {
+    errors.push(`[BUILD-DATA] ${where}: category 未登记 -> ${raw}`);
+    return category;
+  }
+  return normalized;
+};
+
 const readJson = (filePath) => {
   const raw = readText(filePath);
   try {
@@ -102,6 +208,8 @@ export const buildData = ({
   const contentGuidesDir = path.join(resolvedContentDir, "guides");
   const contentTopicsDir = path.join(resolvedContentDir, "topics");
 
+  const taxonomy = loadTaxonomy(resolvedContentDir);
+
   const games = {};
   const guides = {};
   const topics = {};
@@ -120,6 +228,16 @@ export const buildData = ({
         errors.push(`[BUILD-DATA] ${label}.${id}: JSON 必须是对象：${fileName}`);
         return;
       }
+
+      // 标签/分类规范化（与 taxonomy.json 绑定）
+      if (label === "topics") {
+        obj.category = normalizeTopicCategory({ where: `${label}.${id}`, category: obj.category, taxonomy, errors });
+      }
+      // 注意：不要为“未声明 tags”的条目新增 tags 字段（否则会把 undefined 写成 null，破坏 content/ ↔ data.js 一致性）
+      if (obj.tags != null) {
+        obj.tags = normalizeTags({ where: `${label}.${id}`, tags: obj.tags, taxonomy, errors });
+      }
+
       target[id] = obj;
     });
   };

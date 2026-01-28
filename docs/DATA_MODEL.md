@@ -61,6 +61,7 @@ games: {
 - `platforms`：数组（可选）
 - `modes`：游玩模式数组（可选）
 - `tags`：游戏关键词数组（可选）
+  - 约束：`tags` 的 canonical/aliases 由 `content/taxonomy.json.tags` 治理；新增标签需先登记（CI 会阻止“脏标签”进入主线）
 - `highlights`：玩法重点数组（可选）
 - `icon`：SVG 图标路径（建议本地路径）
 - `summary`：简介（可选）
@@ -93,6 +94,7 @@ guides: {
 - `summary`：摘要（建议）
 - `icon`：图标（建议本地）
 - `tags`：标签数组（用于攻略库筛选）
+  - 约束：`tags` 的 canonical/aliases 由 `content/taxonomy.json.tags` 治理；新增标签需先登记（CI 会阻止“脏标签”进入主线）
 - `updated`：更新时间（用于“最近更新”排序）
 - `difficulty`：难度描述（用于筛选/排序）
 - `readingTime`：阅读时长（分钟，用于排序）
@@ -117,4 +119,4 @@ topics: {
 }
 ```
 
-话题页会把用户回复写入 `localStorage`，用于本地记录与复盘（不依赖后端）。
+话题页会把用户回复写入 `localStorage`，用于本地记录与复盘（不依赖后端）。\n+\n+> 约束：`topics.category` 与 `topics.tags` 受 `content/taxonomy.json` 治理；新增分类/标签需先登记（CI 会阻止“脏分类/脏标签”进入主线）。

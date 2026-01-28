@@ -9,6 +9,8 @@
     "bump:version": "node tools/bump-version.mjs",
     "generate:feed": "node tools/generate-feed.mjs",
     "check:feed": "node tools/generate-feed.mjs --check",
+    "release": "node tools/release.mjs",
+    "release:check": "node tools/release.mjs --check",
     "check:all": "node tools/check-all.mjs",
     "dev:vite": "vite",
     "build:vite": "vite build",

@@ -35,7 +35,7 @@ jobs:
         run: npm ci
 
       - name: Quality Gates (CI parity)
-        run: npm run check:all
+        run: npm run release:check
 
       - name: Prepare Pages Artifact
         run: |
