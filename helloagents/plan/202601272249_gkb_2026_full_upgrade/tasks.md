@@ -20,8 +20,8 @@
 
 ```yaml
 总任务: 31
-已完成: 9
-完成率: 29%
+已完成: 10
+完成率: 32%
 ```
 
 ---
@@ -86,8 +86,11 @@
 
 ### 4. 搜索与信息架构（把搜索做成核心产品能力）
 
-- [ ] 4.1 引入搜索 Worker：索引构建/重建放到 Worker，主线程只做交互
-  - 验证: 首开不出现明显卡顿（长任务门禁通过）
+- [√] 4.1 引入搜索 Worker：索引构建/重建放到 Worker，主线程只做交互
+  - 交付: `search-worker.js`（CmdK 搜索评分/排序后台化）
+  - 交付: `scripts.js` Command Palette 输入时优先走 Worker，失败自动回退主线程搜索
+  - 交付: `sw.js` 预缓存 `search-worker.js?v=${VERSION}`，并由 `tools/check-sw.mjs` 强制要求（防回退）
+  - 验证: `npm run check:all` 通过（含 SW 门禁 + 单测）
 
 - [ ] 4.2 索引持久化：将索引缓存到 IndexedDB（或压缩 blob），并与版本号绑定
   - 依赖: 4.1

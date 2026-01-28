@@ -70,6 +70,7 @@ test("validateServiceWorker：通过与失败分支", () => {
     fs.writeFileSync(path.join(root, "styles.css"), "body{color:#000}", "utf8");
     fs.writeFileSync(path.join(root, "data.js"), "window.GKB={data:{version:\"x\",games:{},guides:{},topics:{}}};", "utf8");
     fs.writeFileSync(path.join(root, "scripts.js"), "(()=>{})();", "utf8");
+    fs.writeFileSync(path.join(root, "search-worker.js"), "self.addEventListener('message',()=>{});", "utf8");
     fs.writeFileSync(path.join(root, "boot.js"), "(function(){})();", "utf8");
     fs.writeFileSync(path.join(root, "manifest.webmanifest"), "{}", "utf8");
 
@@ -85,6 +86,7 @@ test("validateServiceWorker：通过与失败分支", () => {
         \`styles.css?v=\${VERSION}\`,
         \`data.js?v=\${VERSION}\`,
         \`scripts.js?v=\${VERSION}\`,
+        \`search-worker.js?v=\${VERSION}\`,
         \`boot.js?v=\${VERSION}\`,
         \`manifest.webmanifest?v=\${VERSION}\`
       ];
@@ -95,7 +97,7 @@ test("validateServiceWorker：通过与失败分支", () => {
     assert.equal(ok.ok, true);
     assert.equal(ok.errors.length, 0);
     assert.equal(ok.counts.html, 2);
-    assert.equal(ok.counts.precacheFiles, 7);
+    assert.equal(ok.counts.precacheFiles, 8);
     assert.ok(Number(ok.counts.precacheTotalBytes) > 0);
 
     const swBad = swOk.replace("`scripts.js?v=${VERSION}`,", "");
@@ -173,6 +175,7 @@ test("main：通过时返回 0 并输出统计信息", () => {
     fs.writeFileSync(path.join(root, "styles.css"), "body{color:#000}", "utf8");
     fs.writeFileSync(path.join(root, "data.js"), "window.GKB={data:{version:\"x\",games:{},guides:{},topics:{}}};", "utf8");
     fs.writeFileSync(path.join(root, "scripts.js"), "(()=>{})();", "utf8");
+    fs.writeFileSync(path.join(root, "search-worker.js"), "self.addEventListener('message',()=>{});", "utf8");
     fs.writeFileSync(path.join(root, "boot.js"), "(function(){})();", "utf8");
     fs.writeFileSync(path.join(root, "manifest.webmanifest"), "{}", "utf8");
 
@@ -187,6 +190,7 @@ test("main：通过时返回 0 并输出统计信息", () => {
         \`styles.css?v=\${VERSION}\`,
         \`data.js?v=\${VERSION}\`,
         \`scripts.js?v=\${VERSION}\`,
+        \`search-worker.js?v=\${VERSION}\`,
         \`boot.js?v=\${VERSION}\`,
         \`manifest.webmanifest?v=\${VERSION}\`
       ];
@@ -218,6 +222,7 @@ test("CLI：check-sw.mjs 作为脚本运行应 process.exit(main())", () => {
     fs.writeFileSync(path.join(root, "styles.css"), "body{color:#000}", "utf8");
     fs.writeFileSync(path.join(root, "data.js"), "window.GKB={data:{version:\"x\",games:{},guides:{},topics:{}}};", "utf8");
     fs.writeFileSync(path.join(root, "scripts.js"), "(()=>{})();", "utf8");
+    fs.writeFileSync(path.join(root, "search-worker.js"), "self.addEventListener('message',()=>{});", "utf8");
     fs.writeFileSync(path.join(root, "boot.js"), "(function(){})();", "utf8");
     fs.writeFileSync(path.join(root, "manifest.webmanifest"), "{}", "utf8");
 
@@ -232,6 +237,7 @@ test("CLI：check-sw.mjs 作为脚本运行应 process.exit(main())", () => {
         \`styles.css?v=\${VERSION}\`,
         \`data.js?v=\${VERSION}\`,
         \`scripts.js?v=\${VERSION}\`,
+        \`search-worker.js?v=\${VERSION}\`,
         \`boot.js?v=\${VERSION}\`,
         \`manifest.webmanifest?v=\${VERSION}\`
       ];

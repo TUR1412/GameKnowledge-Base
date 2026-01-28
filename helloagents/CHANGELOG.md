@@ -24,13 +24,14 @@
 - 内容工作流文档：新增 `docs/CONTENT_WORKFLOW.md`，规范“修改 content → build-data → check:all”的协作流程
 - 内容管线回归测试：新增 `tests/content-pipeline.test.mjs`，覆盖 `build-data/export-content/validate-data` 的关键成功与失败分支
 - 运行时内核 core：新增 `src/runtime/core/{dom,events,storage,telemetry,motion,net,logger,diagnostics}.mjs` 与单测 `tests/runtime-{core,net,diagnostics,dom-events-motion}.test.mjs`，为后续 `scripts.js` 拆分提供可测试基石
+- 搜索 Worker：新增 `search-worker.js` 并接入 Command Palette（CmdK），搜索评分/排序在后台线程执行（输入更顺滑）
 
 ### 变更
 - PWA 离线预缓存：`sw.js` 补齐 `docs/SECURITY.md` 与 `docs/CODE_OF_CONDUCT.md`（Docs Portal 离线可读）
 - README：补齐 CI/CodeQL 状态徽章，并更新质量门禁清单（对齐 `npm run check:all`）
 - 协作入口对齐：更新 `docs/CONTRIBUTING.md` / `docs/DATA_MODEL.md` / `README.md`，统一引导“编辑 content → build-data → check:all”
 - HTML（CLS）：对 `images/placeholders/*` 的 `<img>` 强制要求 `width/height`，并补齐 `starlight-miracle.html` 占位图尺寸（降低布局抖动）
-- SW 门禁增强：`tools/check-sw.mjs` 新增预缓存资源存在性校验与预缓存总量预算（默认 1200kB，可用 env 覆盖）
+- SW 门禁增强：`tools/check-sw.mjs` 新增预缓存资源存在性校验与预缓存总量预算（默认 1200kB，可用 env 覆盖），并强制要求预缓存 `search-worker.js?v=${VERSION}`（防离线/缓存回退）
 - 数据一致性门禁：`tools/validate-data.mjs` 新增 `content/` 校验与 `content/` ↔ `data.js` 一致性对齐检查（避免手改/漏生成）
 - bump-version：当存在 `content/meta.json` 时以其为版本号 SSOT，并在 bump 后自动执行 build-data 生成 `data.js`
 - npm scripts：新增 `build:data` / `export:content` / `validate:data` / `bump:version`，降低贡献者上手摩擦

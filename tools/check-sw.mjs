@@ -106,6 +106,7 @@ export const validateServiceWorker = ({ workspaceRoot, precacheBudgetKb } = {}) 
     "styles.css?v=${VERSION}",
     "data.js?v=${VERSION}",
     "scripts.js?v=${VERSION}",
+    "search-worker.js?v=${VERSION}",
     "boot.js?v=${VERSION}",
     "manifest.webmanifest?v=${VERSION}",
   ];

@@ -4771,7 +4771,146 @@
       return next;
     };
 
-    const buildGroups = (query) => {
+    // Search Worker：将 fuzzyScore + 排序移到后台线程（避免数据规模增长后输入卡顿）
+    let searchWorker = null;
+    let searchWorkerDisabled = false;
+    let searchWorkerReady = false;
+    let searchWorkerVersion = "";
+    let searchWorkerReqId = 0;
+    const searchWorkerPending = new Map();
+
+    const resetSearchWorker = ({ disable = false } = {}) => {
+      if (disable) searchWorkerDisabled = true;
+      try {
+        searchWorkerPending.clear();
+      } catch (_) {}
+      if (searchWorker) {
+        try {
+          searchWorker.terminate();
+        } catch (_) {}
+      }
+      searchWorker = null;
+      searchWorkerReady = false;
+      searchWorkerVersion = "";
+    };
+
+    const ensureSearchWorker = () => {
+      if (searchWorkerDisabled) return null;
+
+      const data = getData();
+      const version = String(data?.version || "").trim();
+      if (!data) return null;
+
+      if (searchWorker && searchWorkerReady && version && searchWorkerVersion === version) return searchWorker;
+
+      // 版本变化：重建 Worker（避免“旧索引+新数据”错配）
+      if (searchWorker && version && searchWorkerVersion && searchWorkerVersion !== version) {
+        resetSearchWorker();
+      }
+
+      if (!searchWorker) {
+        if (typeof Worker !== "function") return null;
+
+        const v = detectAssetVersion() || version;
+        const url = v ? `search-worker.js?v=${encodeURIComponent(v)}` : "search-worker.js";
+
+        try {
+          searchWorker = new Worker(url);
+        } catch (_) {
+          resetSearchWorker({ disable: true });
+          return null;
+        }
+
+        searchWorker.addEventListener("error", () => {
+          // Worker 是增强项：失败后回退主线程搜索，避免一直重试
+          resetSearchWorker({ disable: true });
+        });
+
+        searchWorker.addEventListener("message", (event) => {
+          const msg = event?.data;
+          if (!msg || typeof msg !== "object") return;
+          const type = String(msg.type || "");
+
+          if (type === "GKB_SEARCH_READY") {
+            searchWorkerReady = true;
+            return;
+          }
+
+          if (type === "GKB_SEARCH_RESULT") {
+            const requestId = Number(msg.requestId || 0) || 0;
+            const resolve = searchWorkerPending.get(requestId);
+            if (!resolve) return;
+            searchWorkerPending.delete(requestId);
+
+            resolve({
+              games: Array.isArray(msg.games) ? msg.games : [],
+              guides: Array.isArray(msg.guides) ? msg.guides : [],
+              topics: Array.isArray(msg.topics) ? msg.topics : [],
+            });
+          }
+        });
+      }
+
+      // 初始化/刷新索引（同版本只做一次）
+      if (version && searchWorkerVersion !== version) {
+        const pool = getSearchPool();
+        try {
+          searchWorker.postMessage({
+            type: "GKB_SEARCH_INIT",
+            version,
+            pool: {
+              games: (pool.games || []).map(({ id, blob }) => ({ id, blob })),
+              guides: (pool.guides || []).map(({ id, blob }) => ({ id, blob })),
+              topics: (pool.topics || []).map(({ id, blob }) => ({ id, blob })),
+            },
+          });
+          searchWorkerVersion = version;
+          searchWorkerReady = true;
+        } catch (_) {
+          resetSearchWorker({ disable: true });
+          return null;
+        }
+      }
+
+      return searchWorker;
+    };
+
+    const querySearchWorker = (query) => {
+      const w = ensureSearchWorker();
+      if (!w) return null;
+
+      const q = String(query || "").trim();
+      if (!q) return null;
+
+      const requestId = (searchWorkerReqId += 1);
+
+      return new Promise((resolve) => {
+        const timer = window.setTimeout(() => {
+          searchWorkerPending.delete(requestId);
+          resolve(null);
+        }, 260);
+
+        searchWorkerPending.set(requestId, (payload) => {
+          window.clearTimeout(timer);
+          resolve(payload);
+        });
+
+        try {
+          w.postMessage({
+            type: "GKB_SEARCH_QUERY",
+            requestId,
+            query: q,
+            limits: { games: 6, guides: 8, topics: 6 },
+          });
+        } catch (_) {
+          window.clearTimeout(timer);
+          searchWorkerPending.delete(requestId);
+          resolve(null);
+        }
+      });
+    };
+
+    const buildGroups = (query, { searchResults = null, searching = false } = {}) => {
       const data = getData();
       const q = String(query || "").trim().toLowerCase();
 
@@ -5153,53 +5292,98 @@
 
       const pool = getSearchPool();
 
-      const gameItems = pool.games
-        .map(({ id, g, blob }) => {
-          const score = fuzzyScore(blob, q);
-          return { id, g, score };
-        })
-        .filter((x) => x.score != null)
-        .sort((a, b) => (b.score || 0) - (a.score || 0))
-        .slice(0, 6)
-        .map(({ id, g }) => ({
-          kind: "link",
-          badge: "游戏",
-          title: g?.title || id,
-          subtitle: [g?.genre, g?.year ? `${g.year}` : ""].filter(Boolean).join(" · ") || "打开游戏详情",
-          href: `game.html?id=${encodeURIComponent(id)}`,
-        }));
+      const normalizeIds = (value) =>
+        (Array.isArray(value) ? value : [])
+          .map((x) => String(x || "").trim())
+          .filter(Boolean);
 
-      const guideItems = pool.guides
-        .map(({ id, g, blob }) => {
-          const score = fuzzyScore(blob, q);
-          return { id, g, score };
-        })
-        .filter((x) => x.score != null)
-        .sort((a, b) => (b.score || 0) - (a.score || 0))
-        .slice(0, 8)
-        .map(({ id, g }) => ({
-          kind: "link",
-          badge: "攻略",
-          title: g?.title || id,
-          subtitle: g?.summary || "打开攻略详情",
-          href: `guide-detail.html?id=${encodeURIComponent(id)}`,
-        }));
+      const results = searchResults && typeof searchResults === "object" ? searchResults : null;
 
-      const topicItems = pool.topics
-        .map(({ id, t, blob }) => {
-          const score = fuzzyScore(blob, q);
-          return { id, g: t, score };
-        })
-        .filter((x) => x.score != null)
-        .sort((a, b) => (b.score || 0) - (a.score || 0))
-        .slice(0, 6)
-        .map(({ id, g }) => ({
-          kind: "link",
-          badge: "话题",
-          title: g?.title || id,
-          subtitle: g?.summary || "进入讨论",
-          href: `forum-topic.html?id=${encodeURIComponent(id)}`,
-        }));
+      const gameIds = results ? normalizeIds(results.games) : null;
+      const guideIds = results ? normalizeIds(results.guides) : null;
+      const topicIds = results ? normalizeIds(results.topics) : null;
+
+      const gameItems = gameIds
+        ? gameIds.slice(0, 6).map((id) => {
+            const g = data?.games?.[id] || null;
+            return {
+              kind: "link",
+              badge: "游戏",
+              title: g?.title || id,
+              subtitle: [g?.genre, g?.year ? `${g.year}` : ""].filter(Boolean).join(" · ") || "打开游戏详情",
+              href: `game.html?id=${encodeURIComponent(id)}`,
+            };
+          })
+        : pool.games
+            .map(({ id, g, blob }) => {
+              const score = fuzzyScore(blob, q);
+              return { id, g, score };
+            })
+            .filter((x) => x.score != null)
+            .sort((a, b) => (b.score || 0) - (a.score || 0))
+            .slice(0, 6)
+            .map(({ id, g }) => ({
+              kind: "link",
+              badge: "游戏",
+              title: g?.title || id,
+              subtitle:
+                [g?.genre, g?.year ? `${g.year}` : ""].filter(Boolean).join(" · ") || "打开游戏详情",
+              href: `game.html?id=${encodeURIComponent(id)}`,
+            }));
+
+      const guideItems = guideIds
+        ? guideIds.slice(0, 8).map((id) => {
+            const g = data?.guides?.[id] || null;
+            return {
+              kind: "link",
+              badge: "攻略",
+              title: g?.title || id,
+              subtitle: g?.summary || "打开攻略详情",
+              href: `guide-detail.html?id=${encodeURIComponent(id)}`,
+            };
+          })
+        : pool.guides
+            .map(({ id, g, blob }) => {
+              const score = fuzzyScore(blob, q);
+              return { id, g, score };
+            })
+            .filter((x) => x.score != null)
+            .sort((a, b) => (b.score || 0) - (a.score || 0))
+            .slice(0, 8)
+            .map(({ id, g }) => ({
+              kind: "link",
+              badge: "攻略",
+              title: g?.title || id,
+              subtitle: g?.summary || "打开攻略详情",
+              href: `guide-detail.html?id=${encodeURIComponent(id)}`,
+            }));
+
+      const topicItems = topicIds
+        ? topicIds.slice(0, 6).map((id) => {
+            const t = data?.topics?.[id] || null;
+            return {
+              kind: "link",
+              badge: "话题",
+              title: t?.title || id,
+              subtitle: t?.summary || "进入讨论",
+              href: `forum-topic.html?id=${encodeURIComponent(id)}`,
+            };
+          })
+        : pool.topics
+            .map(({ id, t, blob }) => {
+              const score = fuzzyScore(blob, q);
+              return { id, g: t, score };
+            })
+            .filter((x) => x.score != null)
+            .sort((a, b) => (b.score || 0) - (a.score || 0))
+            .slice(0, 6)
+            .map(({ id, g }) => ({
+              kind: "link",
+              badge: "话题",
+              title: g?.title || id,
+              subtitle: g?.summary || "进入讨论",
+              href: `forum-topic.html?id=${encodeURIComponent(id)}`,
+            }));
 
       const groups = [{ title: "快捷操作", items: actions }];
       if (gameItems.length > 0) groups.push({ title: "游戏", items: gameItems });
@@ -5207,39 +5391,53 @@
       if (topicItems.length > 0) groups.push({ title: "话题", items: topicItems });
 
       if (gameItems.length + guideItems.length + topicItems.length === 0) {
-        groups.push({
-          title: "未找到结果",
-          items: [
-            {
-              kind: "link",
-              badge: "建议",
-              title: "打开游戏库",
-              subtitle: "去“所有游戏”里用筛选器找内容",
-              href: "all-games.html",
-            },
-            {
-              kind: "link",
-              badge: "建议",
-              title: "打开攻略库",
-              subtitle: "去“所有攻略”里按标签与关键词筛选",
-              href: "all-guides.html",
-            },
-          ],
-        });
+        if (searching) {
+          groups.push({
+            title: "搜索中…",
+            items: [
+              {
+                kind: "action",
+                badge: "…",
+                title: "正在搜索",
+                subtitle: "搜索在后台线程中计算，马上就好…",
+              },
+            ],
+          });
+        } else {
+          groups.push({
+            title: "未找到结果",
+            items: [
+              {
+                kind: "link",
+                badge: "建议",
+                title: "打开游戏库",
+                subtitle: "去“所有游戏”里用筛选器找内容",
+                href: "all-games.html",
+              },
+              {
+                kind: "link",
+                badge: "建议",
+                title: "打开攻略库",
+                subtitle: "去“所有攻略”里按标签与关键词筛选",
+                href: "all-guides.html",
+              },
+            ],
+          });
+        }
       }
 
       return withHighlight(groups);
     };
 
-    const render = (query) => {
+    const renderGroups = (groups) => {
       if (!list) return;
-      const groups = buildGroups(query);
+      const safeGroups = Array.isArray(groups) ? groups : [];
 
       flatItems = [];
       buttons = [];
       let idx = 0;
 
-      list.innerHTML = groups
+      list.innerHTML = safeGroups
         .map((g) => {
           const itemsHtml = (g.items || [])
             .map((item) => {
@@ -5273,6 +5471,38 @@
       buttons = $$(".cmdk-item", list);
       selected = 0;
       if (buttons.length > 0) buttons[0].setAttribute("aria-selected", "true");
+    };
+
+    let renderSeq = 0;
+    const render = (query) => {
+      if (!list) return;
+
+      const q = String(query || "");
+      const trimmed = q.trim();
+      const seq = (renderSeq += 1);
+
+      if (!trimmed) {
+        renderGroups(buildGroups(q));
+        return;
+      }
+
+      const task = querySearchWorker(trimmed);
+      if (!task) {
+        renderGroups(buildGroups(q));
+        return;
+      }
+
+      // 先渲染“搜索中…”骨架，避免输入时出现空白
+      renderGroups(buildGroups(q, { searchResults: { games: [], guides: [], topics: [] }, searching: true }));
+
+      task.then((result) => {
+        if (seq !== renderSeq) return;
+        if (!result) {
+          renderGroups(buildGroups(q));
+          return;
+        }
+        renderGroups(buildGroups(q, { searchResults: result }));
+      });
     };
 
     const syncSelection = (next) => {
